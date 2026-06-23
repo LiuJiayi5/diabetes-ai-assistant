@@ -1,0 +1,39 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  color: var(--color-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--color-page);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.module-entry {
+  width: min(100%, var(--layout-max-width));
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.module-entry h2 {
+  margin: 0 0 12px;
+  font-size: 24px;
+}
+
+.module-entry p {
+  margin: 8px 0;
+  color: var(--color-muted);
+  line-height: 1.7;
+}
+
+.entry-panel {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  padding: 20px;
+}

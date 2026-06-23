@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/diabetes_assistant?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+dify:
+  base-url: http://localhost/v1
+  risk-predict-api-key: your_risk_predict_api_key
+  ai-doctor-api-key: your_ai_doctor_api_key
+  life-plan-api-key: your_life_plan_api_key
+  checkin-analysis-api-key: your_checkin_analysis_api_key
+
+jwt:
+  secret: diabetes_assistant_dev_secret
+  expire-seconds: 86400
