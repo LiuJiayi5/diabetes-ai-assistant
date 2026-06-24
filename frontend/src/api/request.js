@@ -10,6 +10,8 @@ request.interceptors.request.use((config) => {
   const token = getToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+  } else if (import.meta.env.DEV) {
+    config.headers['X-Dev-User-Id'] = import.meta.env.VITE_DEV_USER_ID || '1'
   }
   return config
 })
@@ -20,7 +22,8 @@ request.interceptors.response.use(
     if (error?.response?.status === 401) {
       removeToken()
     }
-    return Promise.reject(error)
+    const payload = error?.response?.data
+    return Promise.reject(payload || error)
   }
 )
 

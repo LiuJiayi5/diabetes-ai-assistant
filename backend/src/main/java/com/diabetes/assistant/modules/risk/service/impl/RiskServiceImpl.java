@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.diabetes.assistant.common.exception.BusinessException;
 import com.diabetes.assistant.common.response.PageResult;
 import com.diabetes.assistant.common.utils.PageUtils;
+import com.diabetes.assistant.modules.dify.config.DifyProperties;
 import com.diabetes.assistant.modules.dify.service.DifyService;
 import com.diabetes.assistant.modules.healthmetric.contract.HealthMetricQueryApi;
 import com.diabetes.assistant.modules.healthmetric.contract.dto.HealthMetricDTO;
@@ -46,6 +47,7 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
     private final PatientProfileQueryApi patientProfileQueryApi;
     private final HealthMetricQueryApi healthMetricQueryApi;
     private final DifyService difyService;
+    private final DifyProperties difyProperties;
     private final UserQueryApi userQueryApi;
 
     @Override
@@ -87,9 +89,13 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
         String errorMessage = null;
 
         try {
-            rawResponse = difyService.callRiskPrediction(inputs, String.valueOf(userId));
-            if (rawResponse.startsWith("TODO")) {
+            if (shouldUseDevMock()) {
                 rawResponse = buildDevMockResponse();
+            } else {
+                rawResponse = difyService.callRiskPrediction(inputs, String.valueOf(userId));
+                if (rawResponse.startsWith("TODO")) {
+                    rawResponse = buildDevMockResponse();
+                }
             }
             parsed = RiskResultParser.parse(rawResponse);
             callStatus = "success";
@@ -253,6 +259,11 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
                                        Map<String, Object> inputs) {
         return "档案：" + profile.getProfileSummary() + "；最新指标：" + metric.getMetricSummary()
                 + "；BMI：" + inputs.get("bmi");
+    }
+
+    private boolean shouldUseDevMock() {
+        String apiKey = difyProperties.getRiskPredictApiKey();
+        return apiKey == null || apiKey.isBlank() || apiKey.startsWith("your_");
     }
 
     private String buildDevMockResponse() {
