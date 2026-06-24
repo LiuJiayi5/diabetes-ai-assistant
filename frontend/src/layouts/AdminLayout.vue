@@ -1,35 +1,394 @@
 <template>
   <div class="admin-layout">
-    <aside>
-      <strong>管理端</strong>
-      <RouterLink to="/admin/dashboard">仪表盘</RouterLink>
-      <RouterLink to="/admin/users">用户</RouterLink>
-      <RouterLink to="/admin/articles">内容</RouterLink>
-      <RouterLink to="/admin/checkins">打卡</RouterLink>
+    <aside class="admin-sidebar">
+      <div class="admin-logo">
+        <div class="admin-logo-mark">
+          <Leaf :size="20" />
+          <span class="admin-logo-badge"><Shield :size="12" /></span>
+        </div>
+        <div>
+          <strong>糖尿病预治助手</strong>
+          <span>管理控制台</span>
+        </div>
+      </div>
+
+      <nav class="admin-nav">
+        <section v-for="group in navGroups" :key="group.label" class="admin-nav-group">
+          <p>{{ group.label }}</p>
+          <RouterLink
+            v-for="item in group.items"
+            :key="item.path"
+            :to="item.path"
+            class="admin-nav-link"
+          >
+            <component :is="item.icon" :size="18" />
+            <span>{{ item.label }}</span>
+            <ChevronRight class="active-arrow" :size="14" />
+          </RouterLink>
+        </section>
+      </nav>
+
+      <button class="admin-logout" type="button" @click="logout">
+        <LogOut :size="18" />
+        <span>退出登录</span>
+      </button>
     </aside>
-    <main>
+
+    <main class="admin-main">
+      <header class="admin-topbar">
+        <div class="admin-breadcrumb">
+          <span>后台管理</span>
+          <ChevronRight :size="14" />
+          <strong>{{ route.meta?.title || '管理端' }}</strong>
+        </div>
+
+        <div class="admin-topbar-right">
+          <div class="admin-search">
+            <Search :size="14" />
+            <input type="text" placeholder="搜索..." />
+          </div>
+          <button class="admin-bell" type="button">
+            <Bell :size="16" />
+            <i></i>
+          </button>
+          <div class="admin-user-chip">
+            <span>{{ adminInitial }}</span>
+            <strong>{{ adminName }}</strong>
+          </div>
+        </div>
+      </header>
       <RouterView />
     </main>
   </div>
 </template>
 
+<script setup>
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  Bell,
+  ChevronRight,
+  FileText,
+  Home,
+  Image,
+  LayoutDashboard,
+  Leaf,
+  LogOut,
+  Newspaper,
+  Search,
+  Shield,
+  UserCheck,
+  Users
+} from 'lucide-vue-next'
+import { ElMessageBox } from 'element-plus'
+import { useAuthStore } from '@/stores/auth'
+import '@/modules/admin/styles/admin.css'
+
+const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
+
+const navGroups = [
+  {
+    label: '核心功能',
+    items: [
+      { label: '首页概览', path: '/admin/dashboard', icon: LayoutDashboard },
+      { label: '用户管理', path: '/admin/users', icon: Users },
+      { label: '生活方案记录', path: '/admin/life-plans', icon: FileText }
+    ]
+  },
+  {
+    label: '内容管理',
+    items: [
+      { label: '健康资讯管理', path: '/admin/articles', icon: Newspaper },
+      { label: '首页内容管理', path: '/admin/home-content', icon: Home },
+      { label: '轮播图管理', path: '/admin/banners', icon: Image },
+      { label: '专家展示管理', path: '/admin/experts', icon: UserCheck }
+    ]
+  }
+]
+
+const adminName = computed(() => authStore.user?.username || authStore.user?.name || '管理员')
+const adminInitial = computed(() => adminName.value.slice(0, 1).toUpperCase())
+
+function logout() {
+  ElMessageBox.confirm('退出后需要重新登录管理端，确认退出？', '确认退出登录', {
+    confirmButtonText: '确认退出',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(() => {
+    authStore.clearSession()
+    localStorage.removeItem('diabetes_admin_user')
+    router.push('/admin/login')
+  }).catch(() => {})
+}
+</script>
+
 <style scoped>
 .admin-layout {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: var(--admin-sidebar-width) 1fr;
+  background: var(--admin-bg);
+  font-family: var(--admin-font-family);
 }
 
-aside {
+.admin-sidebar {
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 20px;
-  border-right: 1px solid var(--color-border);
-  background: var(--color-surface);
+  overflow-y: auto;
+  background: var(--admin-sidebar-bg);
+  color: #a8c8ee;
 }
 
-.router-link-active {
-  color: var(--color-primary);
+.admin-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.admin-logo-mark {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  color: #fff;
+  background: linear-gradient(135deg,#5c8ef8,#7eb5ff);
+}
+
+.admin-logo-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: #4ade80;
+  color: #fff;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.18);
+}
+
+.admin-logo strong {
+  display: block;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.admin-logo span {
+  display: block;
+  color: #7eb5ff;
+  font-size: 12px;
+  margin-top: 2px;
+}
+
+.admin-nav {
+  flex: 1;
+  padding: 12px;
+}
+
+.admin-nav-group {
+  margin-bottom: 18px;
+}
+
+.admin-nav-group p {
+  margin: 0 8px 8px;
+  color: #4a7aaa;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.admin-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
+  border-radius: 12px;
+  padding: 0 12px;
+  color: #a8c8ee;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.admin-nav-link:hover {
+  background: rgba(255,255,255,0.07);
+  color: #d0e8ff;
+}
+
+.admin-nav-link.router-link-active {
+  color: #fff;
+  background: var(--admin-sidebar-active);
+  box-shadow: 0 4px 14px rgba(92,142,248,0.35);
+}
+
+.admin-nav-link span {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.active-arrow {
+  opacity: 0;
+}
+
+.router-link-active .active-arrow {
+  opacity: 0.65;
+}
+
+.admin-logout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 12px 16px;
+  min-height: 42px;
+  border-radius: 12px;
+  padding: 0 12px;
+  color: #8baabf;
+  background: transparent;
+  text-align: left;
+}
+
+.admin-logout:hover {
+  color: #f87171;
+  background: rgba(239,68,68,0.12);
+}
+
+.admin-main {
+  min-width: 0;
+  min-height: 100vh;
+  overflow: auto;
+}
+
+.admin-topbar {
+  height: var(--admin-topbar-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid rgba(92,142,248,0.10);
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(92,142,248,0.06);
+}
+
+.admin-breadcrumb,
+.admin-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-breadcrumb {
+  color: var(--admin-text-secondary);
+  font-size: 14px;
+}
+
+.admin-breadcrumb strong {
+  color: var(--admin-text-strong);
+}
+
+.admin-search {
+  width: 224px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(92,142,248,0.15);
+  border-radius: 8px;
+  background: #f4f7fe;
+  padding: 0 10px;
+  color: var(--admin-text-muted);
+}
+
+.admin-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--admin-text-strong);
+  font-size: 14px;
+}
+
+.admin-bell {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--admin-text-secondary);
+  background: transparent;
+}
+
+.admin-bell:hover {
+  background: #eff6ff;
+}
+
+.admin-bell i {
+  position: absolute;
+  right: 7px;
+  top: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #f87171;
+}
+
+.admin-user-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 12px;
+  padding: 6px 10px;
+  color: var(--admin-text-strong);
+}
+
+.admin-user-chip span {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--admin-primary-gradient);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-user-chip strong {
+  font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .admin-layout {
+    grid-template-columns: 76px 1fr;
+  }
+
+  .admin-logo div:last-child,
+  .admin-nav-group p,
+  .admin-nav-link span,
+  .admin-logout span,
+  .active-arrow {
+    display: none;
+  }
+
+  .admin-logo {
+    justify-content: center;
+    padding: 18px 0;
+  }
+
+  .admin-search {
+    display: none;
+  }
 }
 </style>

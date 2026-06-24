@@ -1,0 +1,142 @@
+<template>
+  <div class="admin-page">
+    <div class="admin-page-header">
+      <div>
+        <h1 class="admin-page-title">轮播图管理</h1>
+        <p class="admin-page-desc">维护用户端首页轮播展示图片、跳转链接与排序。</p>
+      </div>
+      <el-button class="admin-primary-btn" type="primary" @click="openCreate">
+        <Plus :size="16" /> 新增轮播图
+      </el-button>
+    </div>
+
+    <section class="admin-card admin-table-card">
+      <div class="admin-card-title-row">
+        <span class="admin-section-title">轮播图列表</span>
+        <span class="admin-count-pill">{{ banners.length }} 条</span>
+      </div>
+      <el-table :data="banners" row-key="content_id" empty-text="暂无轮播图">
+        <el-table-column label="ID" width="100"><template #default="{ row }">#{{ row.content_id }}</template></el-table-column>
+        <el-table-column label="图片" width="110">
+          <template #default="{ row }">
+            <div class="banner-thumb"><img v-if="row.image_url" :src="row.image_url" alt="" /><ImageIcon v-else :size="20" /></div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="title" label="标题" min-width="180" />
+        <el-table-column prop="link_type" label="跳转类型" width="110" />
+        <el-table-column prop="sort_order" label="排序" width="80" />
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }"><el-tag :type="row.status === 'enabled' ? 'success' : 'info'" round>{{ row.status === 'enabled' ? '启用' : '禁用' }}</el-tag></template>
+        </el-table-column>
+        <el-table-column label="操作" width="170">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+            <el-button link :type="row.status === 'enabled' ? 'danger' : 'success'" @click="toggle(row)">{{ row.status === 'enabled' ? '停用' : '启用' }}</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </section>
+
+    <el-dialog v-model="dialogVisible" :title="editing ? '编辑轮播图' : '新增轮播图'" width="520px">
+      <el-form label-position="top">
+        <el-form-item label="标题"><el-input v-model="form.title" /></el-form-item>
+        <el-form-item label="图片 URL"><el-input v-model="form.image_url" /></el-form-item>
+        <div class="dialog-grid">
+          <el-form-item label="跳转类型">
+            <el-select v-model="form.link_type">
+              <el-option label="无跳转" value="none" />
+              <el-option label="资讯详情" value="article" />
+              <el-option label="生活方案" value="life_plan" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="排序"><el-input-number v-model="form.sort_order" :min="0" /></el-form-item>
+        </div>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button class="admin-primary-btn" type="primary" @click="save">保存</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup>
+import { computed, onMounted, reactive, ref } from 'vue'
+import { Image as ImageIcon, Plus } from 'lucide-vue-next'
+import { ElMessage } from 'element-plus'
+import { adminGetContentManagement, adminSaveHomeContent } from '@/api/admin'
+import { adminMockHomeContents } from '@/modules/admin/mockData'
+
+const contents = ref([])
+const dialogVisible = ref(false)
+const editing = ref(null)
+const form = reactive(defaultForm())
+const banners = computed(() => contents.value.filter((item) => item.content_type === 'banner'))
+
+function defaultForm() {
+  return { content_type: 'banner', title: '', subtitle: '', image_url: '', link_type: 'none', link_value: '', sort_order: 1, status: 'enabled' }
+}
+
+async function load() {
+  try {
+    const response = await adminGetContentManagement()
+    contents.value = response?.home_contents || response?.data?.home_contents || adminMockHomeContents
+  } catch {
+    contents.value = adminMockHomeContents
+  }
+}
+
+function openCreate() {
+  editing.value = null
+  Object.assign(form, defaultForm())
+  dialogVisible.value = true
+}
+
+function openEdit(row) {
+  editing.value = row
+  Object.assign(form, row)
+  dialogVisible.value = true
+}
+
+async function save() {
+  try { await adminSaveHomeContent(form) } catch {}
+  if (editing.value) Object.assign(editing.value, form)
+  else contents.value.push({ ...form, content_id: Date.now() })
+  dialogVisible.value = false
+  ElMessage.success('轮播图已保存')
+}
+
+function toggle(row) {
+  row.status = row.status === 'enabled' ? 'disabled' : 'enabled'
+  adminSaveHomeContent(row).catch(() => {})
+}
+
+onMounted(load)
+</script>
+
+<style scoped>
+.banner-thumb {
+  width: 72px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--admin-border-solid);
+  border-radius: 8px;
+  background: #f1f5ff;
+  color: #cbd5e1;
+  overflow: hidden;
+}
+
+.banner-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dialog-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+</style>

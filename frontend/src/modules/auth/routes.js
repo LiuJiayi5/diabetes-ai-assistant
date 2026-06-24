@@ -2,7 +2,7 @@ export default [
   { path: '/welcome', name: 'Welcome', component: () => import('./views/WelcomeView.vue'), meta: { title: '欢迎使用' } },
   { path: '/login', name: 'Login', component: () => import('./views/LoginView.vue'), meta: { title: '患者登录' } },
   { path: '/register', name: 'Register', component: () => import('./views/RegisterView.vue'), meta: { title: '患者注册' } },
-  { path: '/admin/login', name: 'AdminLogin', component: () => import('./views/LoginView.vue'), meta: { title: '管理员登录', role: 'admin' } }
+  { path: '/admin/login', name: 'AdminLogin', component: () => import('@/modules/admin/views/AdminLoginView.vue'), meta: { title: '管理员登录', role: 'admin' } }
 ]
 
 export const accountRoutes = [
