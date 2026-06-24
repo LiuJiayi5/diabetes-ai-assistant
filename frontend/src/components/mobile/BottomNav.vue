@@ -30,7 +30,7 @@ const navItems = [
   { id: 'home', label: '首页', icon: Home, path: '/app/home', match: ['/app/home'] },
   { id: 'plan', label: '方案定制', icon: FileText, path: '/app/life-plan', match: ['/app/life-plan'] },
   { id: 'news', label: '健康资讯', icon: Newspaper, path: '/app/articles', match: ['/app/articles'] },
-  { id: 'ai', label: 'AI助手', icon: Bot, disabled: true },
+  { id: 'ai', label: 'AI助手', icon: Bot, path: '/app/ai-chat', match: ['/app/ai-chat'] },
   { id: 'account', label: '个人中心', icon: User, path: '/app/account', match: ['/app/account', '/app/account/edit'] }
 ]
 
