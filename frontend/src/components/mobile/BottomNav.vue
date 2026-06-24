@@ -19,7 +19,7 @@
 </template>
 
 <script setup>
-import { Home, FileText, Newspaper, Bot, User } from 'lucide-vue-next'
+import { Bot, FileText, Home, Newspaper, User } from 'lucide-vue-next'
 import { showToast } from 'vant'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -27,7 +27,7 @@ const route = useRoute()
 const router = useRouter()
 
 const navItems = [
-  { id: 'home', label: '首页', icon: Home, path: '/app/home', match: ['/app/home'] },
+  { id: 'home', label: '首页', icon: Home, path: '/app/home', match: ['/app/home', '/app/checkin'] },
   { id: 'plan', label: '方案定制', icon: FileText, path: '/app/life-plan', match: ['/app/life-plan'] },
   { id: 'news', label: '健康资讯', icon: Newspaper, path: '/app/articles', match: ['/app/articles'] },
   { id: 'ai', label: 'AI助手', icon: Bot, path: '/app/ai-chat', match: ['/app/ai-chat'] },

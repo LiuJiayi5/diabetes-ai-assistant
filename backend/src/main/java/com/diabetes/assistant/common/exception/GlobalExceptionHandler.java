@@ -1,11 +1,13 @@
 package com.diabetes.assistant.common.exception;
 
 import com.diabetes.assistant.common.response.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -21,6 +23,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ApiResponse<Void> handleException(Exception exception) {
+        log.error("Unhandled system exception", exception);
         return ApiResponse.fail(500, "系统异常");
     }
 }

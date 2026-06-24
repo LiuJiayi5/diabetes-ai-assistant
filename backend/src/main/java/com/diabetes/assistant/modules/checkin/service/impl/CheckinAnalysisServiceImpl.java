@@ -132,8 +132,7 @@ public class CheckinAnalysisServiceImpl implements CheckinAnalysisService {
         int completedTaskCount = (int) records.stream()
                 .filter(record -> STATUS_COMPLETED.equals(record.getStatus()))
                 .count();
-        int expectedTaskCount = period * 2;
-        BigDecimal completionRate = calculateCompletionRate(completedTaskCount, expectedTaskCount);
+        BigDecimal completionRate = calculateCompletionRate(completedTaskCount, totalTaskCount);
         return new AnalysisStats(period, startDate, endDate, (int) dietCompletionCount, (int) exerciseCompletionCount,
                 totalTaskCount, completedTaskCount, completionRate);
     }
@@ -337,6 +336,8 @@ public class CheckinAnalysisServiceImpl implements CheckinAnalysisService {
         summary.put("total_days", stats.totalDays());
         summary.put("diet_completion_count", stats.dietCompletionCount());
         summary.put("exercise_completion_count", stats.exerciseCompletionCount());
+        summary.put("total_task_count", stats.totalTaskCount());
+        summary.put("completed_task_count", stats.completedTaskCount());
         summary.put("completion_rate", stats.completionRate());
         summary.put("life_plan", inputs.get("life_plan"));
         summary.put("user_notes", inputs.get("user_notes"));

@@ -107,19 +107,27 @@ public class DifyClient {
     }
 
     private String buildMockWorkflowResponse(Map<String, Object> inputs) {
+        int completedCount = toInt(inputs.get("diet_completion_count")) + toInt(inputs.get("exercise_completion_count"));
+        int totalDays = Math.max(1, toInt(inputs.get("total_days")));
+        double completionRate = toDouble(inputs.getOrDefault("completion_rate", 0));
+        int habitScore = (int) Math.max(45, Math.min(90, Math.round(completionRate)));
+
         Map<String, Object> analysis = new LinkedHashMap<>();
         analysis.put("completion_rate", inputs.getOrDefault("completion_rate", 0));
-        analysis.put("diet_summary", "Dev mock: diet check-in analysis is waiting for a real Dify API key.");
-        analysis.put("exercise_summary", "Dev mock: exercise check-in analysis is waiting for a real Dify API key.");
-        analysis.put("habit_score", 70);
-        analysis.put("life_evaluation", "Dev mock: current lifestyle is available for local integration testing.");
-        analysis.put("main_problems", java.util.List.of("Dify API key is not configured", "This is a local mock result"));
+        analysis.put("diet_summary", "当前 Dify API Key 未配置，以下为本地模拟分析。饮食打卡完成 "
+                + toInt(inputs.get("diet_completion_count")) + " 次，请以真实工作流配置后的结果为准。");
+        analysis.put("exercise_summary", "当前 Dify API Key 未配置，以下为本地模拟分析。运动打卡完成 "
+                + toInt(inputs.get("exercise_completion_count")) + " 次，请以真实工作流配置后的结果为准。");
+        analysis.put("habit_score", habitScore);
+        analysis.put("life_evaluation", "本结果为本地开发模拟输出，不是真实 AI 分析。当前统计范围 "
+                + totalDays + " 天，已完成任务 " + completedCount + " 项，完成率约 " + completionRate + "%。");
+        analysis.put("main_problems", java.util.List.of("Dify API Key 未配置，当前不是真实 AI 输出", "本地模拟仅用于前后端联调展示"));
         analysis.put("improvement_suggestions", java.util.List.of(
-                "Configure dify.checkin-analysis-api-key",
-                "Verify the workflow output JSON fields",
-                "Retest POST /api/ai/checkin-analysis"));
-        analysis.put("next_focus", "Replace dev mock with the real checkin_behavior_analysis_workflow call.");
-        analysis.put("summary", "Dev mock result generated because the Dify API key is missing or still uses the placeholder value.");
+                "配置 dify.checkin-analysis-api-key 后重新生成分析",
+                "确认 checkin_behavior_analysis_workflow 输出 JSON 字段完整",
+                "真实接入前，可先用统计页核对完成率口径"));
+        analysis.put("next_focus", "配置真实 Dify 工作流后重新生成分析。");
+        analysis.put("summary", "本地模拟结果：Dify API Key 缺失或仍为占位值。");
 
         Map<String, Object> outputs = new LinkedHashMap<>();
         try {
@@ -139,6 +147,34 @@ public class DifyClient {
             return objectMapper.writeValueAsString(response);
         } catch (JsonProcessingException exception) {
             return "{\"data\":{\"status\":\"succeeded\",\"outputs\":{\"analysis_result\":\"{}\"}}}";
+        }
+    }
+
+    private int toInt(Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value == null) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(String.valueOf(value));
+        } catch (NumberFormatException exception) {
+            return 0;
+        }
+    }
+
+    private double toDouble(Object value) {
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        if (value == null) {
+            return 0;
+        }
+        try {
+            return Double.parseDouble(String.valueOf(value));
+        } catch (NumberFormatException exception) {
+            return 0;
         }
     }
 }

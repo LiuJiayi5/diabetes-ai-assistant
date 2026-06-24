@@ -10,6 +10,8 @@ request.interceptors.request.use((config) => {
   const token = getToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+  } else if (import.meta.env.DEV) {
+    config.headers['X-Dev-User-Id'] = import.meta.env.VITE_DEV_USER_ID || '1'
   }
   return config
 })
