@@ -142,8 +142,8 @@ const settingsItems = [
   { label: '打卡记录', icon: CalendarCheck, action: () => router.push('/app/checkin') },
   { label: '编辑账号信息', icon: Edit, action: () => router.push('/app/account/edit') },
   { label: '登录状态与安全', icon: Shield, action: () => showToast('登录状态与安全后续接入') },
-  { label: '隐私说明', icon: FileText, action: () => showToast('隐私说明后续接入') },
-  { label: '关于系统', icon: Info, action: () => showToast('关于系统后续接入') },
+  { label: '隐私说明', icon: FileText, action: () => router.push('/app/account/privacy') },
+  { label: '关于系统', icon: Info, action: () => router.push('/app/account/about') },
   { label: '退出登录', icon: LogOut, danger: true, action: () => { showLogoutDialog.value = true } }
 ]
 
