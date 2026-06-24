@@ -1,6 +1,9 @@
 package com.diabetes.assistant.common.exception;
 
 import com.diabetes.assistant.common.response.ApiResponse;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -10,17 +13,34 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
-    public ApiResponse<Void> handleBusinessException(BusinessException exception) {
-        return ApiResponse.fail(exception.getCode(), exception.getMessage());
+    public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException exception) {
+        return ResponseEntity.status(toHttpStatus(exception.getCode()))
+                .body(ApiResponse.fail(exception.getCode(), exception.getMessage()));
     }
 
     @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
-    public ApiResponse<Void> handleValidationException(Exception exception) {
-        return ApiResponse.fail(400, "参数校验失败");
+    public ResponseEntity<ApiResponse<Void>> handleValidationException(Exception exception) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.fail(400, "参数校验失败"));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadableException(HttpMessageNotReadableException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.fail(400, "请求体格式错误"));
     }
 
     @ExceptionHandler(Exception.class)
-    public ApiResponse<Void> handleException(Exception exception) {
-        return ApiResponse.fail(500, "系统异常");
+    public ResponseEntity<ApiResponse<Void>> handleException(Exception exception) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ApiResponse.fail(500, "系统异常"));
+    }
+
+    private HttpStatus toHttpStatus(Integer code) {
+        return switch (code) {
+            case 401 -> HttpStatus.UNAUTHORIZED;
+            case 403 -> HttpStatus.FORBIDDEN;
+            case 404 -> HttpStatus.NOT_FOUND;
+            case 409 -> HttpStatus.CONFLICT;
+            case 500 -> HttpStatus.INTERNAL_SERVER_ERROR;
+            default -> HttpStatus.BAD_REQUEST;
+        };
     }
 }

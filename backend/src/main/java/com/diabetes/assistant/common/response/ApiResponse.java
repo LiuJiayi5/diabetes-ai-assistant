@@ -1,5 +1,6 @@
 package com.diabetes.assistant.common.response;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,6 +15,7 @@ public class ApiResponse<T> {
     private Integer code;
     private String message;
     private T data;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime timestamp;
 
     public static <T> ApiResponse<T> success() {
