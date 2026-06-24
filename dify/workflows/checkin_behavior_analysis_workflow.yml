@@ -1,0 +1,445 @@
+app:
+  description: 生活打卡行为分析工作流，用于糖尿病预治智能助手模块8。
+  icon: 🩺
+  icon_background: '#FFEAD5'
+  mode: workflow
+  name: checkin_behavior_analysis_workflow
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.4.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        image_file_size_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: code
+      id: start_node-source-code_completion_rate_node-target
+      source: start_node
+      sourceHandle: source
+      target: code_completion_rate_node
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: code_completion_rate_node-source-llm_behavior_analysis_node-target
+      source: code_completion_rate_node
+      sourceHandle: source
+      target: llm_behavior_analysis_node
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: end
+      id: llm_behavior_analysis_node-source-end_node-target
+      source: llm_behavior_analysis_node
+      sourceHandle: source
+      target: end_node
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: 接收后端整理后的用户健康档案、风险评估、生活方案和打卡统计数据。
+        selected: false
+        title: Start
+        type: start
+        variables:
+        - label: user_profile
+          max_length: null
+          options: []
+          required: true
+          type: paragraph
+          variable: user_profile
+        - label: latest_health_data
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: latest_health_data
+        - label: risk_result
+          max_length: null
+          options: []
+          required: true
+          type: paragraph
+          variable: risk_result
+        - label: life_plan
+          max_length: null
+          options: []
+          required: true
+          type: paragraph
+          variable: life_plan
+        - label: checkin_records
+          max_length: null
+          options: []
+          required: true
+          type: paragraph
+          variable: checkin_records
+        - label: diet_completion_count
+          max_length: null
+          options: []
+          required: true
+          type: number
+          variable: diet_completion_count
+        - label: exercise_completion_count
+          max_length: null
+          options: []
+          required: true
+          type: number
+          variable: exercise_completion_count
+        - label: total_days
+          max_length: null
+          options: []
+          required: true
+          type: number
+          variable: total_days
+        - label: completion_rate
+          max_length: null
+          options: []
+          required: false
+          type: number
+          variable: completion_rate
+        - label: start_date
+          max_length: 64
+          options: []
+          required: false
+          type: text-input
+          variable: start_date
+        - label: end_date
+          max_length: 64
+          options: []
+          required: false
+          type: text-input
+          variable: end_date
+        - label: user_notes
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: user_notes
+      height: 282
+      id: start_node
+      position:
+        x: 30
+        y: 245
+      positionAbsolute:
+        x: 30
+        y: 245
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          def main(diet_completion_count, exercise_completion_count, total_days, checkin_records, completion_rate=None) -> dict:
+              import json
+
+              def to_int(value, default=0):
+                  try:
+                      if value is None or value == "":
+                          return default
+                      return int(float(value))
+                  except Exception:
+                      return default
+
+              def to_rate(value):
+                  try:
+                      if value is None or value == "":
+                          return None
+                      return round(float(value), 2)
+                  except Exception:
+                      return None
+
+              diet_count = to_int(diet_completion_count)
+              exercise_count = to_int(exercise_completion_count)
+              days = to_int(total_days, 0)
+              backend_completion_rate = to_rate(completion_rate)
+
+              total_tasks = days * 2
+              if backend_completion_rate is not None:
+                  completion_rate = backend_completion_rate
+              elif total_tasks <= 0:
+                  completion_rate = 0
+              else:
+                  completion_rate = round((diet_count + exercise_count) / total_tasks * 100, 2)
+
+              record_count = 0
+              try:
+                  records = json.loads(checkin_records) if isinstance(checkin_records, str) else checkin_records
+                  if isinstance(records, list):
+                      record_count = len(records)
+              except Exception:
+                  record_count = 0
+
+              if days < 3 or record_count < 3:
+                  data_sufficiency = "insufficient"
+                  data_sufficiency_text = "打卡数据较少，分析仅供参考"
+              else:
+                  data_sufficiency = "enough"
+                  data_sufficiency_text = "打卡数据量基本满足分析要求"
+
+              stats_summary = f"统计周期{days}天，饮食完成{diet_count}天，运动完成{exercise_count}天，总完成率{completion_rate}%。{data_sufficiency_text}。"
+
+              return {
+                  "completion_rate": completion_rate,
+                  "data_sufficiency": data_sufficiency,
+                  "data_sufficiency_text": data_sufficiency_text,
+                  "stats_summary": stats_summary
+              }
+        code_language: python3
+        desc: 计算饮食和运动打卡总完成率，并判断数据充分性。
+        outputs:
+          completion_rate:
+            children: null
+            type: number
+          data_sufficiency:
+            children: null
+            type: string
+          data_sufficiency_text:
+            children: null
+            type: string
+          stats_summary:
+            children: null
+            type: string
+        selected: false
+        title: 计算完成率
+        type: code
+        variables:
+        - value_selector:
+          - start_node
+          - diet_completion_count
+          variable: diet_completion_count
+        - value_selector:
+          - start_node
+          - exercise_completion_count
+          variable: exercise_completion_count
+        - value_selector:
+          - start_node
+          - total_days
+          variable: total_days
+        - value_selector:
+          - start_node
+          - checkin_records
+          variable: checkin_records
+        - value_selector:
+          - start_node
+          - completion_rate
+          variable: completion_rate
+      height: 126
+      id: code_completion_rate_node
+      position:
+        x: 334
+        y: 245
+      positionAbsolute:
+        x: 334
+        y: 245
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: 根据用户档案、风险结果、生活方案和打卡记录生成结构化 JSON 分析。
+        memory:
+          enabled: false
+          window:
+            enabled: false
+            size: 50
+        model:
+          completion_params:
+            temperature: 0.2
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 83591f2f-e0df-4c92-8b2d-cfffcfef1d81
+          role: system
+          text: |
+            你是“糖尿病预治智能助手”中的生活打卡行为分析工作流。
+
+            你的任务：
+            根据用户健康档案、最近风险评估结果、当前生活方案、饮食和运动打卡记录，生成生活状态评价、主要问题和可执行的改进建议。
+
+            重要边界：
+
+            1. 你不是医生，不能做最终医学诊断。
+            2. 不能输出“确诊糖尿病”“必须服药”等绝对诊断或处方。
+            3. 如果出现严重异常、持续高血糖、明显不适等情况，只能建议用户线下就医或复查。
+            4. 建议要具体、温和、可执行，不要只说“继续保持”这类空话。
+            5. 必须结合饮食和运动两个维度分析。
+            6. 必须结合当前生活方案目标分析。
+            7. 如果 data_sufficiency 为 insufficient，必须明确提示“打卡数据较少，分析仅供参考”。
+
+            输入信息如下：
+
+            【用户健康档案】
+            {{#start_node.user_profile#}}
+
+            【最新健康数据】
+            {{#start_node.latest_health_data#}}
+
+            【最近风险预测结果】
+            {{#start_node.risk_result#}}
+
+            【当前生活方案】
+            {{#start_node.life_plan#}}
+
+            【打卡记录】
+            {{#start_node.checkin_records#}}
+
+            【统计周期】
+            开始日期：{{#start_node.start_date#}}
+            结束日期：{{#start_node.end_date#}}
+            总天数：{{#start_node.total_days#}}
+
+            【完成情况】
+            饮食完成天数：{{#start_node.diet_completion_count#}}
+            运动完成天数：{{#start_node.exercise_completion_count#}}
+            完成率：{{#code_completion_rate_node.completion_rate#}}%
+
+            【数据充分性】
+            {{#code_completion_rate_node.data_sufficiency_text#}}
+            data_sufficiency：{{#code_completion_rate_node.data_sufficiency#}}
+            统计摘要：{{#code_completion_rate_node.stats_summary#}}
+
+            【用户备注】
+            {{#start_node.user_notes#}}
+
+            输出要求：
+            只输出一个合法 JSON 对象，不要输出 Markdown，不要输出代码块，不要在 JSON 前后添加解释文字。
+
+            JSON 字段必须严格如下：
+            {
+              "completion_rate": 数字,
+              "diet_summary": "饮食打卡完成情况总结",
+              "exercise_summary": "运动打卡完成情况总结",
+              "habit_score": 数字,
+              "life_evaluation": "生活状态评价",
+              "main_problems": ["主要问题1", "主要问题2"],
+              "improvement_suggestions": ["改进建议1", "改进建议2", "改进建议3"],
+              "next_focus": "下一阶段重点",
+              "summary": "整体总结"
+            }
+
+            字段规则：
+
+            1. completion_rate 必须等于 Code 节点输出的 completion_rate，不允许重新计算。
+            2. habit_score 范围为 0 到 100，需结合完成率、饮食稳定性、运动稳定性和用户备注综合给出。
+            3. main_problems 至少 2 条，最多 4 条。
+            4. improvement_suggestions 至少 3 条，最多 5 条。
+            5. 建议要具体到行为，例如“晚餐主食减少三分之一”“饭后步行15到20分钟”“聚餐日优先选择清蒸或少油菜品”。
+            6. 如果数据较少，不要过度下结论。
+        selected: false
+        structured_output:
+          enabled: false
+        title: 生成打卡行为分析
+        type: llm
+        variables: []
+        vision:
+          configs:
+            detail: high
+          enabled: false
+      height: 126
+      id: llm_behavior_analysis_node
+      position:
+        x: 638
+        y: 245
+      positionAbsolute:
+        x: 638
+        y: 245
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: 输出 LLM 生成的完整 JSON 文本，供后端保存到 checkin_analysis.analysis_result。
+        outputs:
+        - value_selector:
+          - llm_behavior_analysis_node
+          - text
+          value_type: string
+          variable: analysis_result
+        - value_selector:
+          - code_completion_rate_node
+          - completion_rate
+          value_type: number
+          variable: completion_rate
+        selected: false
+        title: End
+        type: end
+      height: 118
+      id: end_node
+      position:
+        x: 942
+        y: 245
+      positionAbsolute:
+        x: 942
+        y: 245
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.7
