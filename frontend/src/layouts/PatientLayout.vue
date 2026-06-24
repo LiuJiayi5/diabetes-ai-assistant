@@ -1,39 +1,31 @@
 <template>
-  <div>
-    <header class="layout-header">
-      <strong>糖尿病预治智能助手</strong>
-      <nav>
-        <RouterLink to="/app/home">首页</RouterLink>
-        <RouterLink to="/app/profile">档案</RouterLink>
-        <RouterLink to="/app/risk">风险</RouterLink>
-        <RouterLink to="/app/ai-chat">AI 医生</RouterLink>
-        <RouterLink to="/app/checkin">打卡</RouterLink>
-      </nav>
-    </header>
-    <RouterView />
-  </div>
+  <MobileShell>
+    <div class="patient-layout">
+      <main class="patient-layout__body mobile-scroll">
+        <RouterView />
+      </main>
+      <BottomNav />
+    </div>
+  </MobileShell>
 </template>
 
+<script setup>
+import MobileShell from '@/components/mobile/MobileShell.vue'
+import BottomNav from '@/components/mobile/BottomNav.vue'
+</script>
+
 <style scoped>
-.layout-header {
+.patient-layout {
+  min-height: 100%;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 24px;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-surface);
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--figma-bg-page);
 }
 
-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  color: var(--color-muted);
-  font-size: 14px;
-}
-
-.router-link-active {
-  color: var(--color-primary);
+.patient-layout__body {
+  flex: 1;
+  overflow-y: auto;
 }
 </style>

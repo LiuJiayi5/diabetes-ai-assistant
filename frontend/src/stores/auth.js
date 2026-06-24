@@ -7,6 +7,9 @@ export const useAuthStore = defineStore('auth', {
     user: null,
     role: null
   }),
+  getters: {
+    isLoggedIn: (state) => Boolean(state.token)
+  },
   actions: {
     setSession({ token, user, role }) {
       if (token) {
@@ -15,6 +18,10 @@ export const useAuthStore = defineStore('auth', {
       }
       this.user = user || null
       this.role = role || user?.role || null
+    },
+    setUser(user) {
+      this.user = user || null
+      this.role = user?.role || this.role
     },
     clearSession() {
       removeToken()
