@@ -5,5 +5,13 @@ export function getHomeContents() {
 }
 
 export function listArticles(params) {
-  return request.get('/content/articles', { params })
+  return request.get('/articles', { params })
+}
+
+export function getArticleDetail(articleId) {
+  return request.get(`/articles/${encodeURIComponent(articleId)}`)
+}
+
+export function getArticleCategories() {
+  return request.get('/articles/categories')
 }
