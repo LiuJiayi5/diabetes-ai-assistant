@@ -21,13 +21,13 @@ defineProps({
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--figma-app-outer-bg);
-  padding: 18px;
+  background: var(--mobile-shell-bg);
+  padding: 8px 0;
 }
 
 .mobile-device {
   width: min(100%, var(--figma-device-width));
-  height: min(100vh - 36px, var(--figma-device-height));
+  height: min(100vh - 16px, var(--figma-device-height));
   min-height: 720px;
   overflow: hidden;
   position: relative;
@@ -35,7 +35,7 @@ defineProps({
   flex-direction: column;
   background: var(--figma-device-bg);
   border-radius: var(--figma-device-radius);
-  box-shadow: 0 24px 70px rgba(36, 50, 61, 0.20);
+  box-shadow: 0 12px 34px rgba(90, 130, 110, 0.10);
 }
 
 .mobile-device--plain {
@@ -54,6 +54,7 @@ defineProps({
     height: 100vh;
     min-height: 100vh;
     border-radius: 0;
+    box-shadow: none;
   }
 }
 </style>
