@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.diabetes.assistant.common.exception.BusinessException;
 import com.diabetes.assistant.common.response.PageResult;
-import com.diabetes.assistant.common.security.UserContext;
 import com.diabetes.assistant.common.utils.PageUtils;
 import com.diabetes.assistant.modules.dify.service.DifyService;
 import com.diabetes.assistant.modules.healthmetric.contract.HealthMetricQueryApi;
@@ -50,8 +49,7 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
     private final UserQueryApi userQueryApi;
 
     @Override
-    public RiskEntryResponse getEntry() {
-        Integer userId = UserContext.getUserId();
+    public RiskEntryResponse getEntry(Integer userId) {
         RiskEntryResponse response = new RiskEntryResponse();
         RiskAssessment latest = findLatestByUserId(userId);
         response.setLatestAssessment(latest == null ? null : toDetailResponse(latest));
@@ -65,8 +63,7 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
     }
 
     @Override
-    public RiskPredictResponse predictRisk() {
-        Integer userId = UserContext.getUserId();
+    public RiskPredictResponse predictRisk(Integer userId) {
         List<String> missing = new ArrayList<>();
         PatientProfileDTO profile = patientProfileQueryApi.getProfileByUserId(userId);
         HealthMetricDTO metric = healthMetricQueryApi.getLatestMetricByUserId(userId);
@@ -126,15 +123,14 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
     }
 
     @Override
-    public RiskDetailResponse getLatestAssessment() {
-        RiskAssessment assessment = findLatestByUserId(UserContext.getUserId());
+    public RiskDetailResponse getLatestAssessment(Integer userId) {
+        RiskAssessment assessment = findLatestByUserId(userId);
         return assessment == null ? null : toDetailResponse(assessment);
     }
 
     @Override
-    public PageResult<RiskHistoryItem> getHistory(Integer page, Integer pageSize,
+    public PageResult<RiskHistoryItem> getHistory(Integer userId, Integer page, Integer pageSize,
                                                   LocalDate startDate, LocalDate endDate) {
-        Integer userId = UserContext.getUserId();
         int currentPage = PageUtils.normalizePage(page);
         int size = PageUtils.normalizePageSize(pageSize);
 
@@ -149,8 +145,8 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
     }
 
     @Override
-    public RiskDetailResponse getAssessmentDetail(Integer assessmentId) {
-        RiskAssessment assessment = requireOwnedAssessment(assessmentId, UserContext.getUserId());
+    public RiskDetailResponse getAssessmentDetail(Integer userId, Integer assessmentId) {
+        RiskAssessment assessment = requireOwnedAssessment(assessmentId, userId);
         return toDetailResponse(assessment);
     }
 
@@ -158,7 +154,6 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
     public PageResult<AdminRiskListItem> adminListAssessments(Integer userId, String riskLevel,
                                                               LocalDate startDate, LocalDate endDate,
                                                               Integer page, Integer pageSize) {
-        UserContext.requireAdmin();
         int currentPage = PageUtils.normalizePage(page);
         int size = PageUtils.normalizePageSize(pageSize);
 
@@ -181,7 +176,6 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
 
     @Override
     public RiskDetailResponse adminGetAssessmentDetail(Integer assessmentId) {
-        UserContext.requireAdmin();
         RiskAssessment assessment = riskAssessmentMapper.selectById(assessmentId);
         if (assessment == null) {
             throw new BusinessException(404, "评估记录不存在");

@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.diabetes.assistant.common.exception.BusinessException;
 import com.diabetes.assistant.common.response.PageResult;
-import com.diabetes.assistant.common.security.UserContext;
 import com.diabetes.assistant.common.utils.PageUtils;
 import com.diabetes.assistant.modules.healthmetric.contract.HealthMetricQueryApi;
 import com.diabetes.assistant.modules.healthmetric.contract.dto.HealthMetricDTO;
@@ -35,13 +34,12 @@ public class HealthMetricServiceImpl implements HealthMetricService, HealthMetri
     private final UserQueryApi userQueryApi;
 
     @Override
-    public HealthMetricDTO getEntry() {
-        return getLatestMetricByUserId(UserContext.getUserId());
+    public HealthMetricDTO getEntry(Integer userId) {
+        return getLatestMetricByUserId(userId);
     }
 
     @Override
-    public SaveMetricResponse saveMetric(SaveMetricRequest request) {
-        Integer userId = UserContext.getUserId();
+    public SaveMetricResponse saveMetric(Integer userId, SaveMetricRequest request) {
         HealthMetric metric = new HealthMetric();
         metric.setUserId(userId);
         metric.setWeightKg(request.getWeightKg());
@@ -65,14 +63,13 @@ public class HealthMetricServiceImpl implements HealthMetricService, HealthMetri
     }
 
     @Override
-    public HealthMetricDTO getLatestMetric() {
-        return getLatestMetricByUserId(UserContext.getUserId());
+    public HealthMetricDTO getLatestMetric(Integer userId) {
+        return getLatestMetricByUserId(userId);
     }
 
     @Override
-    public PageResult<HealthMetricDTO> getHistory(Integer page, Integer pageSize,
+    public PageResult<HealthMetricDTO> getHistory(Integer userId, Integer page, Integer pageSize,
                                                 LocalDate startDate, LocalDate endDate) {
-        Integer userId = UserContext.getUserId();
         int currentPage = PageUtils.normalizePage(page);
         int size = PageUtils.normalizePageSize(pageSize);
 
@@ -87,13 +84,11 @@ public class HealthMetricServiceImpl implements HealthMetricService, HealthMetri
     @Override
     public PageResult<AdminMetricListItem> adminListMetrics(Integer userId, LocalDate startDate, LocalDate endDate,
                                                            String abnormalOnly, Integer page, Integer pageSize) {
-        UserContext.requireAdmin();
         return queryAdminMetrics(userId, startDate, endDate, abnormalOnly, page, pageSize);
     }
 
     @Override
     public PageResult<AdminMetricListItem> adminListAbnormalMetrics(Integer userId, Integer page, Integer pageSize) {
-        UserContext.requireAdmin();
         return queryAdminMetrics(userId, null, null, "yes", page, pageSize);
     }
 

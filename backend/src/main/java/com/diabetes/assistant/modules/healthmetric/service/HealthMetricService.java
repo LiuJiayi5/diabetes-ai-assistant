@@ -10,13 +10,13 @@ import java.time.LocalDate;
 
 public interface HealthMetricService {
 
-    HealthMetricDTO getEntry();
+    HealthMetricDTO getEntry(Integer userId);
 
-    SaveMetricResponse saveMetric(SaveMetricRequest request);
+    SaveMetricResponse saveMetric(Integer userId, SaveMetricRequest request);
 
-    HealthMetricDTO getLatestMetric();
+    HealthMetricDTO getLatestMetric(Integer userId);
 
-    PageResult<HealthMetricDTO> getHistory(Integer page, Integer pageSize,
+    PageResult<HealthMetricDTO> getHistory(Integer userId, Integer page, Integer pageSize,
                                            LocalDate startDate, LocalDate endDate);
 
     PageResult<AdminMetricListItem> adminListMetrics(Integer userId, LocalDate startDate, LocalDate endDate,

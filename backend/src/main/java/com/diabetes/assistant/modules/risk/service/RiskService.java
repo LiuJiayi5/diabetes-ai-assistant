@@ -11,16 +11,16 @@ import java.time.LocalDate;
 
 public interface RiskService {
 
-    RiskEntryResponse getEntry();
+    RiskEntryResponse getEntry(Integer userId);
 
-    RiskPredictResponse predictRisk();
+    RiskPredictResponse predictRisk(Integer userId);
 
-    RiskDetailResponse getLatestAssessment();
+    RiskDetailResponse getLatestAssessment(Integer userId);
 
-    PageResult<RiskHistoryItem> getHistory(Integer page, Integer pageSize,
+    PageResult<RiskHistoryItem> getHistory(Integer userId, Integer page, Integer pageSize,
                                            LocalDate startDate, LocalDate endDate);
 
-    RiskDetailResponse getAssessmentDetail(Integer assessmentId);
+    RiskDetailResponse getAssessmentDetail(Integer userId, Integer assessmentId);
 
     PageResult<AdminRiskListItem> adminListAssessments(Integer userId, String riskLevel,
                                                        LocalDate startDate, LocalDate endDate,

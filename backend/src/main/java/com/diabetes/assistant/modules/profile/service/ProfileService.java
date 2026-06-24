@@ -8,9 +8,9 @@ import com.diabetes.assistant.modules.profile.dto.SaveProfileResponse;
 
 public interface ProfileService {
 
-    PatientProfileDTO getMyProfile();
+    PatientProfileDTO getMyProfile(Integer userId);
 
-    SaveProfileResponse saveProfile(SaveProfileRequest request);
+    SaveProfileResponse saveProfile(Integer userId, SaveProfileRequest request);
 
     PageResult<AdminProfileListItem> adminListProfiles(String keyword, String gender,
                                                        Integer minAge, Integer maxAge,

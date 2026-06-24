@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.diabetes.assistant.common.exception.BusinessException;
 import com.diabetes.assistant.common.response.PageResult;
-import com.diabetes.assistant.common.security.UserContext;
 import com.diabetes.assistant.common.utils.PageUtils;
 import com.diabetes.assistant.modules.profile.contract.PatientProfileQueryApi;
 import com.diabetes.assistant.modules.profile.contract.dto.PatientProfileDTO;
@@ -31,13 +30,12 @@ public class ProfileServiceImpl implements ProfileService, PatientProfileQueryAp
     private final UserQueryApi userQueryApi;
 
     @Override
-    public PatientProfileDTO getMyProfile() {
-        return getProfileByUserId(UserContext.getUserId());
+    public PatientProfileDTO getMyProfile(Integer userId) {
+        return getProfileByUserId(userId);
     }
 
     @Override
-    public SaveProfileResponse saveProfile(SaveProfileRequest request) {
-        Integer userId = UserContext.getUserId();
+    public SaveProfileResponse saveProfile(Integer userId, SaveProfileRequest request) {
         if (!userQueryApi.existsActiveUser(userId)) {
             throw new BusinessException(400, "用户不存在或已停用");
         }
@@ -68,7 +66,6 @@ public class ProfileServiceImpl implements ProfileService, PatientProfileQueryAp
     public PageResult<AdminProfileListItem> adminListProfiles(String keyword, String gender,
                                                               Integer minAge, Integer maxAge,
                                                               Integer page, Integer pageSize) {
-        UserContext.requireAdmin();
         int currentPage = PageUtils.normalizePage(page);
         int size = PageUtils.normalizePageSize(pageSize);
 
@@ -100,7 +97,6 @@ public class ProfileServiceImpl implements ProfileService, PatientProfileQueryAp
 
     @Override
     public PatientProfileDTO adminGetProfileDetail(Integer userId) {
-        UserContext.requireAdmin();
         return getProfileByUserId(userId);
     }
 
