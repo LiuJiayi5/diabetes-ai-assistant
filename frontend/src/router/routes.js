@@ -2,7 +2,7 @@ import BlankLayout from '@/layouts/BlankLayout.vue'
 import PatientLayout from '@/layouts/PatientLayout.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 
-import authRoutes from '@/modules/auth/routes'
+import authRoutes, { accountRoutes } from '@/modules/auth/routes'
 import profileRoutes from '@/modules/profile/routes'
 import healthMetricRoutes from '@/modules/healthmetric/routes'
 import riskRoutes from '@/modules/risk/routes'
@@ -13,13 +13,14 @@ import checkinRoutes from '@/modules/checkin/routes'
 import adminRoutes from '@/modules/admin/routes'
 
 export const routes = [
-  { path: '/', redirect: '/app/home' },
+  { path: '/', redirect: '/welcome' },
   { path: '/', component: BlankLayout, children: authRoutes },
   {
     path: '/app',
     component: PatientLayout,
     children: [
       ...articleRoutes,
+      ...accountRoutes,
       ...profileRoutes,
       ...healthMetricRoutes,
       ...riskRoutes,
