@@ -72,11 +72,7 @@
 
     <p class="medical-note">AI 建议仅供参考，不能替代线下诊疗</p>
 
-    <van-dialog
-      v-model:show="showLogoutDialog"
-      class-name="figma-dialog"
-      :show-confirm-button="false"
-    >
+    <div v-if="showLogoutDialog" class="logout-overlay" @click.self="showLogoutDialog = false">
       <div class="logout-dialog">
         <h3>确认退出登录？</h3>
         <p>退出后需要重新登录才能查看个人信息</p>
@@ -89,7 +85,7 @@
           </button>
         </div>
       </div>
-    </van-dialog>
+    </div>
   </div>
 </template>
 
@@ -440,8 +436,24 @@ function confirmLogout() {
   font-size: 10px;
 }
 
+.logout-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(36, 50, 61, 0.28);
+  backdrop-filter: blur(6px);
+}
+
 .logout-dialog {
-  padding: 26px 20px 8px;
+  width: min(320px, 100%);
+  padding: 26px 20px 20px;
+  border-radius: 28px;
+  background: #FFFFFF;
+  box-shadow: var(--figma-shadow-dialog);
   text-align: center;
 }
 
@@ -481,14 +493,5 @@ function confirmLogout() {
 .dialog-button--danger {
   background: var(--figma-danger-button);
   color: #FFFFFF;
-}
-</style>
-
-<style>
-.figma-dialog {
-  width: 320px;
-  border-radius: 28px;
-  background: #FFFFFF;
-  box-shadow: var(--figma-shadow-dialog);
 }
 </style>
