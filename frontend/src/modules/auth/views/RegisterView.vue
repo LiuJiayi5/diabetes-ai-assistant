@@ -85,7 +85,7 @@ import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { ArrowLeft, Eye, EyeOff } from 'lucide-vue-next'
 import MobileShell from '@/components/mobile/MobileShell.vue'
-import { mockRegister } from '@/api/auth'
+import { login, register } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -104,8 +104,8 @@ const form = reactive({
 })
 
 async function handleRegister() {
-  if (!form.username || !form.phone || !form.email || !form.password || !form.confirmPassword) {
-    showToast('请填写所有必填项')
+  if (!form.username || !form.password || !form.confirmPassword) {
+    showToast('请填写用户名和密码')
     return
   }
   if (form.password !== form.confirmPassword) {
@@ -119,10 +119,21 @@ async function handleRegister() {
 
   submitting.value = true
   try {
-    const session = await mockRegister(form)
+    await register({
+      username: form.username,
+      password: form.password,
+      phone: form.phone,
+      email: form.email
+    })
+    const session = await login({
+      account: form.username,
+      password: form.password
+    })
     authStore.setSession(session)
     showToast('注册成功')
     router.push('/app/account')
+  } catch (error) {
+    showToast(error?.response?.data?.message || '注册失败')
   } finally {
     submitting.value = false
   }

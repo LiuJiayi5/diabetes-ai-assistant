@@ -70,7 +70,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { Droplet, Eye, EyeOff, Leaf } from 'lucide-vue-next'
 import MobileShell from '@/components/mobile/MobileShell.vue'
-import { mockLogin } from '@/api/auth'
+import { login } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
@@ -94,14 +94,20 @@ async function handleLogin() {
 
   submitting.value = true
   try {
-    const session = await mockLogin({
-      username: form.username,
-      password: form.password,
-      role: isAdmin.value ? 'admin' : 'patient'
+    const session = await login({
+      account: form.username,
+      password: form.password
     })
+    if (isAdmin.value && session.user?.role !== 'admin') {
+      showToast('当前账号不是管理员')
+      authStore.clearSession()
+      return
+    }
     authStore.setSession(session)
     showToast('登录成功')
     router.push(isAdmin.value ? '/admin/dashboard' : '/app/account')
+  } catch (error) {
+    showToast(error?.response?.data?.message || '登录失败')
   } finally {
     submitting.value = false
   }

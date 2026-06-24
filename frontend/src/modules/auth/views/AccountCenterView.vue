@@ -106,7 +106,7 @@ import {
   User,
   Utensils
 } from 'lucide-vue-next'
-import { getMockCurrentUser } from '@/api/auth'
+import { getCurrentUser } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -146,8 +146,8 @@ const settingsItems = [
 ]
 
 onMounted(async () => {
-  if (!authStore.user) {
-    const user = await getMockCurrentUser()
+  if (authStore.token) {
+    const user = await getCurrentUser()
     authStore.setUser(user)
   }
 })

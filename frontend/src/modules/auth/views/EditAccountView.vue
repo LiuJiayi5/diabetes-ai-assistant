@@ -50,7 +50,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { ArrowLeft } from 'lucide-vue-next'
-import { getMockCurrentUser, updateMockCurrentUser } from '@/api/auth'
+import { getCurrentUser, updateCurrentUser } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -64,7 +64,7 @@ const form = reactive({
 })
 
 onMounted(async () => {
-  const user = authStore.user || await getMockCurrentUser()
+  const user = authStore.user || await getCurrentUser()
   form.username = user.username || ''
   form.phone = user.phone || ''
   form.email = user.email || ''
@@ -80,10 +80,12 @@ async function save() {
 
   saving.value = true
   try {
-    const updated = await updateMockCurrentUser({ ...form })
+    const updated = await updateCurrentUser({ ...form })
     authStore.setUser(updated)
     showToast('账号信息已保存')
     router.push('/app/account')
+  } catch (error) {
+    showToast(error?.response?.data?.message || '保存失败')
   } finally {
     saving.value = false
   }
