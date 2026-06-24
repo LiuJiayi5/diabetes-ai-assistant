@@ -7,5 +7,7 @@ export default [
 
 export const accountRoutes = [
   { path: 'account', name: 'AccountCenter', component: () => import('./views/AccountCenterView.vue'), meta: { title: '个人中心' } },
-  { path: 'account/edit', name: 'EditAccount', component: () => import('./views/EditAccountView.vue'), meta: { title: '编辑账号信息' } }
+  { path: 'account/edit', name: 'EditAccount', component: () => import('./views/EditAccountView.vue'), meta: { title: '编辑账号信息' } },
+  { path: 'account/privacy', name: 'AccountPrivacy', component: () => import('./views/PrivacyView.vue'), meta: { title: '隐私说明' } },
+  { path: 'account/about', name: 'AccountAbout', component: () => import('./views/AboutView.vue'), meta: { title: '关于系统' } }
 ]
