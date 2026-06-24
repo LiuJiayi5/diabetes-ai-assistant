@@ -1,21 +1,76 @@
 package com.diabetes.assistant.modules.healthmetric.controller;
 
 import com.diabetes.assistant.common.response.ApiResponse;
+import com.diabetes.assistant.common.response.PageResult;
+import com.diabetes.assistant.modules.healthmetric.contract.dto.HealthMetricDTO;
+import com.diabetes.assistant.modules.healthmetric.dto.AdminMetricListItem;
+import com.diabetes.assistant.modules.healthmetric.dto.SaveMetricRequest;
+import com.diabetes.assistant.modules.healthmetric.dto.SaveMetricResponse;
 import com.diabetes.assistant.modules.healthmetric.service.HealthMetricService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/health-metric")
 @RequiredArgsConstructor
 public class HealthMetricController {
 
-    private final HealthMetricService healthmetricService;
+    private final HealthMetricService healthMetricService;
 
     @GetMapping("/entry")
-    public ApiResponse<String> entry() {
-        return ApiResponse.success(healthmetricService.entry());
+    public ApiResponse<HealthMetricDTO> entry() {
+        return ApiResponse.success(healthMetricService.getEntry());
+    }
+
+    @PostMapping
+    public ApiResponse<SaveMetricResponse> saveMetric(@Valid @RequestBody SaveMetricRequest request) {
+        return ApiResponse.success(healthMetricService.saveMetric(request));
+    }
+
+    @GetMapping("/latest")
+    public ApiResponse<HealthMetricDTO> getLatestMetric() {
+        return ApiResponse.success(healthMetricService.getLatestMetric());
+    }
+
+    @GetMapping("/history")
+    public ApiResponse<PageResult<HealthMetricDTO>> getHistory(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(name = "page_size", required = false) Integer pageSize,
+            @RequestParam(name = "start_date", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(name = "end_date", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return ApiResponse.success(healthMetricService.getHistory(page, pageSize, startDate, endDate));
+    }
+
+    @GetMapping("/admin")
+    public ApiResponse<PageResult<AdminMetricListItem>> adminListMetrics(
+            @RequestParam(name = "user_id", required = false) Integer userId,
+            @RequestParam(name = "start_date", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(name = "end_date", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(name = "abnormal_only", required = false) String abnormalOnly,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(name = "page_size", required = false) Integer pageSize) {
+        return ApiResponse.success(healthMetricService.adminListMetrics(
+                userId, startDate, endDate, abnormalOnly, page, pageSize));
+    }
+
+    @GetMapping("/admin/abnormal")
+    public ApiResponse<PageResult<AdminMetricListItem>> adminListAbnormalMetrics(
+            @RequestParam(name = "user_id", required = false) Integer userId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(name = "page_size", required = false) Integer pageSize) {
+        return ApiResponse.success(healthMetricService.adminListAbnormalMetrics(userId, page, pageSize));
     }
 }
