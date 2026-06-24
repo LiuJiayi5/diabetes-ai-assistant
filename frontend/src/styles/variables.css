@@ -7,11 +7,14 @@
   --color-muted: #6b7280;
   --color-border: #d9dee7;
   --color-surface: #ffffff;
-  --color-page: #f5f7fb;
+  --color-page: #EAF4EF;
   --layout-max-width: 1120px;
 
-  --figma-app-outer-bg: #E8F0EB;
-  --figma-device-bg: #FFFFFF;
+  --app-bg: #EAF4EF;
+  --mobile-shell-bg: #EAF4EF;
+  --patient-page-bg: #F5FBF8;
+  --figma-app-outer-bg: var(--mobile-shell-bg);
+  --figma-device-bg: var(--patient-page-bg);
   --figma-device-width: 390px;
   --figma-device-height: 844px;
   --figma-device-radius: 44px;
@@ -20,7 +23,7 @@
   --figma-secondary-green: #DDF7E9;
   --figma-secondary-blue: #BEEAF2;
   --figma-bg-main: #F7FCF9;
-  --figma-bg-page: #F5FBF8;
+  --figma-bg-page: var(--patient-page-bg);
   --figma-bg-card: #FFFFFF;
   --figma-text-primary: #1F2937;
   --figma-text-strong: #24323D;
