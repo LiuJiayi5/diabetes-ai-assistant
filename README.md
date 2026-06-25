@@ -67,6 +67,11 @@ mvn clean package
 
 Dify 只用于模块4、模块5、模块6、模块8中的 AI 能力。普通业务接口、认证、数据库读写和管理端接口全部由 Spring Boot 承担。
 
+## 补充文档
+
+- [xd 模块实现现状](docs/xd-module-status.md)
+- [项目启动运行说明](docs/run-guide.md)
+
 ## 后续开发顺序
 
 1. 细化后端 API 契约和数据库表结构
