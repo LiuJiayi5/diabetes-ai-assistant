@@ -95,7 +95,6 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, ClipboardCheck, Dumbbell, Lightbulb, Utensils } from 'lucide-vue-next'
 import { adminGetLifePlanDetail, adminListLifePlans } from '@/api/admin'
-import { adminMockLifePlans } from '@/modules/admin/mockData'
 import { safeJsonParse, toText as baseToText, unwrapPage } from '@/modules/admin/utils'
 
 const route = useRoute()
@@ -127,13 +126,11 @@ async function loadPlan() {
     const data = response?.plan_id ? response : unwrapPage(response).list?.[0]
     plan.value = data
   } catch {
-    const response = await Promise.resolve({ list: adminMockLifePlans })
-    plan.value = response.list.find((item) => String(item.plan_id) === String(route.params.planId))
-    if (!plan.value) {
-      try {
-        const listResponse = await adminListLifePlans({ page: 1, page_size: 50 })
-        plan.value = unwrapPage(listResponse).list.find((item) => String(item.plan_id) === String(route.params.planId))
-      } catch {}
+    try {
+      const listResponse = await adminListLifePlans({ page: 1, page_size: 50 })
+      plan.value = unwrapPage(listResponse).list.find((item) => String(item.plan_id) === String(route.params.planId))
+    } catch {
+      plan.value = null
     }
   } finally {
     loading.value = false

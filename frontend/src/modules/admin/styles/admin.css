@@ -40,7 +40,7 @@
 
 .admin-filter-grid {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) repeat(3, minmax(140px, 180px)) auto;
+  grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(132px, 168px)) auto;
   align-items: end;
   gap: 12px;
 }
@@ -56,6 +56,77 @@
 
 .admin-table-card {
   overflow: hidden;
+}
+
+.admin-table-card .el-table {
+  --el-table-header-bg-color: #f8faff;
+  --el-table-header-text-color: var(--admin-text-muted);
+  --el-table-text-color: var(--admin-text-secondary);
+  --el-table-row-hover-bg-color: #f8fbff;
+  font-size: 13px;
+}
+
+.admin-table-card .el-table th.el-table__cell {
+  font-weight: 700;
+}
+
+.admin-table-card .el-table .cell {
+  line-height: 1.45;
+}
+
+.admin-table-card .el-table__body-wrapper {
+  overflow-x: hidden;
+}
+
+.admin-table-card .el-button.is-link {
+  min-height: 28px;
+  padding: 0 4px;
+  font-size: 13px;
+}
+
+.admin-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.admin-table-main {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-table-main__body {
+  min-width: 0;
+}
+
+.admin-table-title {
+  display: block;
+  overflow: hidden;
+  color: var(--admin-text-title);
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-table-subtitle {
+  display: block;
+  overflow: hidden;
+  margin-top: 3px;
+  color: var(--admin-text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-pagination {
+  display: flex;
+  justify-content: flex-end;
+  padding: 14px 18px;
+  border-top: 1px solid var(--admin-border);
 }
 
 .admin-card-title-row {

@@ -13,14 +13,14 @@
     <section class="admin-card admin-table-card">
       <div class="admin-card-title-row">
         <span class="admin-section-title">首页内容列表</span>
-        <span class="admin-count-pill">{{ contents.length }} 条</span>
+        <span class="admin-count-pill">共 {{ contents.length }} 条</span>
       </div>
 
-      <el-table v-loading="loading" :data="contents" row-key="content_id" empty-text="暂无首页内容">
-        <el-table-column label="内容ID" width="110">
+      <el-table v-loading="loading" :data="pagedContents" row-key="content_id" empty-text="暂无首页内容">
+        <el-table-column label="ID" width="82">
           <template #default="{ row }"><el-tag effect="plain">#{{ row.content_id }}</el-tag></template>
         </el-table-column>
-        <el-table-column label="图片" width="100">
+        <el-table-column label="图片" width="96">
           <template #default="{ row }">
             <div class="content-thumb">
               <img v-if="row.image_url" :src="asset(row.image_url)" alt="" />
@@ -28,34 +28,56 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="类型" width="140">
-          <template #default="{ row }">{{ typeLabel(row.content_type) }}</template>
-        </el-table-column>
-        <el-table-column prop="title" label="标题" min-width="180" />
-        <el-table-column prop="subtitle" label="副标题" min-width="220" show-overflow-tooltip />
-        <el-table-column label="跳转类型" width="110">
-          <template #default="{ row }">{{ linkTypeLabel(row.link_type) }}</template>
-        </el-table-column>
-        <el-table-column prop="link_value" label="跳转目标" width="120" />
-        <el-table-column prop="sort_order" label="排序" width="80" />
-        <el-table-column label="状态" width="100">
+        <el-table-column label="内容" min-width="280">
           <template #default="{ row }">
-            <el-tag :type="row.status === 'enabled' ? 'success' : 'info'" round>{{ row.status === 'enabled' ? '启用' : '禁用' }}</el-tag>
+            <strong class="admin-table-title">{{ row.title || '未命名内容' }}</strong>
+            <span class="admin-table-subtitle">{{ row.subtitle || '暂无副标题' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="220">
+        <el-table-column label="类型" width="128">
+          <template #default="{ row }">{{ typeLabel(row.content_type) }}</template>
+        </el-table-column>
+        <el-table-column label="跳转" width="150">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-            <el-button link :type="row.status === 'enabled' ? 'danger' : 'success'" @click="toggle(row)">
-              {{ row.status === 'enabled' ? '停用' : '启用' }}
-            </el-button>
-            <el-button link type="danger" @click="remove(row)">删除</el-button>
+            <span>{{ linkTypeLabel(row.link_type) }}</span>
+            <span class="admin-table-subtitle">{{ row.link_value || '无' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="sort_order" label="排序" width="80" />
+        <el-table-column label="状态" width="92">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 'enabled' ? 'success' : 'info'" round>
+              {{ row.status === 'enabled' ? '启用' : '禁用' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="166" align="right">
+          <template #default="{ row }">
+            <span class="admin-actions">
+              <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+              <el-button link :type="row.status === 'enabled' ? 'danger' : 'success'" @click="toggle(row)">
+                {{ row.status === 'enabled' ? '停用' : '启用' }}
+              </el-button>
+              <el-button link type="danger" @click="remove(row)">删除</el-button>
+            </span>
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="admin-pagination">
+        <el-pagination
+          v-model:current-page="pagination.page"
+          v-model:page-size="pagination.page_size"
+          :total="contents.length"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          background
+          @size-change="pagination.page = 1"
+        />
+      </div>
     </section>
 
-    <el-dialog v-model="dialogVisible" :title="editing ? '编辑首页内容' : '新增首页内容'" width="560px">
+    <el-dialog v-model="dialogVisible" :title="editing ? '编辑首页内容' : '新增首页内容'" width="580px">
       <el-form :model="form" label-position="top">
         <div class="dialog-grid">
           <el-form-item label="内容类型">
@@ -71,10 +93,15 @@
             </el-select>
           </el-form-item>
         </div>
-        <el-form-item label="标题"><el-input v-model="form.title" /></el-form-item>
-        <el-form-item label="副标题"><el-input v-model="form.subtitle" /></el-form-item>
+        <el-form-item label="标题"><el-input v-model.trim="form.title" /></el-form-item>
+        <el-form-item label="副标题"><el-input v-model.trim="form.subtitle" /></el-form-item>
         <el-form-item label="图片">
-          <ImageUploader v-model="form.image_url" title="上传首页图片" hint="点击选择或拖拽图片，建议按内容类型选择合适比例" @error="ElMessage.error" />
+          <ImageUploader
+            v-model="form.image_url"
+            title="上传首页图片"
+            hint="点击选择或拖拽图片，建议按内容类型选择合适比例"
+            @error="ElMessage.error"
+          />
         </el-form-item>
         <div class="dialog-grid">
           <el-form-item label="跳转类型">
@@ -100,11 +127,12 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { Image as ImageIcon, Plus } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminDeleteHomeContent, adminGetContentManagement, adminSaveHomeContent } from '@/api/admin'
 import ImageUploader from '@/components/ImageUploader.vue'
+import { createPagination, resolveAdminError, totalPages } from '@/modules/admin/utils'
 import { resolveAssetUrl } from '@/utils/assets'
 
 const contents = ref([])
@@ -112,6 +140,16 @@ const loading = ref(false)
 const dialogVisible = ref(false)
 const editing = ref(null)
 const form = reactive(defaultForm())
+const pagination = reactive(createPagination(10))
+
+const pagedContents = computed(() => {
+  const maxPage = totalPages({ ...pagination, total: contents.value.length })
+  if (pagination.page > maxPage) pagination.page = maxPage
+  const start = (pagination.page - 1) * pagination.page_size
+  return sortedContents.value.slice(start, start + pagination.page_size)
+})
+
+const sortedContents = computed(() => [...contents.value].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0)))
 
 function defaultForm() {
   return {
@@ -130,10 +168,10 @@ function defaultForm() {
 async function loadContent() {
   loading.value = true
   try {
-    const response = await adminGetContentManagement({ page: 1, page_size: 20 })
+    const response = await adminGetContentManagement({ page: 1, page_size: 10 })
     contents.value = response?.home_contents || response?.data?.home_contents || []
   } catch (error) {
-    ElMessage.error(error?.response?.data?.message || '首页内容加载失败')
+    ElMessage.error(resolveAdminError(error, '首页内容加载失败'))
   } finally {
     loading.value = false
   }
@@ -180,27 +218,27 @@ async function saveContent() {
   }
   try {
     const saved = await adminSaveHomeContent(form)
-    if (editing.value) Object.assign(editing.value, saved || form)
+    if (editing.value) Object.assign(editing.value, saved || { ...form })
     else contents.value.push(saved || { ...form, content_id: Date.now() })
     dialogVisible.value = false
     ElMessage.success('首页内容已保存')
   } catch (error) {
-    ElMessage.error(error?.response?.data?.message || '首页内容保存失败')
+    ElMessage.error(resolveAdminError(error, '首页内容保存失败'))
   }
 }
 
 function remove(row) {
-  ElMessageBox.confirm(`确认删除「${row.title}」？删除后患者端不再展示。`, '确认删除首页内容？', {
+  ElMessageBox.confirm(`确认删除“${row.title || '未命名内容'}”？删除后患者端不再展示。`, '确认删除首页内容', {
     confirmButtonText: '确认删除',
     cancelButtonText: '取消',
-    type: 'error'
+    type: 'warning'
   }).then(async () => {
     try {
       await adminDeleteHomeContent(row.content_id)
       contents.value = contents.value.filter((item) => item.content_id !== row.content_id)
       ElMessage.success('首页内容已删除')
     } catch (error) {
-      ElMessage.error(error?.response?.data?.message || '首页内容删除失败')
+      ElMessage.error(resolveAdminError(error, '首页内容删除失败'))
     }
   }).catch(() => {})
 }
@@ -212,7 +250,7 @@ async function toggle(row) {
     Object.assign(row, saved || { status: next })
     ElMessage.success(next === 'enabled' ? '已启用' : '已停用')
   } catch (error) {
-    ElMessage.error(error?.response?.data?.message || '状态更新失败')
+    ElMessage.error(resolveAdminError(error, '状态更新失败'))
   }
 }
 
@@ -231,8 +269,8 @@ onMounted(loadContent)
 }
 
 .content-thumb {
-  width: 52px;
-  height: 52px;
+  width: 54px;
+  height: 54px;
   display: flex;
   align-items: center;
   justify-content: center;

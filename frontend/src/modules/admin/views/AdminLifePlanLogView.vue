@@ -63,7 +63,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { AlertTriangle, ArrowLeft, CheckCircle, Loader2, XCircle } from 'lucide-vue-next'
-import { adminMockLifePlans } from '@/modules/admin/mockData'
 import { adminGetLifePlanDetail } from '@/api/admin'
 import { unwrapPage } from '@/modules/admin/utils'
 
@@ -96,7 +95,7 @@ async function loadPlan() {
     const response = await adminGetLifePlanDetail(route.params.planId)
     plan.value = response?.plan_id ? response : unwrapPage(response).list?.[0]
   } catch {
-    plan.value = adminMockLifePlans.find((item) => String(item.plan_id) === String(route.params.planId))
+    plan.value = null
   } finally {
     loading.value = false
   }

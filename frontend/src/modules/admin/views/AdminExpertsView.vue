@@ -3,51 +3,78 @@
     <div class="admin-page-header">
       <div>
         <h1 class="admin-page-title">AI 医师卡片管理</h1>
-        <p class="admin-page-desc">维护首页 AI 医师展示卡片，作为 AI 咨询入口展示。</p>
+        <p class="admin-page-desc">维护首页 AI 医师展示卡片，作为患者端 AI 咨询入口展示。</p>
       </div>
       <el-button class="admin-primary-btn" type="primary" @click="openCreate">
         <Plus :size="16" /> 新增展示卡片
       </el-button>
     </div>
 
-    <section class="admin-tip">
-      <Info :size="16" />
-      <span>本系统不设置真实医生业务角色，展示卡片用于引导患者进入 AI 医生咨询。</span>
-    </section>
-
     <section class="admin-card admin-table-card">
       <div class="admin-card-title-row">
         <span class="admin-section-title">展示卡片列表</span>
-        <span class="admin-count-pill">{{ cards.length }} 条</span>
+        <span class="admin-count-pill">共 {{ cards.length }} 条</span>
       </div>
-      <el-table :data="cards" row-key="content_id" empty-text="暂无展示卡片">
-        <el-table-column label="ID" width="100"><template #default="{ row }">#{{ row.content_id }}</template></el-table-column>
-        <el-table-column label="头像" width="90">
+      <el-table v-loading="loading" :data="pagedCards" row-key="content_id" empty-text="暂无展示卡片">
+        <el-table-column label="ID" width="82">
+          <template #default="{ row }"><el-tag effect="plain">#{{ row.content_id }}</el-tag></template>
+        </el-table-column>
+        <el-table-column label="头像" width="82">
           <template #default="{ row }">
-            <el-avatar :size="36" :src="asset(row.image_url)"><Bot :size="18" /></el-avatar>
+            <el-avatar :size="38" :src="asset(row.image_url)"><Bot :size="18" /></el-avatar>
           </template>
         </el-table-column>
-        <el-table-column prop="title" label="名称" min-width="160" />
-        <el-table-column prop="subtitle" label="简介" min-width="260" show-overflow-tooltip />
-        <el-table-column prop="sort_order" label="排序" width="80" />
-        <el-table-column label="状态" width="100">
-          <template #default="{ row }"><el-tag :type="row.status === 'enabled' ? 'success' : 'info'" round>{{ row.status === 'enabled' ? '启用' : '禁用' }}</el-tag></template>
-        </el-table-column>
-        <el-table-column label="操作" width="170">
+        <el-table-column label="卡片信息" min-width="280">
           <template #default="{ row }">
-            <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-            <el-button link :type="row.status === 'enabled' ? 'danger' : 'success'" @click="toggle(row)">{{ row.status === 'enabled' ? '停用' : '启用' }}</el-button>
+            <strong class="admin-table-title">{{ row.title || 'AI 控糖助手' }}</strong>
+            <span class="admin-table-subtitle">{{ row.subtitle || '暂无简介' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="sort_order" label="排序" width="80" />
+        <el-table-column label="状态" width="92">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 'enabled' ? 'success' : 'info'" round>
+              {{ row.status === 'enabled' ? '启用' : '禁用' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="166" align="right">
+          <template #default="{ row }">
+            <span class="admin-actions">
+              <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+              <el-button link :type="row.status === 'enabled' ? 'danger' : 'success'" @click="toggle(row)">
+                {{ row.status === 'enabled' ? '停用' : '启用' }}
+              </el-button>
+              <el-button link type="danger" @click="remove(row)">删除</el-button>
+            </span>
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="admin-pagination">
+        <el-pagination
+          v-model:current-page="pagination.page"
+          v-model:page-size="pagination.page_size"
+          :total="cards.length"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          background
+          @size-change="pagination.page = 1"
+        />
+      </div>
     </section>
 
-    <el-dialog v-model="dialogVisible" :title="editing ? '编辑展示卡片' : '新增展示卡片'" width="520px">
+    <el-dialog v-model="dialogVisible" :title="editing ? '编辑展示卡片' : '新增展示卡片'" width="540px">
       <el-form label-position="top">
-        <el-form-item label="名称"><el-input v-model="form.title" placeholder="如：AI 控糖助手" /></el-form-item>
-        <el-form-item label="简介"><el-input v-model="form.subtitle" type="textarea" :rows="3" /></el-form-item>
+        <el-form-item label="名称"><el-input v-model.trim="form.title" placeholder="如：AI 控糖助手" /></el-form-item>
+        <el-form-item label="简介"><el-input v-model.trim="form.subtitle" type="textarea" :rows="3" /></el-form-item>
         <el-form-item label="头像/图片">
-          <ImageUploader v-model="form.image_url" title="上传展示图片" hint="点击选择或拖拽头像图片" @error="ElMessage.error" />
+          <ImageUploader
+            v-model="form.image_url"
+            title="上传展示图片"
+            hint="点击选择或拖拽头像图片"
+            @error="ElMessage.error"
+          />
         </el-form-item>
         <div class="dialog-grid">
           <el-form-item label="跳转类型">
@@ -69,28 +96,44 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { Bot, Info, Plus } from 'lucide-vue-next'
-import { ElMessage } from 'element-plus'
-import { adminGetContentManagement, adminSaveHomeContent } from '@/api/admin'
+import { Bot, Plus } from 'lucide-vue-next'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { adminDeleteHomeContent, adminGetContentManagement, adminSaveHomeContent } from '@/api/admin'
 import ImageUploader from '@/components/ImageUploader.vue'
+import { createPagination, resolveAdminError, totalPages } from '@/modules/admin/utils'
 import { resolveAssetUrl } from '@/utils/assets'
 
 const contents = ref([])
+const loading = ref(false)
 const dialogVisible = ref(false)
 const editing = ref(null)
 const form = reactive(defaultForm())
-const cards = computed(() => contents.value.filter((item) => item.content_type === 'ai_doctor_card'))
+const pagination = reactive(createPagination(10))
+
+const cards = computed(() => contents.value
+  .filter((item) => item.content_type === 'ai_doctor_card')
+  .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0)))
+
+const pagedCards = computed(() => {
+  const maxPage = totalPages({ ...pagination, total: cards.value.length })
+  if (pagination.page > maxPage) pagination.page = maxPage
+  const start = (pagination.page - 1) * pagination.page_size
+  return cards.value.slice(start, start + pagination.page_size)
+})
 
 function defaultForm() {
   return { content_type: 'ai_doctor_card', title: '', subtitle: '', image_url: '', link_type: 'chat', link_value: 'chat', sort_order: 1, status: 'enabled' }
 }
 
 async function load() {
+  loading.value = true
   try {
-    const response = await adminGetContentManagement()
+    const response = await adminGetContentManagement({ page: 1, page_size: 10 })
     contents.value = response?.home_contents || response?.data?.home_contents || []
   } catch (error) {
-    ElMessage.error(error?.response?.data?.message || '展示卡片加载失败')
+    ElMessage.error(resolveAdminError(error, '展示卡片加载失败'))
+  } finally {
+    loading.value = false
   }
 }
 
@@ -107,15 +150,39 @@ function openEdit(row) {
 }
 
 async function save() {
+  if (!form.title.trim()) {
+    ElMessage.warning('请填写展示名称')
+    return
+  }
+  if (!form.image_url) {
+    ElMessage.warning('请先上传展示图片')
+    return
+  }
   try {
     const saved = await adminSaveHomeContent(form)
-    if (editing.value) Object.assign(editing.value, saved || form)
+    if (editing.value) Object.assign(editing.value, saved || { ...form })
     else contents.value.push(saved || { ...form, content_id: Date.now() })
     dialogVisible.value = false
     ElMessage.success('展示卡片已保存')
   } catch (error) {
-    ElMessage.error(error?.response?.data?.message || '展示卡片保存失败')
+    ElMessage.error(resolveAdminError(error, '展示卡片保存失败'))
   }
+}
+
+function remove(row) {
+  ElMessageBox.confirm(`确认删除“${row.title || '展示卡片'}”？删除后患者端不再展示。`, '确认删除展示卡片', {
+    confirmButtonText: '确认删除',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      await adminDeleteHomeContent(row.content_id)
+      contents.value = contents.value.filter((item) => item.content_id !== row.content_id)
+      ElMessage.success('展示卡片已删除')
+    } catch (error) {
+      ElMessage.error(resolveAdminError(error, '展示卡片删除失败'))
+    }
+  }).catch(() => {})
 }
 
 async function toggle(row) {
@@ -125,7 +192,7 @@ async function toggle(row) {
     Object.assign(row, saved || { status: next })
     ElMessage.success(next === 'enabled' ? '展示卡片已启用' : '展示卡片已停用')
   } catch (error) {
-    ElMessage.error(error?.response?.data?.message || '状态更新失败')
+    ElMessage.error(resolveAdminError(error, '状态更新失败'))
   }
 }
 
@@ -137,10 +204,6 @@ onMounted(load)
 </script>
 
 <style scoped>
-.admin-tip {
-  margin-bottom: 16px;
-}
-
 .dialog-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

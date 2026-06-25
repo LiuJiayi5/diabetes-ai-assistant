@@ -47,14 +47,13 @@
             <Search :size="14" />
             <input type="text" placeholder="搜索..." />
           </div>
-          <button class="admin-bell" type="button">
-            <Bell :size="16" />
-            <i></i>
-          </button>
-          <div class="admin-user-chip">
-            <span>{{ adminInitial }}</span>
+          <button class="admin-user-chip" type="button" @click="router.push('/admin/profile')">
+            <span class="admin-user-avatar">
+              <img v-if="adminAvatar" :src="adminAvatar" alt="管理员头像" />
+              <span v-else>{{ adminInitial }}</span>
+            </span>
             <strong>{{ adminName }}</strong>
-          </div>
+          </button>
         </div>
       </header>
       <RouterView />
@@ -66,8 +65,10 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  Bell,
   ChevronRight,
+  Activity,
+  Bot,
+  ClipboardList,
   FileText,
   Home,
   Image,
@@ -78,10 +79,12 @@ import {
   Search,
   Shield,
   UserCheck,
-  Users
+  Users,
+  CheckSquare
 } from 'lucide-vue-next'
 import { ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
+import { resolveAssetUrl } from '@/utils/assets'
 import '@/modules/admin/styles/admin.css'
 
 const route = useRoute()
@@ -98,6 +101,16 @@ const navGroups = [
     ]
   },
   {
+    label: '健康运营',
+    items: [
+      { label: '健康档案管理', path: '/admin/profiles', icon: ClipboardList },
+      { label: '健康数据管理', path: '/admin/health-metrics', icon: Activity },
+      { label: '风险评估记录', path: '/admin/risk-assessments', icon: CheckSquare },
+      { label: 'AI 咨询日志', path: '/admin/ai-chat', icon: Bot },
+      { label: '打卡记录', path: '/admin/checkins', icon: CheckSquare }
+    ]
+  },
+  {
     label: '内容管理',
     items: [
       { label: '健康资讯管理', path: '/admin/articles', icon: Newspaper },
@@ -110,6 +123,7 @@ const navGroups = [
 
 const adminName = computed(() => authStore.user?.username || authStore.user?.name || '管理员')
 const adminInitial = computed(() => adminName.value.slice(0, 1).toUpperCase())
+const adminAvatar = computed(() => resolveAssetUrl(authStore.user?.avatar))
 
 function logout() {
   ElMessageBox.confirm('退出后需要重新登录管理端，确认退出？', '确认退出登录', {
@@ -139,7 +153,7 @@ function logout() {
   flex-direction: column;
   overflow-y: auto;
   background: var(--admin-sidebar-bg);
-  color: #a8c8ee;
+  color: rgba(255, 255, 255, 0.86);
 }
 
 .admin-logo {
@@ -186,7 +200,7 @@ function logout() {
 
 .admin-logo span {
   display: block;
-  color: #7eb5ff;
+  color: rgba(255, 255, 255, 0.72);
   font-size: 12px;
   margin-top: 2px;
 }
@@ -202,7 +216,7 @@ function logout() {
 
 .admin-nav-group p {
   margin: 0 8px 8px;
-  color: #4a7aaa;
+  color: rgba(255, 255, 255, 0.58);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -215,13 +229,13 @@ function logout() {
   min-height: 42px;
   border-radius: 12px;
   padding: 0 12px;
-  color: #a8c8ee;
+  color: rgba(255, 255, 255, 0.82);
   transition: background 0.2s ease, color 0.2s ease;
 }
 
 .admin-nav-link:hover {
   background: rgba(255,255,255,0.07);
-  color: #d0e8ff;
+  color: #fff;
 }
 
 .admin-nav-link.router-link-active {
@@ -252,9 +266,11 @@ function logout() {
   min-height: 42px;
   border-radius: 12px;
   padding: 0 12px;
-  color: #8baabf;
+  color: rgba(255, 255, 255, 0.78);
   background: transparent;
   text-align: left;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .admin-logout:hover {
@@ -317,52 +333,41 @@ function logout() {
   font-size: 14px;
 }
 
-.admin-bell {
-  position: relative;
-  width: 32px;
-  height: 32px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  color: var(--admin-text-secondary);
-  background: transparent;
-}
-
-.admin-bell:hover {
-  background: #eff6ff;
-}
-
-.admin-bell i {
-  position: absolute;
-  right: 7px;
-  top: 7px;
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: #f87171;
-}
-
 .admin-user-chip {
-  display: flex;
+  min-height: 36px;
+  display: inline-flex;
   align-items: center;
   gap: 8px;
   border-radius: 12px;
-  padding: 6px 10px;
+  padding: 4px 10px 4px 4px;
   color: var(--admin-text-strong);
+  background: #f8faff;
+  border: 1px solid rgba(92,142,248,0.12);
+  cursor: pointer;
 }
 
-.admin-user-chip span {
+.admin-user-chip:hover {
+  background: #eef3ff;
+}
+
+.admin-user-avatar {
   width: 28px;
   height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   border-radius: 999px;
   background: var(--admin-primary-gradient);
   color: #fff;
   font-size: 12px;
   font-weight: 700;
+}
+
+.admin-user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .admin-user-chip strong {

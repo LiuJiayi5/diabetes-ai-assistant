@@ -3,7 +3,7 @@
     <div class="admin-page-header">
       <div>
         <h1 class="admin-page-title">用户管理</h1>
-        <p class="admin-page-desc">检索、查看和维护患者用户账号，不展示 password_hash。</p>
+        <p class="admin-page-desc">检索、查看和维护患者用户账号、联系方式与账号状态。</p>
       </div>
     </div>
 
@@ -37,7 +37,7 @@
         <span></span>
 
         <div class="admin-form-actions">
-          <el-button class="admin-primary-btn" type="primary" @click="loadUsers">查询</el-button>
+          <el-button class="admin-primary-btn" type="primary" @click="submitQuery">查询</el-button>
           <el-button @click="resetQuery">重置</el-button>
         </div>
       </div>
@@ -46,25 +46,26 @@
     <section class="admin-card admin-table-card">
       <div class="admin-card-title-row">
         <span class="admin-section-title">用户列表</span>
-        <span class="admin-count-pill">共 {{ filteredUsers.length }} 条记录</span>
+        <span class="admin-count-pill">共 {{ pagination.total }} 条记录</span>
       </div>
 
-      <el-table v-loading="loading" :data="filteredUsers" row-key="user_id" empty-text="暂无用户数据">
-        <el-table-column label="用户ID" width="110">
+      <el-table v-loading="loading" :data="users" row-key="user_id" empty-text="暂无用户数据">
+        <el-table-column label="ID" width="82">
           <template #default="{ row }">
             <el-tag effect="plain" type="primary">#{{ row.user_id }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="用户名" min-width="150">
+        <el-table-column label="用户信息" min-width="240">
           <template #default="{ row }">
-            <div class="user-cell">
+            <div class="admin-table-main">
               <el-avatar :size="30" :src="asset(row.avatar)">{{ row.username?.slice(0, 1) }}</el-avatar>
-              <strong>{{ row.username }}</strong>
+              <span class="admin-table-main__body">
+                <strong class="admin-table-title">{{ row.username || '未命名用户' }}</strong>
+                <span class="admin-table-subtitle">{{ row.phone || '未填写手机号' }} · {{ row.email || '未填写邮箱' }}</span>
+              </span>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="phone" label="手机号" min-width="130" />
-        <el-table-column prop="email" label="邮箱" min-width="180" />
         <el-table-column label="角色" width="100">
           <template #default="{ row }">
             {{ statusLabel(row.role) }}
@@ -77,21 +78,36 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="create_time" label="注册时间" min-width="170" />
-        <el-table-column prop="last_login_time" label="最近登录" min-width="170" />
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column prop="create_time" label="注册时间" width="160" show-overflow-tooltip />
+        <el-table-column prop="last_login_time" label="最近登录" width="160" show-overflow-tooltip />
+        <el-table-column label="操作" width="128" align="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="router.push(`/admin/users/${row.user_id}`)">详情</el-button>
-            <el-button
-              link
-              :type="row.status === 'active' ? 'danger' : 'success'"
-              @click="confirmStatus(row)"
-            >
-              {{ row.status === 'active' ? '禁用' : '启用' }}
-            </el-button>
+            <span class="admin-actions">
+              <el-button link type="primary" @click="router.push(`/admin/users/${row.user_id}`)">详情</el-button>
+              <el-button
+                link
+                :type="row.status === 'active' ? 'danger' : 'success'"
+                @click="confirmStatus(row)"
+              >
+                {{ row.status === 'active' ? '禁用' : '启用' }}
+              </el-button>
+            </span>
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="admin-pagination">
+        <el-pagination
+          v-model:current-page="pagination.page"
+          v-model:page-size="pagination.page_size"
+          :total="pagination.total"
+          :page-sizes="[10, 20, 50]"
+          layout="total, sizes, prev, pager, next"
+          background
+          @current-change="loadUsers"
+          @size-change="handleSizeChange"
+        />
+      </div>
 
       <div v-if="error" class="admin-tip">
         <AlertCircle :size="16" />
@@ -102,46 +118,33 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { AlertCircle, Search } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminListUsers, adminUpdateUserStatus } from '@/api/admin'
-import { resolveAdminError, statusLabel, unwrapPage } from '@/modules/admin/utils'
+import { assignPage, createPagination, pageParams, resolveAdminError, statusLabel, unwrapPage } from '@/modules/admin/utils'
 import { resolveAssetUrl } from '@/utils/assets'
 
 const router = useRouter()
 const users = ref([])
 const loading = ref(false)
 const error = ref('')
+const pagination = reactive(createPagination(10))
 const query = reactive({
   keyword: '',
   role: '',
-  status: '',
-  page: 1,
-  page_size: 10
-})
-
-const filteredUsers = computed(() => {
-  const keyword = query.keyword.toLowerCase()
-  return users.value.filter((user) => {
-    const matchesKeyword = !keyword
-      || String(user.user_id).includes(keyword)
-      || String(user.username || '').toLowerCase().includes(keyword)
-      || String(user.phone || '').includes(keyword)
-      || String(user.email || '').toLowerCase().includes(keyword)
-    const matchesRole = !query.role || user.role === query.role
-    const matchesStatus = !query.status || user.status === query.status
-    return matchesKeyword && matchesRole && matchesStatus
-  })
+  status: ''
 })
 
 async function loadUsers() {
   loading.value = true
   error.value = ''
   try {
-    const response = await adminListUsers(query)
-    users.value = unwrapPage(response).list
+    const response = await adminListUsers({ ...query, ...pageParams(pagination) })
+    const page = unwrapPage(response)
+    users.value = page.list
+    assignPage(pagination, page)
   } catch (err) {
     error.value = resolveAdminError(err, '用户列表加载失败')
     users.value = []
@@ -150,10 +153,20 @@ async function loadUsers() {
   }
 }
 
+function submitQuery() {
+  pagination.page = 1
+  loadUsers()
+}
+
 function resetQuery() {
   query.keyword = ''
   query.role = ''
   query.status = ''
+  submitQuery()
+}
+
+function handleSizeChange() {
+  pagination.page = 1
   loadUsers()
 }
 
