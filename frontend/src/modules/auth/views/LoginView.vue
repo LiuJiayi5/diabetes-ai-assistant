@@ -42,7 +42,7 @@
               <input v-model="rememberMe" type="checkbox" />
               <span>记住登录状态</span>
             </label>
-            <button type="button" class="text-button" @click="showToast('找回密码功能后续接入')">忘记密码？</button>
+            <button type="button" class="text-button" @click="showToast('请联系管理员协助重置密码')">忘记密码？</button>
           </div>
 
           <button class="submit-button" type="submit" :disabled="submitting">
@@ -55,10 +55,6 @@
           <button type="button" @click="router.push('/register')">立即注册</button>
         </div>
 
-        <div v-if="!isAdmin" class="demo-card">
-          <p>演示账号（直接复制使用）</p>
-          <span>账号：<strong>demo</strong>　密码：<strong>123456</strong></span>
-        </div>
       </div>
     </section>
   </MobileShell>

@@ -272,7 +272,7 @@ export const useArticlesStore = defineStore('articles', {
           || MOCK_ARTICLES.find((article) => String(article.article_id) === String(articleId))
         if (localArticle) {
           this.detail = localArticle
-          this.detailError = '当前展示本地示例内容，后端详情接口接入后将自动替换。'
+          this.detailError = ''
         } else {
           this.detail = null
           this.detailError = resolveErrorMessage(error, '资讯详情加载失败')

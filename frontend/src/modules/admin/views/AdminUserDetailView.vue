@@ -22,7 +22,7 @@
 
     <template v-else-if="user">
       <section class="admin-card user-hero">
-        <el-avatar :size="68" :src="user.avatar">{{ user.username?.slice(0, 1) }}</el-avatar>
+        <el-avatar :size="68" :src="asset(user.avatar)">{{ user.username?.slice(0, 1) }}</el-avatar>
         <div>
           <h2>{{ user.username }}</h2>
           <p>ID #{{ user.user_id }} · {{ statusLabel(user.role) }}</p>
@@ -85,8 +85,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, FileText, Newspaper } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminListUsers, adminUpdateUserStatus } from '@/api/admin'
-import { adminMockUsers } from '@/modules/admin/mockData'
 import { statusLabel, unwrapPage } from '@/modules/admin/utils'
+import { resolveAssetUrl } from '@/utils/assets'
 
 const route = useRoute()
 const router = useRouter()
@@ -104,7 +104,7 @@ async function loadUser() {
     const list = unwrapPage(response).list
     user.value = list.find((item) => String(item.user_id) === String(route.params.userId)) || list[0]
   } catch {
-    user.value = adminMockUsers.find((item) => String(item.user_id) === String(route.params.userId))
+    user.value = null
   } finally {
     loading.value = false
   }
@@ -119,13 +119,19 @@ function confirmStatus(target) {
   ).then(async () => {
     try {
       await adminUpdateUserStatus(target.user_id, next)
-    } catch {}
-    target.status = next
-    ElMessage.success('状态已更新')
+      target.status = next
+      ElMessage.success('状态已更新')
+    } catch (error) {
+      ElMessage.error(error?.response?.data?.message || '状态更新失败')
+    }
   }).catch(() => {})
 }
 
 onMounted(loadUser)
+
+function asset(value) {
+  return resolveAssetUrl(value)
+}
 </script>
 
 <style scoped>

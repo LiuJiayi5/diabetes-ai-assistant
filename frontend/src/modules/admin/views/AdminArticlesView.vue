@@ -72,7 +72,7 @@
         <el-table-column label="封面" width="90">
           <template #default="{ row }">
             <div class="cover-box">
-              <img v-if="row.cover_image" :src="row.cover_image" alt="" />
+              <img v-if="row.cover_image" :src="asset(row.cover_image)" alt="" />
               <ImageIcon v-else :size="18" />
             </div>
           </template>
@@ -138,8 +138,9 @@ import { useRouter } from 'vue-router'
 import { BookOpen, CheckCircle, FileText, Image as ImageIcon, Info, Plus, Search, Star } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminGetContentManagement, adminSaveArticle } from '@/api/admin'
-import { adminMockArticles, articleCategories } from '@/modules/admin/mockData'
+import { articleCategories } from '@/modules/admin/mockData'
 import { categoryLabel, resolveAdminError, statusLabel, unwrapPage } from '@/modules/admin/utils'
+import { resolveAssetUrl } from '@/utils/assets'
 
 const router = useRouter()
 const articles = ref([])
@@ -184,7 +185,7 @@ async function loadContent() {
     articles.value = unwrapPage(response, 'articles').list
   } catch (err) {
     error.value = resolveAdminError(err, '资讯管理数据加载失败')
-    articles.value = adminMockArticles
+    articles.value = []
   } finally {
     loading.value = false
   }
@@ -209,14 +210,20 @@ function preview(article) {
   previewVisible.value = true
 }
 
-function saveLocalArticle(article, patch) {
-  Object.assign(article, patch)
-  adminSaveArticle(article).catch(() => {})
+async function saveArticlePatch(article, patch, successMessage) {
+  try {
+    const payload = { ...article, ...patch }
+    const saved = await adminSaveArticle(payload)
+    Object.assign(article, saved || payload)
+    ElMessage.success(successMessage)
+  } catch (error) {
+    ElMessage.error(error?.response?.data?.message || '保存失败')
+  }
 }
 
 function toggleRecommend(article) {
-  saveLocalArticle(article, { is_recommended: Number(article.is_recommended) ? 0 : 1 })
-  ElMessage.success(Number(article.is_recommended) ? '已设为首页推荐' : '已取消首页推荐')
+  const next = Number(article.is_recommended) ? 0 : 1
+  saveArticlePatch(article, { is_recommended: next }, next ? '已设为首页推荐' : '已取消首页推荐')
 }
 
 function toggleStatus(article) {
@@ -226,8 +233,7 @@ function toggleStatus(article) {
     `确认${next === 'published' ? '上架' : '下架'}文章？`,
     { confirmButtonText: '确认', cancelButtonText: '取消', type: 'warning' }
   ).then(() => {
-    saveLocalArticle(article, { status: next })
-    ElMessage.success('文章状态已更新')
+    saveArticlePatch(article, { status: next }, '文章状态已更新')
   }).catch(() => {})
 }
 
@@ -243,6 +249,10 @@ function removeArticle(article) {
 }
 
 onMounted(loadContent)
+
+function asset(value) {
+  return resolveAssetUrl(value)
+}
 </script>
 
 <style scoped>

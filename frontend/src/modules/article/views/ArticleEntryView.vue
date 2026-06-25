@@ -87,9 +87,6 @@
         </div>
 
         <template v-else>
-          <p v-if="articlesStore.usingFallback" class="article-inline-note">
-            后端资讯接口暂未接入，当前展示本地示例内容。
-          </p>
           <ArticleCard
             v-for="article in filteredArticles"
             :key="article.article_id"

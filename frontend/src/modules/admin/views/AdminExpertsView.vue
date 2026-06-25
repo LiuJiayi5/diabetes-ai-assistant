@@ -2,8 +2,8 @@
   <div class="admin-page">
     <div class="admin-page-header">
       <div>
-        <h1 class="admin-page-title">专家展示管理</h1>
-        <p class="admin-page-desc">维护首页专家或 AI 医师展示卡片，仅作为展示入口，不创建真实医生角色。</p>
+        <h1 class="admin-page-title">AI 医师卡片管理</h1>
+        <p class="admin-page-desc">维护首页 AI 医师展示卡片，作为 AI 咨询入口展示。</p>
       </div>
       <el-button class="admin-primary-btn" type="primary" @click="openCreate">
         <Plus :size="16" /> 新增展示卡片
@@ -12,7 +12,7 @@
 
     <section class="admin-tip">
       <Info :size="16" />
-      <span>本系统不设置真实医生业务角色，专家/AI 医师卡片主要作为 AI 医生咨询入口和首页展示内容。</span>
+      <span>本系统不设置真实医生业务角色，展示卡片用于引导患者进入 AI 医生咨询。</span>
     </section>
 
     <section class="admin-card admin-table-card">
@@ -22,9 +22,9 @@
       </div>
       <el-table :data="cards" row-key="content_id" empty-text="暂无展示卡片">
         <el-table-column label="ID" width="100"><template #default="{ row }">#{{ row.content_id }}</template></el-table-column>
-        <el-table-column label="图标" width="90">
+        <el-table-column label="头像" width="90">
           <template #default="{ row }">
-            <el-avatar :size="36" :src="row.image_url"><Bot :size="18" /></el-avatar>
+            <el-avatar :size="36" :src="asset(row.image_url)"><Bot :size="18" /></el-avatar>
           </template>
         </el-table-column>
         <el-table-column prop="title" label="名称" min-width="160" />
@@ -46,7 +46,9 @@
       <el-form label-position="top">
         <el-form-item label="名称"><el-input v-model="form.title" placeholder="如：AI 控糖助手" /></el-form-item>
         <el-form-item label="简介"><el-input v-model="form.subtitle" type="textarea" :rows="3" /></el-form-item>
-        <el-form-item label="头像/图片 URL"><el-input v-model="form.image_url" /></el-form-item>
+        <el-form-item label="头像/图片">
+          <ImageUploader v-model="form.image_url" title="上传展示图片" hint="点击选择或拖拽头像图片" @error="ElMessage.error" />
+        </el-form-item>
         <div class="dialog-grid">
           <el-form-item label="跳转类型">
             <el-select v-model="form.link_type">
@@ -70,7 +72,8 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { Bot, Info, Plus } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 import { adminGetContentManagement, adminSaveHomeContent } from '@/api/admin'
-import { adminMockHomeContents } from '@/modules/admin/mockData'
+import ImageUploader from '@/components/ImageUploader.vue'
+import { resolveAssetUrl } from '@/utils/assets'
 
 const contents = ref([])
 const dialogVisible = ref(false)
@@ -85,9 +88,9 @@ function defaultForm() {
 async function load() {
   try {
     const response = await adminGetContentManagement()
-    contents.value = response?.home_contents || response?.data?.home_contents || adminMockHomeContents
-  } catch {
-    contents.value = adminMockHomeContents
+    contents.value = response?.home_contents || response?.data?.home_contents || []
+  } catch (error) {
+    ElMessage.error(error?.response?.data?.message || '展示卡片加载失败')
   }
 }
 
@@ -104,16 +107,30 @@ function openEdit(row) {
 }
 
 async function save() {
-  try { await adminSaveHomeContent(form) } catch {}
-  if (editing.value) Object.assign(editing.value, form)
-  else contents.value.push({ ...form, content_id: Date.now() })
-  dialogVisible.value = false
-  ElMessage.success('展示卡片已保存')
+  try {
+    const saved = await adminSaveHomeContent(form)
+    if (editing.value) Object.assign(editing.value, saved || form)
+    else contents.value.push(saved || { ...form, content_id: Date.now() })
+    dialogVisible.value = false
+    ElMessage.success('展示卡片已保存')
+  } catch (error) {
+    ElMessage.error(error?.response?.data?.message || '展示卡片保存失败')
+  }
 }
 
-function toggle(row) {
-  row.status = row.status === 'enabled' ? 'disabled' : 'enabled'
-  adminSaveHomeContent(row).catch(() => {})
+async function toggle(row) {
+  const next = row.status === 'enabled' ? 'disabled' : 'enabled'
+  try {
+    const saved = await adminSaveHomeContent({ ...row, status: next })
+    Object.assign(row, saved || { status: next })
+    ElMessage.success(next === 'enabled' ? '展示卡片已启用' : '展示卡片已停用')
+  } catch (error) {
+    ElMessage.error(error?.response?.data?.message || '状态更新失败')
+  }
+}
+
+function asset(value) {
+  return resolveAssetUrl(value)
 }
 
 onMounted(load)

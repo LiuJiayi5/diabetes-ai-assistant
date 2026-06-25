@@ -1,11 +1,9 @@
 <template>
   <div class="module-entry">
     <div class="entry-panel">
-      <h2>生活打卡与行为分析</h2>
-      <p>模块8：生活打卡与行为分析模块</p>
-      <p>普通打卡由 Spring Boot + MySQL 实现。</p>
-      <p>打卡分析由 Spring Boot 调用 Dify checkin_behavior_analysis_workflow 实现。</p>
-      <p>后续可扩展：今日打卡、历史打卡、打卡分析、分析历史。</p>
+      <h2>生活打卡</h2>
+      <p>根据当前生活方案完成饮食、运动和作息打卡，帮助形成稳定控糖习惯。</p>
+      <p>暂无打卡任务时，请先生成生活方案。</p>
     </div>
   </div>
 </template>

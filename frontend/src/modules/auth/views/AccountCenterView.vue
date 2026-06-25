@@ -3,19 +3,20 @@
     <section class="profile-card">
       <div class="profile-card__glow profile-card__glow--top" />
       <div class="profile-card__glow profile-card__glow--bottom" />
-      <div class="profile-card__body">
+      <button type="button" class="profile-card__body profile-card__body--clickable" @click="router.push('/app/account/edit')">
         <div class="avatar">
-          <User />
+          <img v-if="avatarUrl" :src="avatarUrl" alt="用户头像" />
+          <User v-else />
         </div>
         <div class="profile-card__info">
-          <h1>{{ currentUser.username }}</h1>
+          <h1>{{ currentUser.username || '未命名用户' }}</h1>
           <div class="badges">
             <span>患者用户</span>
-            <span class="badges__status">正常</span>
+            <span class="badges__status">{{ statusText }}</span>
           </div>
         </div>
-      </div>
-      <p>持续记录健康数据，获得更适合你的建议</p>
+      </button>
+      <p>持续记录健康数据，获得更适合你的控糖建议</p>
     </section>
 
     <section class="info-card">
@@ -75,7 +76,7 @@
     <div v-if="showLogoutDialog" class="logout-overlay" @click.self="showLogoutDialog = false">
       <div class="logout-dialog">
         <h3>确认退出登录？</h3>
-        <p>退出后需要重新登录才能查看个人信息</p>
+        <p>退出后需要重新登录才能查看个人信息。</p>
         <div class="logout-dialog__actions">
           <button type="button" class="dialog-button dialog-button--cancel" @click="showLogoutDialog = false">
             取消
@@ -108,26 +109,29 @@ import {
 } from 'lucide-vue-next'
 import { getCurrentUser } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import { resolveAssetUrl } from '@/utils/assets'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const showLogoutDialog = ref(false)
 
 const currentUser = computed(() => authStore.user || {
-  id: 10001,
-  username: '小代',
-  phone: '138****2026',
-  email: 'xiaodai@example.com',
+  username: '未命名用户',
+  phone: '',
+  email: '',
   role: 'patient',
   status: 'active',
-  lastLogin: '今天 09:30'
+  lastLogin: ''
 })
 
+const avatarUrl = computed(() => resolveAssetUrl(currentUser.value.avatar))
+const statusText = computed(() => currentUser.value.status === 'disabled' ? '已禁用' : '正常')
+
 const accountRows = computed(() => [
-  { label: '用户 ID', value: currentUser.value.id || currentUser.value.user_id || '10001' },
-  { label: '手机号', value: currentUser.value.phone || '138****2026' },
-  { label: '邮箱', value: currentUser.value.email || 'xiaodai@example.com' },
-  { label: '最近登录', value: currentUser.value.lastLogin || currentUser.value.last_login_time || '今天 09:30' }
+  { label: '用户 ID', value: currentUser.value.id || currentUser.value.user_id || '暂无' },
+  { label: '手机号', value: currentUser.value.phone || '未填写' },
+  { label: '邮箱', value: currentUser.value.email || '未填写' },
+  { label: '最近登录', value: currentUser.value.lastLogin || currentUser.value.last_login_time || '暂无记录' }
 ])
 
 const healthRecords = [
@@ -156,7 +160,7 @@ function handleRecordClick(item) {
   if (item.path) {
     router.push(item.path)
   } else {
-    showToast('后续模块接入')
+    showToast('该功能暂未开放')
   }
 }
 
@@ -216,6 +220,14 @@ function confirmLogout() {
   gap: 16px;
 }
 
+.profile-card__body--clickable {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
 .avatar {
   width: 64px;
   height: 64px;
@@ -223,6 +235,7 @@ function confirmLogout() {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.70);
   backdrop-filter: blur(8px);
@@ -232,6 +245,12 @@ function confirmLogout() {
   width: 32px;
   height: 32px;
   color: #5BBF8A;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .profile-card__info h1 {
@@ -299,6 +318,7 @@ function confirmLogout() {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 14px;
   padding: 2px 0;
 }
 
@@ -308,9 +328,12 @@ function confirmLogout() {
 }
 
 .info-row strong {
+  min-width: 0;
   color: var(--figma-text-strong);
   font-size: 13px;
   font-weight: 500;
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .divider {

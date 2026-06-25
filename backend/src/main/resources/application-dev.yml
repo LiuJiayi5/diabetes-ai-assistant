@@ -20,3 +20,8 @@ dify:
 jwt:
   secret: diabetes_assistant_dev_secret
   expire-seconds: 86400
+
+app:
+  upload:
+    root-dir: uploads
+    max-image-size-mb: 5

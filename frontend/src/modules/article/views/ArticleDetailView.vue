@@ -31,7 +31,8 @@
       <template v-else>
         <article class="article-detail-card">
           <div class="article-detail-cover" :style="{ background: article.bg, color: article.color }">
-            <BookOpen />
+            <img v-if="coverUrl" :src="coverUrl" alt="资讯封面" />
+            <BookOpen v-else />
           </div>
           <div class="article-detail-meta">
             <span class="article-tag" :style="{ background: article.tagBg, color: article.tagColor }">
@@ -78,6 +79,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { ArrowLeft, Bookmark, BookOpen, Eye, LoaderCircle } from 'lucide-vue-next'
 import { useArticlesStore } from '@/stores/articles'
+import { resolveAssetUrl } from '@/utils/assets'
 import '../styles/articles.css'
 
 const route = useRoute()
@@ -85,6 +87,7 @@ const router = useRouter()
 const articlesStore = useArticlesStore()
 
 const article = computed(() => articlesStore.detail)
+const coverUrl = computed(() => resolveAssetUrl(article.value?.cover_image))
 const isFavorite = computed(() => article.value && articlesStore.isFavorite(article.value.article_id))
 const paragraphs = computed(() => {
   const content = article.value?.content || article.value?.summary || ''

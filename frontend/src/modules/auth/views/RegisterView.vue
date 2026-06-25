@@ -59,9 +59,9 @@
             <input v-model="agreed" type="checkbox" />
             <span>
               我已阅读并同意
-              <button type="button" @click.stop="showToast('用户协议后续接入')">用户协议</button>
+              <button type="button" @click.stop="showToast('用户协议请以实际注册页面提示为准')">用户协议</button>
               与
-              <button type="button" @click.stop="showToast('隐私说明后续接入')">隐私说明</button>
+              <button type="button" @click.stop="router.push('/app/account/privacy')">隐私说明</button>
             </span>
           </label>
 

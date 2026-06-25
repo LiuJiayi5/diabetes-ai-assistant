@@ -95,7 +95,7 @@
 
       <div v-if="error" class="admin-tip">
         <AlertCircle :size="16" />
-        <span>{{ error }} 当前显示本地示例数据。</span>
+        <span>{{ error }}</span>
       </div>
     </section>
   </div>
@@ -107,7 +107,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { AlertCircle, CheckCircle, FileText, Search, TrendingUp, XCircle } from 'lucide-vue-next'
 import { ElMessageBox } from 'element-plus'
 import { adminListLifePlans } from '@/api/admin'
-import { adminMockLifePlans } from '@/modules/admin/mockData'
 import { resolveAdminError, unwrapPage } from '@/modules/admin/utils'
 
 const route = useRoute()
@@ -158,7 +157,7 @@ async function loadPlans() {
     plans.value = unwrapPage(response).list
   } catch (err) {
     error.value = resolveAdminError(err, '生活方案记录加载失败')
-    plans.value = adminMockLifePlans
+    plans.value = []
   } finally {
     loading.value = false
   }

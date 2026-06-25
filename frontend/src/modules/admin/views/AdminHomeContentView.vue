@@ -3,7 +3,7 @@
     <div class="admin-page-header">
       <div>
         <h1 class="admin-page-title">首页内容管理</h1>
-        <p class="admin-page-desc">配置用户端首页轮播、AI 医师入口和推荐内容展示。</p>
+        <p class="admin-page-desc">配置患者端首页轮播、AI 医师入口和推荐内容展示。</p>
       </div>
       <el-button class="admin-primary-btn" type="primary" @click="openCreate">
         <Plus :size="16" /> 新增首页内容
@@ -19,6 +19,14 @@
       <el-table v-loading="loading" :data="contents" row-key="content_id" empty-text="暂无首页内容">
         <el-table-column label="内容ID" width="110">
           <template #default="{ row }"><el-tag effect="plain">#{{ row.content_id }}</el-tag></template>
+        </el-table-column>
+        <el-table-column label="图片" width="100">
+          <template #default="{ row }">
+            <div class="content-thumb">
+              <img v-if="row.image_url" :src="asset(row.image_url)" alt="" />
+              <ImageIcon v-else :size="18" />
+            </div>
+          </template>
         </el-table-column>
         <el-table-column label="类型" width="140">
           <template #default="{ row }">{{ typeLabel(row.content_type) }}</template>
@@ -36,7 +44,7 @@
           <template #default="{ row }">
             <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
             <el-button link :type="row.status === 'enabled' ? 'danger' : 'success'" @click="toggle(row)">
-              {{ row.status === 'enabled' ? '禁用' : '启用' }}
+              {{ row.status === 'enabled' ? '停用' : '启用' }}
             </el-button>
           </template>
         </el-table-column>
@@ -61,7 +69,9 @@
         </div>
         <el-form-item label="标题"><el-input v-model="form.title" /></el-form-item>
         <el-form-item label="副标题"><el-input v-model="form.subtitle" /></el-form-item>
-        <el-form-item label="图片 URL"><el-input v-model="form.image_url" /></el-form-item>
+        <el-form-item label="图片">
+          <ImageUploader v-model="form.image_url" title="上传首页图片" hint="点击选择或拖拽图片，建议按内容类型选择合适比例" @error="ElMessage.error" />
+        </el-form-item>
         <div class="dialog-grid">
           <el-form-item label="跳转类型">
             <el-select v-model="form.link_type">
@@ -84,10 +94,11 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
-import { Plus } from 'lucide-vue-next'
+import { Image as ImageIcon, Plus } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 import { adminGetContentManagement, adminSaveHomeContent } from '@/api/admin'
-import { adminMockHomeContents } from '@/modules/admin/mockData'
+import ImageUploader from '@/components/ImageUploader.vue'
+import { resolveAssetUrl } from '@/utils/assets'
 
 const contents = ref([])
 const loading = ref(false)
@@ -114,9 +125,8 @@ async function loadContent() {
   try {
     const response = await adminGetContentManagement({ page: 1, page_size: 20 })
     contents.value = response?.home_contents || response?.data?.home_contents || []
-    if (!contents.value.length) contents.value = adminMockHomeContents
-  } catch {
-    contents.value = adminMockHomeContents
+  } catch (error) {
+    ElMessage.error(error?.response?.data?.message || '首页内容加载失败')
   } finally {
     loading.value = false
   }
@@ -144,18 +154,29 @@ async function saveContent() {
     return
   }
   try {
-    await adminSaveHomeContent(form)
-  } catch {}
-  if (editing.value) Object.assign(editing.value, form)
-  else contents.value.push({ ...form, content_id: Date.now() })
-  dialogVisible.value = false
-  ElMessage.success('首页内容已保存')
+    const saved = await adminSaveHomeContent(form)
+    if (editing.value) Object.assign(editing.value, saved || form)
+    else contents.value.push(saved || { ...form, content_id: Date.now() })
+    dialogVisible.value = false
+    ElMessage.success('首页内容已保存')
+  } catch (error) {
+    ElMessage.error(error?.response?.data?.message || '首页内容保存失败')
+  }
 }
 
-function toggle(row) {
-  row.status = row.status === 'enabled' ? 'disabled' : 'enabled'
-  adminSaveHomeContent(row).catch(() => {})
-  ElMessage.success(row.status === 'enabled' ? '已启用' : '已禁用')
+async function toggle(row) {
+  const next = row.status === 'enabled' ? 'disabled' : 'enabled'
+  try {
+    const saved = await adminSaveHomeContent({ ...row, status: next })
+    Object.assign(row, saved || { status: next })
+    ElMessage.success(next === 'enabled' ? '已启用' : '已停用')
+  } catch (error) {
+    ElMessage.error(error?.response?.data?.message || '状态更新失败')
+  }
+}
+
+function asset(value) {
+  return resolveAssetUrl(value)
 }
 
 onMounted(loadContent)
@@ -166,5 +187,24 @@ onMounted(loadContent)
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+}
+
+.content-thumb {
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--admin-border-solid);
+  border-radius: 10px;
+  background: #F3F7FB;
+  color: #AABBC8;
+}
+
+.content-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 </style>

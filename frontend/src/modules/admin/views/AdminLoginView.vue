@@ -50,14 +50,6 @@
             登录管理端
           </el-button>
 
-          <button class="admin-demo-account" type="button" @click="fillDemo">
-            <span>
-              <strong>演示账号</strong>
-              <small>账号：admin　密码：admin123</small>
-            </span>
-            <b>一键填入</b>
-          </button>
-
           <div class="admin-login-note">仅限授权管理员使用 · 请勿分享账号信息</div>
         </div>
       </form>
@@ -90,11 +82,6 @@ const features = [
   { title: '数据概览', desc: '实时账号状态统计分析', icon: Activity }
 ]
 
-function fillDemo() {
-  form.account = 'admin'
-  form.password = 'admin123'
-}
-
 async function handleLogin() {
   if (!form.account || !form.password) {
     ElMessage.warning('请输入管理员账号和密码')
@@ -119,24 +106,6 @@ async function handleLogin() {
     ElMessage.success('登录成功')
     router.push('/admin/dashboard')
   } catch (error) {
-    if (false && form.account === 'admin' && form.password === 'admin123') {
-      const disabledMockSession = {
-        token: 'mock-admin-token',
-        user: {
-          user_id: 9001,
-          username: 'admin',
-          role: 'admin',
-          status: 'active',
-          last_login_time: '2026-06-24 09:00:00'
-        }
-      }
-      authStore.setSession(disabledMockSession)
-      localStorage.setItem('diabetes_admin_user', JSON.stringify(disabledMockSession.user))
-      ElMessage.success('已使用演示管理员账号登录')
-      router.push('/admin/dashboard')
-      return
-    }
-
     ElMessage.error(error?.response?.data?.message || '登录失败，请检查账号密码')
   } finally {
     submitting.value = false
@@ -254,40 +223,6 @@ async function handleLogin() {
   font-weight: 600;
   background: var(--admin-primary-gradient);
   box-shadow: 0 3px 10px rgba(92,142,248,0.32);
-}
-
-.admin-demo-account {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 20px;
-  border: 1px dashed rgba(92,142,248,0.35);
-  border-radius: 12px;
-  background: rgba(92,142,248,0.07);
-  padding: 12px 14px;
-  text-align: left;
-}
-
-.admin-demo-account strong {
-  display: block;
-  color: #2563eb;
-  font-size: 12px;
-}
-
-.admin-demo-account small {
-  color: var(--admin-text-secondary);
-  font-size: 12px;
-}
-
-.admin-demo-account b {
-  flex-shrink: 0;
-  border-radius: 8px;
-  background: #2563eb;
-  color: #fff;
-  padding: 5px 10px;
-  font-size: 12px;
 }
 
 .admin-login-note {

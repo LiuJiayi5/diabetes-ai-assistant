@@ -10,6 +10,16 @@
 
     <main class="edit-content">
       <section class="edit-card">
+        <div class="avatar-field">
+          <span>头像</span>
+          <ImageUploader
+            v-model="form.avatar"
+            title="上传头像"
+            hint="点击选择或拖拽头像图片，支持 JPG、PNG、WEBP，最大 5MB"
+            @error="showToast"
+          />
+        </div>
+
         <label class="edit-field">
           <span>用户名</span>
           <input v-model.trim="form.username" type="text" placeholder="请输入用户名" />
@@ -24,22 +34,12 @@
           <span>邮箱</span>
           <input v-model.trim="form.email" type="email" placeholder="请输入邮箱" />
         </label>
-
-        <label class="edit-field">
-          <span>头像地址</span>
-          <input v-model.trim="form.avatar" type="text" placeholder="可填写头像 URL" />
-        </label>
-      </section>
-
-      <section class="edit-tip">
-        <h2>账号资料说明</h2>
-        <p>本轮为前端模拟保存，正式联调时会通过 PUT /api/user/me 更新。</p>
       </section>
     </main>
 
     <footer class="edit-footer">
       <button type="button" class="save-button" :disabled="saving" @click="save">
-        {{ saving ? '保存中…' : '保存账号信息' }}
+        {{ saving ? '保存中...' : '保存账号信息' }}
       </button>
     </footer>
   </div>
@@ -52,6 +52,7 @@ import { showToast } from 'vant'
 import { ArrowLeft } from 'lucide-vue-next'
 import { getCurrentUser, updateCurrentUser } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import ImageUploader from '@/components/ImageUploader.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -85,7 +86,7 @@ async function save() {
     showToast('账号信息已保存')
     router.push('/app/account')
   } catch (error) {
-    showToast(error?.response?.data?.message || '保存失败')
+    showToast(error?.response?.data?.message || '保存失败，请稍后重试')
   } finally {
     saving.value = false
   }
@@ -140,17 +141,14 @@ async function save() {
   padding: 0 16px 16px;
 }
 
-.edit-card,
-.edit-tip {
+.edit-card {
+  padding: 18px 20px;
   border-radius: 24px;
   background: #FFFFFF;
   box-shadow: var(--figma-shadow-card);
 }
 
-.edit-card {
-  padding: 18px 20px;
-}
-
+.avatar-field,
 .edit-field {
   display: block;
   margin-bottom: 16px;
@@ -160,6 +158,7 @@ async function save() {
   margin-bottom: 0;
 }
 
+.avatar-field > span,
 .edit-field span {
   display: block;
   margin-bottom: 8px;
@@ -183,27 +182,6 @@ async function save() {
 .edit-field input:focus {
   border-color: #9FDEB8;
   background: #FFFFFF;
-}
-
-.edit-tip {
-  margin-top: 12px;
-  padding: 16px 20px;
-  background: var(--figma-info-soft);
-  border: 1px solid rgba(174, 232, 199, 0.35);
-}
-
-.edit-tip h2 {
-  margin: 0 0 6px;
-  color: var(--figma-text-strong);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.edit-tip p {
-  margin: 0;
-  color: var(--figma-text-faint);
-  font-size: 12px;
-  line-height: 1.7;
 }
 
 .edit-footer {

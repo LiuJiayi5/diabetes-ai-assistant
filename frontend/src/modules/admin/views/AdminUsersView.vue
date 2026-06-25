@@ -58,7 +58,7 @@
         <el-table-column label="用户名" min-width="150">
           <template #default="{ row }">
             <div class="user-cell">
-              <el-avatar :size="30" :src="row.avatar">{{ row.username?.slice(0, 1) }}</el-avatar>
+              <el-avatar :size="30" :src="asset(row.avatar)">{{ row.username?.slice(0, 1) }}</el-avatar>
               <strong>{{ row.username }}</strong>
             </div>
           </template>
@@ -95,7 +95,7 @@
 
       <div v-if="error" class="admin-tip">
         <AlertCircle :size="16" />
-        <span>{{ error }} 当前显示本地示例数据，后端接口接入后会自动替换。</span>
+        <span>{{ error }}</span>
       </div>
     </section>
   </div>
@@ -107,8 +107,8 @@ import { useRouter } from 'vue-router'
 import { AlertCircle, Search } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminListUsers, adminUpdateUserStatus } from '@/api/admin'
-import { adminMockUsers } from '@/modules/admin/mockData'
 import { resolveAdminError, statusLabel, unwrapPage } from '@/modules/admin/utils'
+import { resolveAssetUrl } from '@/utils/assets'
 
 const router = useRouter()
 const users = ref([])
@@ -144,7 +144,7 @@ async function loadUsers() {
     users.value = unwrapPage(response).list
   } catch (err) {
     error.value = resolveAdminError(err, '用户列表加载失败')
-    users.value = adminMockUsers
+    users.value = []
   } finally {
     loading.value = false
   }
@@ -170,15 +170,19 @@ function confirmStatus(user) {
   ).then(async () => {
     try {
       await adminUpdateUserStatus(user.user_id, next)
-    } catch {
-      // 后端未接入时仍允许前端演示状态变化。
+      user.status = next
+      ElMessage.success(next === 'active' ? '账号已启用' : '账号已禁用')
+    } catch (error) {
+      ElMessage.error(error?.response?.data?.message || '账号状态更新失败')
     }
-    user.status = next
-    ElMessage.success(next === 'active' ? '账号已启用' : '账号已禁用')
   }).catch(() => {})
 }
 
 onMounted(loadUsers)
+
+function asset(value) {
+  return resolveAssetUrl(value)
+}
 </script>
 
 <style scoped>

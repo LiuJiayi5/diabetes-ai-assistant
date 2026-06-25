@@ -377,11 +377,127 @@
 }
 
 .reminder-card,
+.day-plan-card,
 .detail-card {
   margin-top: 18px;
   padding: 20px;
   border-radius: 24px;
   background: #FFFFFF;
+}
+
+.week-title-row {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.week-title-row h2 {
+  margin: 0;
+  color: var(--figma-text-strong);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.week-title-row p {
+  margin: 4px 0 0;
+  color: var(--figma-text-faint);
+  font-size: 11px;
+}
+
+.week-toggle-button {
+  flex-shrink: 0;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(174, 232, 199, 0.30);
+  color: #4A8A6A;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.day-plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.day-plan-card {
+  margin-top: 0;
+}
+
+.day-plan-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.day-plan-card header span {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #DFF5E7;
+  color: #4A8A6A;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.day-plan-block {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(120, 160, 150, 0.08);
+}
+
+.day-plan-block:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.day-plan-block > span {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 13px;
+}
+
+.day-plan-block svg {
+  width: 18px;
+  height: 18px;
+}
+
+.day-plan-block--diet > span {
+  background: #E5F6EE;
+  color: #5BBF8A;
+}
+
+.day-plan-block--exercise > span {
+  background: #E4F3FB;
+  color: #4FAAC4;
+}
+
+.day-plan-block--reminder > span {
+  background: #FEF3E2;
+  color: #E8A840;
+}
+
+.day-plan-block strong {
+  display: block;
+  color: var(--figma-text-strong);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.day-plan-block p {
+  margin: 4px 0 0;
+  color: var(--figma-text-muted);
+  font-size: 12px;
+  line-height: 1.7;
 }
 
 .reminder-card h2,

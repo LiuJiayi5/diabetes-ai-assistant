@@ -6,7 +6,7 @@
           <ArrowLeft :size="16" /> 返回健康资讯管理
         </el-button>
         <h1 class="admin-page-title">{{ isEdit ? '编辑资讯' : '新增资讯' }}</h1>
-        <p class="admin-page-desc">保存用户端可见健康科普内容，不同步 Dify 知识库。</p>
+        <p class="admin-page-desc">维护患者端可见的健康科普内容。</p>
       </div>
       <el-button class="admin-primary-btn" type="primary" :loading="saving" @click="submitForm">
         <Save :size="16" /> 保存资讯
@@ -36,8 +36,13 @@
           </el-form-item>
         </div>
 
-        <el-form-item label="封面图 URL">
-          <el-input v-model.trim="form.cover_image" placeholder="可填写图片 URL" />
+        <el-form-item label="封面图">
+          <ImageUploader
+            v-model="form.cover_image"
+            title="上传资讯封面"
+            hint="点击选择或拖拽封面图片，建议使用横向图片"
+            @error="ElMessage.error"
+          />
         </el-form-item>
 
         <el-form-item label="摘要">
@@ -58,6 +63,7 @@
     <section class="admin-card preview-card">
       <h3>预览</h3>
       <article>
+        <img v-if="coverUrl" :src="coverUrl" alt="资讯封面预览" />
         <el-tag type="primary" effect="plain" round>{{ categoryLabel(form.category) }}</el-tag>
         <h2>{{ form.title || '文章标题预览' }}</h2>
         <p>{{ form.summary || '这里显示文章摘要。' }}</p>
@@ -73,8 +79,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, Save } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 import { adminGetContentManagement, adminSaveArticle } from '@/api/admin'
-import { adminMockArticles, articleCategories } from '@/modules/admin/mockData'
+import { articleCategories } from '@/modules/admin/mockData'
 import { categoryLabel, unwrapPage } from '@/modules/admin/utils'
+import ImageUploader from '@/components/ImageUploader.vue'
+import { resolveAssetUrl } from '@/utils/assets'
 
 const route = useRoute()
 const router = useRouter()
@@ -82,6 +90,7 @@ const formRef = ref(null)
 const saving = ref(false)
 const isEdit = computed(() => Boolean(route.params.articleId))
 const recommended = ref(false)
+const coverUrl = computed(() => resolveAssetUrl(form.cover_image))
 
 const form = reactive({
   article_id: null,
@@ -110,9 +119,8 @@ async function loadArticle() {
     const response = await adminGetContentManagement({ page: 1, page_size: 50 })
     const article = unwrapPage(response, 'articles').list.find((item) => String(item.article_id) === String(route.params.articleId))
     if (article) Object.assign(form, article)
-  } catch {
-    const article = adminMockArticles.find((item) => String(item.article_id) === String(route.params.articleId))
-    if (article) Object.assign(form, article)
+  } catch (error) {
+    ElMessage.error(error?.response?.data?.message || '资讯加载失败')
   }
 
   recommended.value = Number(form.is_recommended) === 1
@@ -130,9 +138,8 @@ async function submitForm() {
     await adminSaveArticle(payload)
     ElMessage.success('资讯已保存')
     router.push('/admin/articles')
-  } catch {
-    ElMessage.success('已保存到前端演示数据，后端接口接入后将正式保存')
-    router.push('/admin/articles')
+  } catch (error) {
+    ElMessage.error(error?.response?.data?.message || '资讯保存失败')
   } finally {
     saving.value = false
   }
@@ -171,6 +178,14 @@ onMounted(loadArticle)
   border-radius: 12px;
   background: var(--admin-card-muted);
   padding: 18px;
+}
+
+.preview-card img {
+  width: 100%;
+  max-height: 220px;
+  margin-bottom: 14px;
+  border-radius: 12px;
+  object-fit: cover;
 }
 
 .preview-card h2 {
