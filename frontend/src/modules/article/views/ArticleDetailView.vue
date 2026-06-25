@@ -31,7 +31,7 @@
       <template v-else>
         <article class="article-detail-card">
           <div class="article-detail-cover" :style="{ background: article.bg, color: article.color }">
-            <img v-if="coverUrl" :src="coverUrl" alt="资讯封面" />
+            <img v-if="coverUrl && !imageFailed" :src="coverUrl" alt="资讯封面" @error="imageFailed = true" />
             <BookOpen v-else />
           </div>
           <div class="article-detail-meta">
@@ -56,7 +56,10 @@
             </span>
           </div>
           <div class="article-detail-content">
-            <p v-for="paragraph in paragraphs" :key="paragraph">{{ paragraph }}</p>
+            <section v-for="section in sections" :key="`${section.heading}-${section.body}`" class="article-detail-section">
+              <h3 v-if="section.heading">{{ section.heading }}</h3>
+              <p>{{ section.body }}</p>
+            </section>
           </div>
         </article>
 
@@ -74,7 +77,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { ArrowLeft, Bookmark, BookOpen, Eye, LoaderCircle } from 'lucide-vue-next'
@@ -88,13 +91,27 @@ const articlesStore = useArticlesStore()
 
 const article = computed(() => articlesStore.detail)
 const coverUrl = computed(() => resolveAssetUrl(article.value?.cover_image))
+const imageFailed = ref(false)
 const isFavorite = computed(() => article.value && articlesStore.isFavorite(article.value.article_id))
-const paragraphs = computed(() => {
+const sections = computed(() => {
   const content = article.value?.content || article.value?.summary || ''
   return String(content)
     .split(/\n+/)
     .map((item) => item.trim())
     .filter(Boolean)
+    .map((paragraph, index) => {
+      if (index === 0) {
+        return { heading: '', body: paragraph }
+      }
+      const match = paragraph.match(/^(.{2,18}。)(.+)$/)
+      if (!match) {
+        return { heading: '', body: paragraph }
+      }
+      return {
+        heading: match[1].replace(/。$/, ''),
+        body: match[2].trim()
+      }
+    })
 })
 
 onMounted(async () => {
@@ -102,6 +119,10 @@ onMounted(async () => {
     await articlesStore.fetchArticles()
   }
   await articlesStore.fetchArticleDetail(route.params.articleId)
+})
+
+watch(coverUrl, () => {
+  imageFailed.value = false
 })
 
 function toggleFavorite() {

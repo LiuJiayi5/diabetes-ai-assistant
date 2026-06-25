@@ -33,3 +33,11 @@ export function adminSaveArticle(payload) {
 export function adminSaveHomeContent(payload) {
   return request.post('/admin/home-contents/save', payload).then(unwrap)
 }
+
+export function adminDeleteArticle(articleId) {
+  return request.delete(`/admin/articles/${encodeURIComponent(articleId)}`).then(unwrap)
+}
+
+export function adminDeleteHomeContent(contentId) {
+  return request.delete(`/admin/home-contents/${encodeURIComponent(contentId)}`).then(unwrap)
+}

@@ -25,4 +25,8 @@ public interface ContentService {
     ArticleResponse saveArticle(Integer adminUserId, SaveArticleRequest request);
 
     HomeContentResponse saveHomeContent(Integer adminUserId, SaveHomeContentRequest request);
+
+    void deleteArticle(Integer adminUserId, Integer articleId);
+
+    void deleteHomeContent(Integer adminUserId, Integer contentId);
 }

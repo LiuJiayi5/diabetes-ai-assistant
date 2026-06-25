@@ -18,20 +18,30 @@
     </header>
 
     <main class="articles-scroll mobile-scroll">
-      <section class="articles-hero">
-        <div class="articles-hero__content">
-          <span>每日健康知识</span>
-          <h2>控糖知识随时看</h2>
-          <p>饮食、运动、习惯和糖尿病科普内容</p>
-        </div>
-        <div class="articles-hero__icon" aria-hidden="true">
-          <svg viewBox="0 0 48 48" fill="none">
-            <rect x="9" y="12" width="24" height="26" rx="5" fill="rgba(90,180,140,0.25)" />
-            <path d="M16 18h15M16 24h15M16 30h10" stroke="#5BBF8A" stroke-width="3" stroke-linecap="round" />
-            <circle cx="34" cy="16" r="7" fill="#9FDEB8" />
-            <path d="M31 16l2 2 4-5" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" />
-            <path d="M12 36c7-5 14-5 21 0" stroke="#7FC8E8" stroke-width="3" stroke-linecap="round" />
-          </svg>
+      <section class="article-carousel" aria-label="健康资讯轮播">
+        <button type="button" class="article-carousel__nav article-carousel__nav--prev" @click="prevBanner">
+          <ChevronLeft />
+        </button>
+        <button type="button" class="article-carousel__slide" @click="openBanner(activeBanner)">
+          <img v-if="activeBannerImage && !bannerImageFailed" :src="activeBannerImage" alt="" @error="bannerImageFailed = true" />
+          <div class="article-carousel__overlay">
+            <span>精选健康科普</span>
+            <h2>{{ activeBanner.title }}</h2>
+            <p>{{ activeBanner.subtitle }}</p>
+          </div>
+        </button>
+        <button type="button" class="article-carousel__nav article-carousel__nav--next" @click="nextBanner">
+          <ChevronRight />
+        </button>
+        <div class="article-carousel__dots">
+          <button
+            v-for="(banner, index) in displayBanners"
+            :key="banner.content_id || index"
+            type="button"
+            :class="{ 'is-active': index === activeBannerIndex }"
+            :aria-label="`切换到第 ${index + 1} 张轮播图`"
+            @click="activeBannerIndex = index"
+          />
         </div>
       </section>
 
@@ -98,18 +108,19 @@
 
       <section class="article-info-note">
         <strong>健康科普说明</strong>
-        <p>健康资讯为普通内容管理模块，不直接调用 Dify。科普内容仅供参考，不能替代线下诊疗。</p>
+        <p>本系统提供的健康资讯仅供科普参考，不能作为诊断依据。如出现明显身体不适或异常指标，请及时线下就医。</p>
       </section>
     </main>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
-import { Bookmark, BookOpen, LoaderCircle, Search } from 'lucide-vue-next'
+import { Bookmark, BookOpen, ChevronLeft, ChevronRight, LoaderCircle, Search } from 'lucide-vue-next'
 import { FEATURED_CATEGORIES, useArticlesStore } from '@/stores/articles'
+import { resolveAssetUrl } from '@/utils/assets'
 import ArticleCard from '../components/ArticleCard.vue'
 import ArticleCategoryTabs from '../components/ArticleCategoryTabs.vue'
 import '../styles/articles.css'
@@ -121,6 +132,36 @@ const keyword = ref('')
 const activeCategory = ref('全部')
 const showFavoritesOnly = ref(false)
 const featuredCategories = FEATURED_CATEGORIES
+const activeBannerIndex = ref(0)
+const bannerImageFailed = ref(false)
+let carouselTimer = null
+
+const fallbackBanners = computed(() => {
+  return articlesStore.recommendedArticles.slice(0, 3).map((article, index) => ({
+    content_id: `article-${article.article_id}`,
+    title: article.title,
+    subtitle: article.summary,
+    image_url: article.cover_image,
+    link_type: 'article',
+    link_value: article.article_id,
+    sort_order: index + 1
+  }))
+})
+
+const displayBanners = computed(() => {
+  const banners = articlesStore.banners.length ? articlesStore.banners : fallbackBanners.value
+  return banners.slice(0, 5)
+})
+
+const activeBanner = computed(() => {
+  return displayBanners.value[activeBannerIndex.value] || {
+    title: '控糖知识随时看',
+    subtitle: '饮食、运动、习惯和糖尿病科普内容',
+    image_url: ''
+  }
+})
+
+const activeBannerImage = computed(() => resolveAssetUrl(activeBanner.value?.image_url))
 
 const filteredArticles = computed(() => {
   const normalizedKeyword = keyword.value.trim().toLowerCase()
@@ -140,12 +181,25 @@ const filteredArticles = computed(() => {
 onMounted(async () => {
   await Promise.all([
     articlesStore.fetchCategories(),
-    articlesStore.fetchArticles()
+    articlesStore.fetchArticles(),
+    articlesStore.fetchHomeContents()
   ])
+  startCarousel()
 })
+
+onBeforeUnmount(stopCarousel)
 
 watch(activeCategory, () => {
   showFavoritesOnly.value = false
+})
+
+watch(displayBanners, () => {
+  activeBannerIndex.value = 0
+  startCarousel()
+})
+
+watch(activeBannerImage, () => {
+  bannerImageFailed.value = false
 })
 
 function focusSearch() {
@@ -168,5 +222,41 @@ function refreshArticles() {
 
 function openArticle(article) {
   router.push(`/app/articles/${article.article_id}`)
+}
+
+function startCarousel() {
+  stopCarousel()
+  if (displayBanners.value.length <= 1) return
+  carouselTimer = window.setInterval(nextBanner, 4200)
+}
+
+function stopCarousel() {
+  if (carouselTimer) {
+    window.clearInterval(carouselTimer)
+    carouselTimer = null
+  }
+}
+
+function nextBanner() {
+  if (!displayBanners.value.length) return
+  activeBannerIndex.value = (activeBannerIndex.value + 1) % displayBanners.value.length
+}
+
+function prevBanner() {
+  if (!displayBanners.value.length) return
+  activeBannerIndex.value = (activeBannerIndex.value - 1 + displayBanners.value.length) % displayBanners.value.length
+}
+
+function openBanner(banner) {
+  if (!banner) return
+  if (banner.link_type === 'article' && banner.link_value) {
+    router.push(`/app/articles/${banner.link_value}`)
+    return
+  }
+  if (banner.link_type === 'life_plan') {
+    router.push('/app/life-plan')
+    return
+  }
+  router.push('/app/articles')
 }
 </script>

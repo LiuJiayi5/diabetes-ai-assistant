@@ -33,19 +33,23 @@
         </el-table-column>
         <el-table-column prop="title" label="标题" min-width="180" />
         <el-table-column prop="subtitle" label="副标题" min-width="220" show-overflow-tooltip />
-        <el-table-column prop="link_type" label="跳转类型" width="110" />
+        <el-table-column label="跳转类型" width="110">
+          <template #default="{ row }">{{ linkTypeLabel(row.link_type) }}</template>
+        </el-table-column>
+        <el-table-column prop="link_value" label="跳转目标" width="120" />
         <el-table-column prop="sort_order" label="排序" width="80" />
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
             <el-tag :type="row.status === 'enabled' ? 'success' : 'info'" round>{{ row.status === 'enabled' ? '启用' : '禁用' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="170">
+        <el-table-column label="操作" width="220">
           <template #default="{ row }">
             <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
             <el-button link :type="row.status === 'enabled' ? 'danger' : 'success'" @click="toggle(row)">
               {{ row.status === 'enabled' ? '停用' : '启用' }}
             </el-button>
+            <el-button link type="danger" @click="remove(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -83,6 +87,9 @@
           </el-form-item>
           <el-form-item label="排序"><el-input-number v-model="form.sort_order" :min="0" /></el-form-item>
         </div>
+        <el-form-item v-if="form.link_type === 'article'" label="资讯文章 ID">
+          <el-input v-model.trim="form.link_value" placeholder="填写要跳转的文章 ID" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -95,8 +102,8 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { Image as ImageIcon, Plus } from 'lucide-vue-next'
-import { ElMessage } from 'element-plus'
-import { adminGetContentManagement, adminSaveHomeContent } from '@/api/admin'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { adminDeleteHomeContent, adminGetContentManagement, adminSaveHomeContent } from '@/api/admin'
 import ImageUploader from '@/components/ImageUploader.vue'
 import { resolveAssetUrl } from '@/utils/assets'
 
@@ -136,6 +143,16 @@ function typeLabel(type) {
   return type === 'ai_doctor_card' ? 'AI 医师卡片' : '轮播图'
 }
 
+function linkTypeLabel(value) {
+  const map = {
+    none: '无跳转',
+    article: '资讯详情',
+    chat: 'AI 咨询',
+    life_plan: '生活方案'
+  }
+  return map[value] || '无跳转'
+}
+
 function openCreate() {
   editing.value = null
   Object.assign(form, defaultForm())
@@ -153,6 +170,14 @@ async function saveContent() {
     ElMessage.warning('请填写标题')
     return
   }
+  if (!form.image_url) {
+    ElMessage.warning('请先上传图片')
+    return
+  }
+  if (form.link_type === 'article' && !form.link_value) {
+    ElMessage.warning('请填写要跳转的文章 ID')
+    return
+  }
   try {
     const saved = await adminSaveHomeContent(form)
     if (editing.value) Object.assign(editing.value, saved || form)
@@ -162,6 +187,22 @@ async function saveContent() {
   } catch (error) {
     ElMessage.error(error?.response?.data?.message || '首页内容保存失败')
   }
+}
+
+function remove(row) {
+  ElMessageBox.confirm(`确认删除「${row.title}」？删除后患者端不再展示。`, '确认删除首页内容？', {
+    confirmButtonText: '确认删除',
+    cancelButtonText: '取消',
+    type: 'error'
+  }).then(async () => {
+    try {
+      await adminDeleteHomeContent(row.content_id)
+      contents.value = contents.value.filter((item) => item.content_id !== row.content_id)
+      ElMessage.success('首页内容已删除')
+    } catch (error) {
+      ElMessage.error(error?.response?.data?.message || '首页内容删除失败')
+    }
+  }).catch(() => {})
 }
 
 async function toggle(row) {

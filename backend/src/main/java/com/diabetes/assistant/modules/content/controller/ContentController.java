@@ -12,6 +12,7 @@ import com.diabetes.assistant.modules.content.vo.HomeContentResponse;
 import com.diabetes.assistant.modules.content.vo.HomeResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -75,5 +76,19 @@ public class ContentController {
     public ApiResponse<HomeContentResponse> saveHomeContent(HttpServletRequest request, @RequestBody SaveHomeContentRequest saveRequest) {
         Integer adminUserId = currentUserUtil.getCurrentUserId(request);
         return ApiResponse.success(contentService.saveHomeContent(adminUserId, saveRequest));
+    }
+
+    @DeleteMapping("/api/admin/articles/{articleId}")
+    public ApiResponse<Void> deleteArticle(HttpServletRequest request, @PathVariable Integer articleId) {
+        Integer adminUserId = currentUserUtil.getCurrentUserId(request);
+        contentService.deleteArticle(adminUserId, articleId);
+        return ApiResponse.success(null);
+    }
+
+    @DeleteMapping("/api/admin/home-contents/{contentId}")
+    public ApiResponse<Void> deleteHomeContent(HttpServletRequest request, @PathVariable Integer contentId) {
+        Integer adminUserId = currentUserUtil.getCurrentUserId(request);
+        contentService.deleteHomeContent(adminUserId, contentId);
+        return ApiResponse.success(null);
     }
 }

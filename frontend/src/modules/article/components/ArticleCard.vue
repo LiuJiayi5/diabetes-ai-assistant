@@ -1,7 +1,7 @@
 <template>
   <button type="button" class="article-card" @click="$emit('open', article)">
     <span class="article-card__icon" :style="{ background: article.bg, color: article.color }">
-      <img v-if="coverUrl" :src="coverUrl" alt="" />
+      <img v-if="coverUrl && !imageFailed" :src="coverUrl" alt="" @error="imageFailed = true" />
       <BookOpen v-else />
     </span>
     <span class="article-card__body">
@@ -29,7 +29,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { BookOpen, ChevronRight, Eye } from 'lucide-vue-next'
 import { resolveAssetUrl } from '@/utils/assets'
 
@@ -43,4 +43,9 @@ const props = defineProps({
 defineEmits(['open'])
 
 const coverUrl = computed(() => resolveAssetUrl(props.article.cover_image))
+const imageFailed = ref(false)
+
+watch(coverUrl, () => {
+  imageFailed.value = false
+})
 </script>

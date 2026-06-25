@@ -39,7 +39,7 @@
             <li>前端：Vue 3</li>
             <li>后端：Spring Boot</li>
             <li>数据库：MySQL</li>
-            <li>AI 服务：Dify + DeepSeek</li>
+            <li>AI 服务：智能分析与问答服务</li>
           </ul>
         </div>
       </section>

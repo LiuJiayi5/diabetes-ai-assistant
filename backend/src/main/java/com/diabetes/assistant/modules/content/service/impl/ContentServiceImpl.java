@@ -56,7 +56,7 @@ public class ContentServiceImpl implements ContentService, ContentQueryApi {
 
     @Override
     public String entry() {
-        return "内容模块功能开发中";
+        return "健康资讯与首页内容服务已启用";
     }
 
     @Override
@@ -231,6 +231,36 @@ public class ContentServiceImpl implements ContentService, ContentQueryApi {
     }
 
     @Override
+    @Transactional
+    public void deleteArticle(Integer adminUserId, Integer articleId) {
+        requireAdmin(adminUserId);
+        if (articleId == null) {
+            throw new BusinessException(400, "文章 ID 不能为空");
+        }
+        Article article = articleMapper.selectById(articleId);
+        if (article == null) {
+            throw new BusinessException(404, "文章不存在");
+        }
+        articleMapper.update(null, new LambdaUpdateWrapper<Article>()
+                .eq(Article::getArticleId, articleId)
+                .set(Article::getStatus, ARTICLE_OFFLINE)
+                .set(Article::getUpdateTime, LocalDateTime.now()));
+    }
+
+    @Override
+    @Transactional
+    public void deleteHomeContent(Integer adminUserId, Integer contentId) {
+        requireAdmin(adminUserId);
+        if (contentId == null) {
+            throw new BusinessException(400, "内容 ID 不能为空");
+        }
+        int affected = homeContentMapper.deleteById(contentId);
+        if (affected == 0) {
+            throw new BusinessException(404, "首页内容不存在");
+        }
+    }
+
+    @Override
     public ArticleSummaryDTO getArticleSummaryById(Integer articleId) {
         Article article = articleMapper.selectById(articleId);
         return article == null ? null : toArticleSummaryDTO(article);
@@ -287,7 +317,7 @@ public class ContentServiceImpl implements ContentService, ContentQueryApi {
 
     private void requireAdmin(Integer userId) {
         if (!userQueryApi.isAdmin(userId)) {
-            throw new BusinessException(403, "无权限访问管理员接口");
+            throw new BusinessException(403, "当前账号无管理员权限");
         }
     }
 

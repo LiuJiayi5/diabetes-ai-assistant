@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { getArticleCategories, getArticleDetail, listArticles } from '@/api/article'
+import { getArticleCategories, getArticleDetail, getHomeContents, listArticles } from '@/api/article'
 
 export const ARTICLE_CATEGORIES = [
   '全部',
@@ -35,6 +35,18 @@ export const FEATURED_CATEGORIES = [
     subtitle: '了解糖尿病相关知识',
     tags: ['糖尿病类型', '常见症状'],
     bg: 'linear-gradient(135deg, #EAF8F4 0%, #E8F4FA 100%)'
+  },
+  {
+    title: '并发症预防',
+    subtitle: '关注眼、足、肾和心血管健康',
+    tags: ['足部护理', '定期检查'],
+    bg: 'linear-gradient(135deg, #FEF3E2 0%, #EAF8F4 100%)'
+  },
+  {
+    title: '控糖误区',
+    subtitle: '避开常见误解，建立长期习惯',
+    tags: ['无糖食品', '主食选择'],
+    bg: 'linear-gradient(135deg, #EEF2FE 0%, #DDF7E9 100%)'
   }
 ]
 
@@ -50,6 +62,51 @@ const CATEGORY_CODE_TO_LABEL = {
 const CATEGORY_LABEL_TO_CODE = Object.fromEntries(
   Object.entries(CATEGORY_CODE_TO_LABEL).map(([code, label]) => [label, code])
 )
+
+const CATEGORY_META = {
+  饮食指导: {
+    tags: ['控制碳水', '低糖饮食'],
+    bg: '#E5F6EE',
+    color: '#5BBF8A',
+    tagBg: '#EEF8F2',
+    tagColor: '#4A8A6A'
+  },
+  运动指南: {
+    tags: ['饭后散步', '有氧运动'],
+    bg: '#E4F3FB',
+    color: '#4FAAC4',
+    tagBg: '#EEF6FF',
+    tagColor: '#3A8AAC'
+  },
+  日常习惯: {
+    tags: ['规律作息', '避免久坐'],
+    bg: '#EDE8FC',
+    color: '#9B8FD4',
+    tagBg: '#F3EEFF',
+    tagColor: '#7A6DB8'
+  },
+  糖尿病科普: {
+    tags: ['指标解读', '风险认知'],
+    bg: '#E5F6EE',
+    color: '#5BBF8A',
+    tagBg: '#EEF8F2',
+    tagColor: '#4A8A6A'
+  },
+  并发症预防: {
+    tags: ['定期检查', '日常护理'],
+    bg: '#FEF3E2',
+    color: '#E8A840',
+    tagBg: '#FEF8EC',
+    tagColor: '#B8862A'
+  },
+  控糖误区: {
+    tags: ['控糖误区', '科学管理'],
+    bg: '#EEF2FE',
+    color: '#7A9BD4',
+    tagBg: '#EEF2FE',
+    tagColor: '#5A7BC4'
+  }
+}
 
 export const MOCK_ARTICLES = [
   {
@@ -181,9 +238,11 @@ function normalizeArticle(article, index = 0) {
 
   const rawCategory = article?.category ?? article?.category_code ?? fallback.category
   const displayCategory = CATEGORY_CODE_TO_LABEL[rawCategory] || rawCategory
+  const categoryMeta = CATEGORY_META[displayCategory] || fallback
 
   return {
     ...fallback,
+    ...categoryMeta,
     ...article,
     article_id: article?.article_id ?? article?.articleId ?? article?.id ?? fallback.article_id,
     category: displayCategory,
@@ -193,7 +252,21 @@ function normalizeArticle(article, index = 0) {
     is_recommended: article?.is_recommended ?? article?.isRecommended ?? fallback.is_recommended,
     created_at: article?.created_at ?? article?.createdAt ?? article?.createTime ?? fallback.created_at,
     updated_at: article?.updated_at ?? article?.updatedAt ?? article?.updateTime ?? fallback.updated_at,
-    tags: tags.length ? tags : fallback.tags
+    tags: tags.length ? tags : categoryMeta.tags
+  }
+}
+
+function normalizeHomeContent(item) {
+  return {
+    content_id: item?.content_id ?? item?.contentId ?? item?.id,
+    content_type: item?.content_type ?? item?.contentType,
+    title: item?.title || '健康管理',
+    subtitle: item?.subtitle || '',
+    image_url: item?.image_url ?? item?.imageUrl ?? '',
+    link_type: item?.link_type ?? item?.linkType ?? 'none',
+    link_value: item?.link_value ?? item?.linkValue ?? '',
+    sort_order: item?.sort_order ?? item?.sortOrder ?? 0,
+    status: item?.status || 'enabled'
   }
 }
 
@@ -217,10 +290,13 @@ export const useArticlesStore = defineStore('articles', {
     detail: null,
     loading: false,
     detailLoading: false,
+    homeLoading: false,
     error: '',
     detailError: '',
+    homeError: '',
     usingFallback: false,
-    favorites: []
+    favorites: [],
+    banners: []
   }),
   getters: {
     recommendedArticles: (state) => state.articles.filter((article) => article.is_recommended).slice(0, 4)
@@ -244,7 +320,7 @@ export const useArticlesStore = defineStore('articles', {
       try {
         const response = await listArticles({
           page: 1,
-          page_size: 20,
+          page_size: 60,
           ...params,
           category: toApiCategory(params.category)
         })
@@ -259,6 +335,24 @@ export const useArticlesStore = defineStore('articles', {
         this.loading = false
       }
       return this.articles
+    },
+    async fetchHomeContents() {
+      this.homeLoading = true
+      this.homeError = ''
+      try {
+        const response = await getHomeContents()
+        const data = unwrapResponse(response)
+        const banners = normalizeList(data?.banners || [])
+        this.banners = banners
+          .map(normalizeHomeContent)
+          .filter((item) => item.content_type === 'banner' && item.status === 'enabled')
+      } catch (error) {
+        this.homeError = resolveErrorMessage(error, '首页内容加载失败，请稍后重试')
+        this.banners = []
+      } finally {
+        this.homeLoading = false
+      }
+      return this.banners
     },
     async fetchArticleDetail(articleId) {
       this.detailLoading = true

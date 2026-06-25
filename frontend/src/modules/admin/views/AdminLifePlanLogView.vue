@@ -6,7 +6,7 @@
           <ArrowLeft :size="16" /> 返回生活方案记录
         </el-button>
         <h1 class="admin-page-title">方案生成日志</h1>
-        <p class="admin-page-desc">查看方案生成状态、输入摘要和失败原因；不暴露 Dify Key 或工作流配置。</p>
+        <p class="admin-page-desc">查看方案生成状态、输入摘要和失败原因，便于管理员排查生成记录。</p>
       </div>
       <el-button v-if="plan" plain @click="router.push(`/admin/life-plans/${plan.plan_id}`)">查看方案详情</el-button>
     </div>
@@ -84,7 +84,7 @@ const nodes = computed(() => {
   return [
     { name: '开始节点', desc: '接收管理员可查看的方案生成记录。', status: 'success' },
     { name: '读取用户上下文', desc: '后端根据 Token 和数据库读取健康档案、指标与风险评估。', status: failed ? 'failed' : 'success' },
-    { name: '生成生活方案', desc: '由后端统一调用 Dify 工作流，前端不直接调用。', status: failed ? 'failed' : running ? 'running' : 'success' },
+    { name: '生成生活方案', desc: '由后端智能分析服务统一生成，前端只展示生成结果。', status: failed ? 'failed' : running ? 'running' : 'success' },
     { name: '保存方案和打卡任务', desc: '写入 life_plans.plan_json 与 checkin_tasks_json。', status: failed ? 'failed' : 'success' },
     { name: '返回管理端展示', desc: '管理端仅查看记录、状态和失败原因。', status: failed ? 'failed' : 'success' }
   ]

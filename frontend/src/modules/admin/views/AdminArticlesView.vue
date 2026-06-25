@@ -3,7 +3,7 @@
     <div class="admin-page-header">
       <div>
         <h1 class="admin-page-title">健康资讯管理</h1>
-        <p class="admin-page-desc">维护用户端可见的糖尿病科普文章，不做 Dify 知识库管理。</p>
+        <p class="admin-page-desc">维护患者端可见的糖尿病科普文章、封面和推荐排序。</p>
       </div>
       <el-button class="admin-primary-btn" type="primary" @click="router.push('/admin/articles/create')">
         <Plus :size="16" /> 新增资讯
@@ -113,7 +113,7 @@
 
       <div class="admin-tip">
         <Info :size="16" />
-        <span>健康资讯模块仅管理用户端可见文章，不提供知识库上传、切片、向量化或召回参数配置。</span>
+        <span>上架后的文章会同步展示到患者端资讯列表和推荐内容中。</span>
       </div>
     </section>
 
@@ -137,7 +137,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { BookOpen, CheckCircle, FileText, Image as ImageIcon, Info, Plus, Search, Star } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { adminGetContentManagement, adminSaveArticle } from '@/api/admin'
+import { adminDeleteArticle, adminGetContentManagement, adminSaveArticle } from '@/api/admin'
 import { articleCategories } from '@/modules/admin/mockData'
 import { categoryLabel, resolveAdminError, statusLabel, unwrapPage } from '@/modules/admin/utils'
 import { resolveAssetUrl } from '@/utils/assets'
@@ -243,8 +243,12 @@ function removeArticle(article) {
     cancelButtonText: '取消',
     type: 'error'
   }).then(() => {
-    articles.value = articles.value.filter((item) => item.article_id !== article.article_id)
-    ElMessage.success('文章已删除')
+    adminDeleteArticle(article.article_id).then(() => {
+      articles.value = articles.value.filter((item) => item.article_id !== article.article_id)
+      ElMessage.success('文章已删除')
+    }).catch((error) => {
+      ElMessage.error(error?.response?.data?.message || '文章删除失败')
+    })
   }).catch(() => {})
 }
 

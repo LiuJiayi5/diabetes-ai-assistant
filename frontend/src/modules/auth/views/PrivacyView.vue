@@ -72,8 +72,8 @@ const privacySections = [
     title: 'AI 使用说明',
     icon: Bot,
     items: [
-      'Dify + DeepSeek 仅用于智能分析和问答场景',
-      '普通健康资讯模块不直接调用 Dify',
+      '智能分析服务仅用于健康评估、方案生成和问答场景',
+      '普通健康资讯内容由后台内容管理维护',
       'AI 生成内容仅供参考，不能作为诊断依据'
     ]
   }
