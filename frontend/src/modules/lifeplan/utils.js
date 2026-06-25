@@ -33,7 +33,7 @@ export function normalizePlan(plan) {
     goal: normalizeGoal(plan?.plan_goal || planJson?.plan_goal || planJson?.goal),
     summary: cleanText(
       plan?.summary || planJson?.summary || planJson?.risk_summary,
-      '根据健康档案、近期指标和风险评估生成，帮助你安排饮食、运动和日常控糖提醒。'
+      '本方案根据健康档案、近期指标和风险评估生成，帮助你安排饮食、运动和日常控糖提醒。'
     ),
     riskSummary: cleanText(planJson?.risk_summary || plan?.risk_level || ''),
     riskLevel: cleanText(plan?.risk_level || planJson?.risk_level || planJson?.risk_level_label || ''),
@@ -94,7 +94,7 @@ function extractScheduleDays(source) {
   if (candidate && candidate !== source) return extractScheduleDays(candidate)
 
   return Object.entries(source)
-    .filter(([key]) => /day|第|周|星期/i.test(key))
+    .filter(([key]) => /day|第|天|周|星期/i.test(key))
     .map(([key, value], index) => ({ ...(typeof value === 'object' && value ? value : { reminder: value }), title: key, day: index + 1 }))
 }
 

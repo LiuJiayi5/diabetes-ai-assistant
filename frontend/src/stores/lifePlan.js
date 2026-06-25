@@ -23,7 +23,7 @@ function resolveErrorMessage(error, fallback = '请求失败，请稍后重试')
   if (status === 401) return '登录已失效，请重新登录'
   if (status === 403) return '当前账号无权生成生活方案'
   if (status === 400) return '请先完善健康档案、健康数据和风险评估'
-  if (status === 502) return 'AI 方案生成失败，请稍后重试'
+  if (status === 502) return 'AI 方案暂时不可用，已保留当前可执行方案'
   if (status === 500) return '服务保存失败，请稍后重试'
   if (message && !/exception|stack|dify|sql|\/api|http/i.test(message)) return message
   return fallback
@@ -141,6 +141,11 @@ export const useLifePlanStore = defineStore('lifePlan', {
         return plan
       } catch (error) {
         this.generateError = resolveErrorMessage(error, '生活方案生成失败，请稍后重试')
+        try {
+          await this.fetchLifePlans()
+        } catch {
+          // 页面保留正式错误态，避免暴露底层接口信息。
+        }
         throw error
       } finally {
         this.generating = false

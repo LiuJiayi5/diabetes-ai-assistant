@@ -1,20 +1,30 @@
 import axios from 'axios'
-import { getToken, removeToken } from '@/utils/token'
+import { getTokenForRequest, removeToken, resolveSessionScope } from '@/utils/token'
 
 const ADMIN_LOGIN_PATH = '/admin/login'
+const PATIENT_LOGIN_PATH = '/login'
 
-function isAdminRequest(error) {
-  const requestUrl = error?.config?.url || ''
+function requestScope(configOrError) {
+  const requestUrl = configOrError?.config?.url || configOrError?.url || ''
   const pagePath = window.location?.pathname || ''
-  return requestUrl.includes('/admin/') || pagePath.startsWith('/admin')
+  return resolveSessionScope(requestUrl || pagePath)
 }
 
 function clearInvalidSession(error) {
-  removeToken()
-  localStorage.removeItem('diabetes_admin_user')
-  if (isAdminRequest(error) && window.location.pathname !== ADMIN_LOGIN_PATH) {
-    const redirect = `${window.location.pathname}${window.location.search || ''}`
-    window.location.href = `${ADMIN_LOGIN_PATH}?redirect=${encodeURIComponent(redirect)}`
+  const scope = requestScope(error)
+  removeToken(scope)
+
+  if (scope === 'admin') {
+    localStorage.removeItem('diabetes_admin_user')
+    if (window.location.pathname.startsWith('/admin') && window.location.pathname !== ADMIN_LOGIN_PATH) {
+      const redirect = `${window.location.pathname}${window.location.search || ''}`
+      window.location.href = `${ADMIN_LOGIN_PATH}?redirect=${encodeURIComponent(redirect)}`
+    }
+    return
+  }
+
+  if (window.location.pathname.startsWith('/app')) {
+    window.location.href = PATIENT_LOGIN_PATH
   }
 }
 
@@ -24,7 +34,7 @@ const request = axios.create({
 })
 
 request.interceptors.request.use((config) => {
-  const token = getToken()
+  const token = getTokenForRequest(config.url)
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }

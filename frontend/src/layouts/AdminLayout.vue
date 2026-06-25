@@ -129,7 +129,7 @@ function logout() {
     cancelButtonText: '取消',
     type: 'warning'
   }).then(() => {
-    authStore.clearSession()
+    authStore.clearSession('admin')
     localStorage.removeItem('diabetes_admin_user')
     router.push('/admin/login')
   }).catch(() => {})
@@ -146,6 +146,8 @@ function logout() {
 }
 
 .admin-sidebar {
+  position: sticky;
+  top: 0;
   height: 100vh;
   display: flex;
   flex-direction: column;

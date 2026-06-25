@@ -11,7 +11,7 @@
             </div>
           </div>
           <h1>健康数据<br />安全运营平台</h1>
-          <p>为患者提供专业的糖尿病预防与治疗辅助，帮助管理员高效管理用户和健康内容。</p>
+          <p>为患者提供专业的糖尿病预防与治疗辅助，帮助管理员高效管理用户、内容和健康数据。</p>
         </div>
 
         <div class="admin-feature-list">
@@ -50,7 +50,7 @@
             登录管理端
           </el-button>
 
-          <div class="admin-login-note">仅限授权管理员使用 · 请勿分享账号信息</div>
+          <div class="admin-login-note">仅限授权管理员使用 · 请勿共享账号信息</div>
         </div>
       </form>
     </section>
@@ -79,7 +79,7 @@ const form = reactive({
 const features = [
   { title: '用户管理', desc: '患者账号维护与状态管理', icon: User },
   { title: '数据安全', desc: '健康数据安全运营管理', icon: Shield },
-  { title: '数据概览', desc: '实时账号状态统计分析', icon: Activity }
+  { title: '数据概览', desc: '实时账号状态和统计分析', icon: Activity }
 ]
 
 async function handleLogin() {
@@ -96,12 +96,12 @@ async function handleLogin() {
     })
 
     if (session?.user?.role !== 'admin') {
-      authStore.clearSession()
+      authStore.clearSession('admin')
       ElMessage.error('当前账号不是管理员')
       return
     }
 
-    authStore.setSession(session)
+    authStore.setSession({ ...session, role: 'admin' })
     localStorage.setItem('diabetes_admin_user', JSON.stringify(session.user))
     ElMessage.success('登录成功')
     router.push('/admin/dashboard')

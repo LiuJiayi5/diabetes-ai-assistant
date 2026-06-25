@@ -24,12 +24,10 @@
         <section v-if="currentPlan" class="summary-card">
           <div class="summary-card__glow summary-card__glow--green" />
           <div class="summary-card__glow summary-card__glow--blue" />
-          <div class="summary-card__head">
-            <div class="summary-card__title">
-              <h2>{{ currentPlan.title }}</h2>
-              <p>{{ currentPlan.summary }}</p>
-            </div>
-            <span class="risk-pill" :class="riskMeta.className">{{ riskMeta.label }}</span>
+          <span class="risk-pill summary-card__risk" :class="riskMeta.className">{{ riskMeta.label }}</span>
+          <div class="summary-card__title">
+            <h2>{{ currentPlan.title }}</h2>
+            <p>{{ currentPlan.summary }}</p>
           </div>
           <div class="tag-row">
             <span>{{ currentPlan.goal }}</span>
@@ -275,21 +273,23 @@ function selectCard(day, item, group) {
   }
 }
 
-function openGenerateDialog() {
+function ensureLoggedIn() {
+  authStore.restoreSession('patient')
   if (!authStore.isLoggedIn) {
     showToast('请先登录后再生成生活方案')
     router.push('/login')
-    return
+    return false
   }
+  return true
+}
+
+function openGenerateDialog() {
+  if (!ensureLoggedIn()) return
   showGenerateDialog.value = true
 }
 
 async function regeneratePlan() {
-  if (!authStore.isLoggedIn) {
-    showToast('请先登录后再生成生活方案')
-    router.push('/login')
-    return
-  }
+  if (!ensureLoggedIn()) return
 
   try {
     selectedCard.value = null

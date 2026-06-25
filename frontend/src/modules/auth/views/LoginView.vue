@@ -46,7 +46,7 @@
           </div>
 
           <button class="submit-button" type="submit" :disabled="submitting">
-            {{ submitting ? '登录中…' : '登录' }}
+            {{ submitting ? '登录中...' : '登录' }}
           </button>
         </form>
 
@@ -54,7 +54,6 @@
           <span>还没有账号？</span>
           <button type="button" @click="router.push('/register')">立即注册</button>
         </div>
-
       </div>
     </section>
   </MobileShell>
@@ -96,7 +95,7 @@ async function handleLogin() {
     })
     if (isAdmin.value && session.user?.role !== 'admin') {
       showToast('当前账号不是管理员')
-      authStore.clearSession()
+      authStore.clearSession('admin')
       return
     }
     authStore.setSession(session)

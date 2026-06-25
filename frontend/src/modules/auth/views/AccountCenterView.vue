@@ -108,6 +108,7 @@ import {
 import { getCurrentUser } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
 import { resolveAvatarUrl, useDefaultAvatar } from '@/utils/assets'
+import { decodeTokenPayload, getToken } from '@/utils/token'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -148,9 +149,22 @@ const settingsItems = [
 ]
 
 onMounted(async () => {
-  if (authStore.token) {
+  const patientToken = getToken('patient')
+  const payload = decodeTokenPayload(patientToken)
+  if (!patientToken || payload?.role === 'admin') {
+    authStore.clearSession('patient')
+    router.push('/login')
+    return
+  }
+
+  authStore.restoreSession('patient')
+  try {
     const user = await getCurrentUser()
     authStore.setUser(user)
+  } catch {
+    showToast('登录状态已失效，请重新登录')
+    authStore.clearSession('patient')
+    router.push('/login')
   }
 })
 
@@ -163,7 +177,7 @@ function handleRecordClick(item) {
 }
 
 function confirmLogout() {
-  authStore.clearSession()
+  authStore.clearSession('patient')
   showLogoutDialog.value = false
   showToast('已退出登录')
   router.push('/login')

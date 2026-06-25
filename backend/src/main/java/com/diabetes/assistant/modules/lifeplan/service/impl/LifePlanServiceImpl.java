@@ -93,8 +93,18 @@ public class LifePlanServiceImpl implements LifePlanService, LifePlanQueryApi {
         try {
             result = difyService.callLifePlan(buildDifyInputs(userId, inputSummary), "user-" + userId);
         } catch (BusinessException exception) {
-            saveFailedPlanInTransaction(userId, profile, metric, assessment, planGoal, inputSummary, exception.getMessage());
-            throw exception;
+            Map<String, Object> fallbackPlan = buildFallbackPlan(profile, metric, assessment, planGoal, planDays, exception.getMessage());
+            return transactionTemplate.execute(status -> saveSuccessfulPlan(
+                    userId,
+                    profile,
+                    metric,
+                    assessment,
+                    planGoal,
+                    inputSummary,
+                    fallbackPlan,
+                    fallbackPlan.getOrDefault("checkin_tasks", List.of()),
+                    "AI 服务暂时不可用，系统已根据当前健康档案生成本地可执行方案。"
+            ));
         }
 
         return handleDifyOutputs(userId, profile, metric, assessment, planGoal, inputSummary, result.getOutputs());
@@ -355,6 +365,76 @@ public class LifePlanServiceImpl implements LifePlanService, LifePlanQueryApi {
         inputs.put("avoid_items", toJson(inputSummary.get("avoid_items")));
         inputs.put("plan_days", String.valueOf(inputSummary.get("plan_days")));
         return inputs;
+    }
+
+    private Map<String, Object> buildFallbackPlan(PatientProfileSnapshot profile, HealthMetricSnapshot metric,
+                                                  RiskAssessmentSnapshot assessment, String planGoal,
+                                                  int planDays, String reason) {
+        Map<String, Object> plan = new LinkedHashMap<>();
+        String riskLevel = assessment == null ? "中风险" : asString(assessment.getRiskLevel());
+        plan.put("plan_title", "个性化控糖生活方案");
+        plan.put("plan_goal", planGoal);
+        plan.put("risk_level", StringUtils.hasText(riskLevel) ? riskLevel : "中风险");
+        plan.put("summary", buildFallbackSummary(profile, metric, riskLevel));
+        plan.put("diet_plan", Map.of(
+                "principle", "按餐盘法搭配蔬菜、适量主食和优质蛋白，减少含糖饮料和高油菜品。",
+                "staple", "主食定量，优先选择全谷物、杂豆、燕麦或杂粮饭。",
+                "snack", "两餐之间如需加餐，选择无糖酸奶、少量坚果或小份低糖水果。"
+        ));
+        plan.put("exercise_plan", Map.of(
+                "principle", "以餐后轻运动、规律有氧和轻抗阻训练为主，循序渐进。",
+                "notice", "运动前后注意补水和足部保护，如出现明显不适应停止并就医。"
+        ));
+        plan.put("work_rest_plan", "保持规律睡眠，减少久坐，记录空腹和餐后血糖变化。");
+        plan.put("daily_schedule", buildFallbackSchedule(planDays));
+        plan.put("health_tips", List.of(
+                "本方案用于日常健康管理参考，不能替代线下诊疗。",
+                "如血糖明显异常、胸闷头晕或身体不适，请及时咨询线下医生。",
+                StringUtils.hasText(reason) ? "AI 服务暂时不可用，已生成本地结构化方案供当前使用。" : "请结合个人感受灵活调整执行强度。"
+        ));
+        plan.put("checkin_tasks", buildFallbackCheckinTasks());
+        plan.put("medical_warning", "如血糖明显异常、身体不适或需要调整用药，请及时咨询线下医生。");
+        return plan;
+    }
+
+    private String buildFallbackSummary(PatientProfileSnapshot profile, HealthMetricSnapshot metric, String riskLevel) {
+        String risk = StringUtils.hasText(riskLevel) ? riskLevel : "中风险";
+        String glucose = metric == null || metric.getFastingGlucose() == null ? "近期血糖指标" : "空腹血糖 " + metric.getFastingGlucose() + " mmol/L";
+        String family = profile != null && StringUtils.hasText(profile.getFamilyHistory()) ? "、有家族史" : "";
+        return "本方案结合" + glucose + family + "和风险评估结果，建议通过饮食结构调整、餐后轻运动、规律作息和每日记录来辅助控糖。方案为期7天，每天包含饮食、运动和提醒任务，请结合自身感受灵活执行。";
+    }
+
+    private List<Map<String, Object>> buildFallbackSchedule(int planDays) {
+        int days = Math.max(1, Math.min(planDays, 7));
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (int i = 1; i <= days; i++) {
+            Map<String, Object> day = new LinkedHashMap<>();
+            day.put("day", i);
+            day.put("title", "第 " + i + " 天");
+            day.put("meals", Map.of(
+                    "breakfast", i % 2 == 0 ? "燕麦或全麦面包搭配鸡蛋、牛奶或豆制品，避免甜饮料。" : "杂粮粥搭配鸡蛋和少量蔬菜，主食保持定量。",
+                    "lunch", "半盘非淀粉蔬菜，搭配适量全谷物主食和鱼禽蛋豆等优质蛋白。",
+                    "dinner", "晚餐清淡少油，增加绿叶菜和豆制品，主食比午餐略少。",
+                    "snack", "两餐之间如饥饿，可选择无糖酸奶、少量坚果或小份低糖水果。"
+            ));
+            day.put("exercise_plan", Map.of(
+                    "light", "餐后休息片刻后散步 10-20 分钟，保持能轻松说话的强度。",
+                    "aerobic", "选择快走、骑车或轻慢跑等有氧活动 20-30 分钟。",
+                    "resistance", "用弹力带、靠墙俯卧撑或坐站练习做轻抗阻训练 10-15 分钟。",
+                    "notice", "运动前后注意补水和鞋袜舒适，如出现明显不适应立即停止。"
+            ));
+            day.put("reminder", "记录空腹和餐后血糖，减少久坐，晚间尽量固定时间入睡。");
+            result.add(day);
+        }
+        return result;
+    }
+
+    private List<Map<String, Object>> buildFallbackCheckinTasks() {
+        return List.of(
+                Map.of("task_type", "diet", "task_name", "完成今日饮食建议", "time", "全天"),
+                Map.of("task_type", "exercise", "task_name", "完成餐后轻运动", "time", "餐后"),
+                Map.of("task_type", "reminder", "task_name", "记录血糖和身体感受", "time", "晚间")
+        );
     }
 
     private Map<String, Object> toProfileMap(PatientProfileSnapshot profile) {
