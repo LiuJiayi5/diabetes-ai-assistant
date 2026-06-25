@@ -1,7 +1,7 @@
 import request from './request'
 
 export function getHomeContents() {
-  return request.get('/content/entry')
+  return request.get('/home')
 }
 
 export function listArticles(params) {
@@ -13,5 +13,5 @@ export function getArticleDetail(articleId) {
 }
 
 export function getArticleCategories() {
-  return request.get('/articles/categories')
+  return Promise.resolve([])
 }

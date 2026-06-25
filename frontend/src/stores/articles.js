@@ -38,6 +38,19 @@ export const FEATURED_CATEGORIES = [
   }
 ]
 
+const CATEGORY_CODE_TO_LABEL = {
+  diet: ARTICLE_CATEGORIES[1],
+  exercise: ARTICLE_CATEGORIES[2],
+  habit: ARTICLE_CATEGORIES[3],
+  science: ARTICLE_CATEGORIES[4],
+  complication: ARTICLE_CATEGORIES[5],
+  mistake: ARTICLE_CATEGORIES[6]
+}
+
+const CATEGORY_LABEL_TO_CODE = Object.fromEntries(
+  Object.entries(CATEGORY_CODE_TO_LABEL).map(([code, label]) => [label, code])
+)
+
 export const MOCK_ARTICLES = [
   {
     article_id: 1,
@@ -166,10 +179,15 @@ function normalizeArticle(article, index = 0) {
       .map((tag) => tag.trim())
       .filter(Boolean)
 
+  const rawCategory = article?.category ?? article?.category_code ?? fallback.category
+  const displayCategory = CATEGORY_CODE_TO_LABEL[rawCategory] || rawCategory
+
   return {
     ...fallback,
     ...article,
     article_id: article?.article_id ?? article?.articleId ?? article?.id ?? fallback.article_id,
+    category: displayCategory,
+    category_code: CATEGORY_LABEL_TO_CODE[displayCategory] || rawCategory,
     cover_image: article?.cover_image ?? article?.coverImage ?? article?.imageUrl ?? '',
     view_count: article?.view_count ?? article?.viewCount ?? fallback.view_count,
     is_recommended: article?.is_recommended ?? article?.isRecommended ?? fallback.is_recommended,
@@ -185,6 +203,11 @@ function isPublished(article) {
 
 function resolveErrorMessage(error, fallback = '健康资讯加载失败，请稍后重试') {
   return error?.response?.data?.message || error?.response?.data?.error || error?.message || fallback
+}
+
+function toApiCategory(category) {
+  if (!category || category === '全部') return undefined
+  return CATEGORY_LABEL_TO_CODE[category] || category
 }
 
 export const useArticlesStore = defineStore('articles', {
@@ -207,7 +230,9 @@ export const useArticlesStore = defineStore('articles', {
       try {
         const response = await getArticleCategories()
         const list = normalizeList(response)
-        this.categories = ['全部', ...list.filter((item) => item && item !== '全部')]
+        this.categories = list.length
+          ? ['全部', ...list.filter((item) => item && item !== '全部')]
+          : ARTICLE_CATEGORIES
       } catch (error) {
         this.categories = ARTICLE_CATEGORIES
       }
@@ -220,7 +245,8 @@ export const useArticlesStore = defineStore('articles', {
         const response = await listArticles({
           page: 1,
           page_size: 20,
-          ...params
+          ...params,
+          category: toApiCategory(params.category)
         })
         const list = normalizeList(response)
         this.articles = list.map(normalizeArticle).filter(isPublished)

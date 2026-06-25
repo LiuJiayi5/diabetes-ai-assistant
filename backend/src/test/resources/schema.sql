@@ -97,3 +97,35 @@ CREATE TABLE life_plans (
     update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (plan_id)
 );
+
+CREATE TABLE articles (
+    article_id INT NOT NULL AUTO_INCREMENT,
+    title VARCHAR(100) NOT NULL,
+    category VARCHAR(32) NOT NULL,
+    cover_image VARCHAR(255) DEFAULT NULL,
+    summary VARCHAR(255) DEFAULT NULL,
+    content TEXT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'draft',
+    view_count INT NOT NULL DEFAULT 0,
+    is_recommended TINYINT NOT NULL DEFAULT 0,
+    sort_order INT DEFAULT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (article_id)
+);
+
+CREATE TABLE home_contents (
+    content_id INT NOT NULL AUTO_INCREMENT,
+    content_type VARCHAR(32) NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    subtitle VARCHAR(255) DEFAULT NULL,
+    image_url VARCHAR(255) DEFAULT NULL,
+    link_type VARCHAR(32) NOT NULL DEFAULT 'none',
+    link_value VARCHAR(100) DEFAULT NULL,
+    sort_order INT DEFAULT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'enabled',
+    created_by INT DEFAULT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (content_id)
+);
