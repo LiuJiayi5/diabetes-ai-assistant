@@ -2,7 +2,7 @@
   <div v-if="show" class="plan-dialog-overlay" @click.self="$emit('close')">
     <section class="plan-dialog">
       <header>
-        <h2>生成生活方案</h2>
+        <h2>调整方案</h2>
         <button type="button" @click="$emit('close')">
           <X />
         </button>
@@ -51,18 +51,18 @@
 
       <button class="plan-dialog__submit" type="button" :disabled="generating" @click="submit">
         <LoaderCircle v-if="generating" class="spin" />
-        {{ generating ? '生成中' : '生成方案' }}
+        {{ generating ? '生成中' : '保存并生成' }}
       </button>
     </section>
   </div>
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { reactive, ref, watch } from 'vue'
 import { showToast } from 'vant'
 import { LoaderCircle, X } from 'lucide-vue-next'
 
-defineProps({
+const props = defineProps({
   show: {
     type: Boolean,
     default: false
@@ -74,6 +74,10 @@ defineProps({
   error: {
     type: String,
     default: ''
+  },
+  initialValue: {
+    type: Object,
+    default: () => ({})
   }
 })
 
@@ -86,6 +90,18 @@ const form = reactive({
   avoid_items: [],
   plan_days: 7
 })
+
+watch(
+  () => props.show,
+  (show) => {
+    if (!show) return
+    form.plan_goal = props.initialValue?.plan_goal || '控糖和减重'
+    form.avoid_items = Array.isArray(props.initialValue?.avoid_items) ? [...props.initialValue.avoid_items] : []
+    form.plan_days = props.initialValue?.plan_days ?? 7
+    avoidInput.value = ''
+  },
+  { immediate: true }
+)
 
 function addAvoidItem() {
   const value = avoidInput.value.trim()
@@ -110,7 +126,7 @@ function submit() {
   emit('submit', {
     plan_goal: form.plan_goal,
     avoid_items: [...form.avoid_items],
-    plan_days: 7
+    plan_days: form.plan_days || 7
   })
 }
 </script>

@@ -41,20 +41,28 @@
               <Clock />
               {{ formatPlanTime(currentPlan.update_time || currentPlan.create_time) }} 更新
             </span>
-            <button type="button" class="regenerate-button" :disabled="lifePlanStore.generating" @click="openGenerateDialog">
+            <button type="button" class="regenerate-button" :disabled="lifePlanStore.generating" @click="regeneratePlan">
               <RefreshCw :class="{ spin: lifePlanStore.generating }" />
-              {{ lifePlanStore.generating ? '生成中' : '重新生成方案' }}
+              {{ lifePlanStore.generating ? '正在生成方案…' : '重新生成方案' }}
             </button>
           </div>
         </section>
 
-        <section v-else class="empty-card">
+        <section v-if="currentPlan && lifePlanStore.generating" class="generating-notice">
+          <LoaderCircle class="spin" />
+          <span>正在生成新方案，完成后会自动刷新当前内容</span>
+        </section>
+
+        <section v-if="!currentPlan" class="empty-card">
           <span class="empty-card__icon">
             <FileText />
           </span>
           <h2>暂未生成方案</h2>
           <p>完善健康档案、健康指标和风险评估后，可以生成个性化控糖生活方案。</p>
-          <button type="button" class="regenerate-button" @click="openGenerateDialog">立即生成</button>
+          <button type="button" class="regenerate-button" :disabled="lifePlanStore.generating" @click="regeneratePlan">
+            <LoaderCircle v-if="lifePlanStore.generating" class="spin" />
+            {{ lifePlanStore.generating ? '正在生成方案…' : '立即生成' }}
+          </button>
         </section>
 
         <button type="button" class="history-entry" @click="router.push('/app/life-plan/history')">
@@ -119,6 +127,7 @@
       :show="showGenerateDialog"
       :generating="lifePlanStore.generating"
       :error="lifePlanStore.generateError"
+      :initial-value="lifePlanStore.currentGenerateOptions"
       @close="showGenerateDialog = false"
       @submit="submitGenerate"
     />
@@ -203,10 +212,25 @@ function openGenerateDialog() {
   showGenerateDialog.value = true
 }
 
+async function regeneratePlan() {
+  if (!authStore.isLoggedIn) {
+    showToast('请先登录后再生成生活方案')
+    router.push('/login')
+    return
+  }
+
+  try {
+    await lifePlanStore.generateLifePlan(lifePlanStore.currentGenerateOptions)
+    expandedWeek.value = false
+    showToast('生活方案已更新')
+  } catch {
+    showToast(lifePlanStore.generateError || '方案生成失败，请稍后重试')
+  }
+}
+
 async function submitGenerate(payload) {
   try {
     await lifePlanStore.generateLifePlan(payload)
-    await lifePlanStore.fetchCurrentPlan()
     expandedWeek.value = false
     showGenerateDialog.value = false
     showToast('生活方案已更新')

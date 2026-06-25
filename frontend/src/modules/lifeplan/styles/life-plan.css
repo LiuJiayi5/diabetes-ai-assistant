@@ -216,6 +216,25 @@
   opacity: 0.72;
 }
 
+.generating-notice {
+  margin-top: 12px;
+  min-height: 44px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 18px;
+  background: rgba(174, 232, 199, 0.28);
+  color: #4A8A6A;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.generating-notice svg {
+  width: 15px;
+  height: 15px;
+}
+
 .history-entry {
   width: 100%;
   min-height: 72px;
@@ -317,21 +336,21 @@
 
 .plan-item-card {
   width: 100%;
-  min-height: 102px;
-  margin-top: 12px;
-  padding: 18px 16px;
+  min-height: 88px;
+  margin-top: 10px;
+  padding: 14px 14px;
   display: grid;
-  grid-template-columns: 48px 1fr auto;
-  align-items: start;
-  gap: 14px;
+  grid-template-columns: 38px minmax(0, 1fr) minmax(48px, auto);
+  align-items: center;
+  gap: 10px;
   border-radius: 22px;
   background: #FFFFFF;
   text-align: left;
 }
 
 .plan-item-card__icon {
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -339,8 +358,8 @@
 }
 
 .plan-item-card__icon svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 .plan-item-card__content {
@@ -349,25 +368,31 @@
 
 .plan-item-card__content strong {
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   color: var(--figma-text-strong);
   font-size: 15px;
   font-weight: 700;
 }
 
 .plan-item-card__content span {
-  display: block;
+  display: -webkit-box;
+  overflow: hidden;
   color: var(--figma-text-muted);
   font-size: 13px;
-  line-height: 1.7;
+  line-height: 1.55;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .plan-item-card__side {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 48px;
   color: var(--figma-text-faint);
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .plan-item-card__side svg {
@@ -446,10 +471,14 @@
 
 .day-plan-block {
   display: grid;
-  grid-template-columns: 38px 1fr;
-  gap: 12px;
-  padding: 12px 0;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px 0;
   border-top: 1px solid rgba(120, 160, 150, 0.08);
+}
+
+.day-plan-block > div {
+  min-width: 0;
 }
 
 .day-plan-block:first-of-type {
@@ -458,8 +487,8 @@
 }
 
 .day-plan-block > span {
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -467,8 +496,8 @@
 }
 
 .day-plan-block svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
 }
 
 .day-plan-block--diet > span {
@@ -495,9 +524,13 @@
 
 .day-plan-block p {
   margin: 4px 0 0;
+  display: -webkit-box;
+  overflow: hidden;
   color: var(--figma-text-muted);
   font-size: 12px;
-  line-height: 1.7;
+  line-height: 1.6;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
 }
 
 .reminder-card h2,
@@ -675,15 +708,17 @@
   inset: 0;
   z-index: 2200;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 24px 20px calc(88px + env(safe-area-inset-bottom));
   background: rgba(36, 50, 61, 0.28);
   backdrop-filter: blur(6px);
 }
 
 .plan-dialog {
   width: min(350px, 100%);
+  max-height: min(620px, calc(100vh - 140px - env(safe-area-inset-bottom)));
+  overflow-y: auto;
   padding: 20px;
   border-radius: 28px;
   background: #FFFFFF;
