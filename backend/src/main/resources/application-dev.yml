@@ -14,7 +14,7 @@ dify:
   base-url: ${DIFY_BASE_URL:http://127.0.0.1:8098/v1}
   risk-predict-api-key: ${DIFY_RISK_PREDICT_API_KEY:your_risk_predict_api_key}
   ai-doctor-api-key: ${DIFY_AI_DOCTOR_API_KEY:your_ai_doctor_api_key}
-  life-plan-api-key: ${DIFY_LIFE_PLAN_API_KEY:app-cDpIHwcehRoz5olCMybwyPzb}
+  life-plan-api-key: ${DIFY_LIFE_PLAN_API_KEY:}
   checkin-analysis-api-key: ${DIFY_CHECKIN_ANALYSIS_API_KEY:your_checkin_analysis_api_key}
 
 jwt:
