@@ -451,15 +451,29 @@
   font-size: 11px;
 }
 
-.week-toggle-button {
-  flex-shrink: 0;
-  min-height: 34px;
-  padding: 0 12px;
+.day-switch-row {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.day-switch-button {
+  height: 36px;
   border-radius: 999px;
-  background: rgba(174, 232, 199, 0.30);
-  color: #4A8A6A;
-  font-size: 12px;
-  font-weight: 600;
+  background: var(--day-bg);
+  color: var(--day-color);
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 8px 18px rgba(74, 138, 106, 0.08);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease, color 0.18s ease;
+}
+
+.day-switch-button.is-active {
+  background: var(--day-color);
+  color: #FFFFFF;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(74, 138, 106, 0.18);
 }
 
 .day-plan-list {

@@ -27,7 +27,8 @@
           <ImageUploader
             v-model="form.avatar"
             title="上传管理员头像"
-            hint="点击选择或拖拽头像图片，支持 JPG、PNG、WEBP，最大 5MB"
+            hint="点击选择或拖拽头像图片，可拖动调整显示位置"
+            avatar-crop
             @error="ElMessage.error"
           />
         </section>

@@ -74,11 +74,22 @@
         <template v-if="currentPlan">
           <div class="week-title-row">
             <div>
-              <h2>{{ expandedWeek ? '一周安排' : '第 1 天重点' }}</h2>
-              <p>{{ expandedWeek ? '按天查看饮食、运动和控糖提醒' : '首屏先聚焦今天的具体执行卡片' }}</p>
+              <h2>第 {{ selectedDayIndex + 1 }} 天安排</h2>
+              <p>点击数字切换一周内每天的饮食、运动和控糖提醒</p>
             </div>
-            <button type="button" class="week-toggle-button" @click="toggleWeek">
-              {{ expandedWeek ? '收起一周安排' : '展开一周安排' }}
+          </div>
+
+          <div class="day-switch-row" aria-label="选择一周安排日期">
+            <button
+              v-for="day in daySwitchButtons"
+              :key="day.index"
+              type="button"
+              class="day-switch-button"
+              :class="{ 'is-active': selectedDayIndex === day.index }"
+              :style="{ '--day-color': day.color, '--day-bg': day.bg }"
+              @click="selectDay(day.index)"
+            >
+              {{ day.label }}
             </button>
           </div>
 
@@ -145,7 +156,7 @@
 </template>
 
 <script setup>
-import { computed, defineComponent, h, onMounted, ref } from 'vue'
+import { computed, defineComponent, h, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import {
@@ -224,13 +235,33 @@ const router = useRouter()
 const authStore = useAuthStore()
 const lifePlanStore = useLifePlanStore()
 const showGenerateDialog = ref(false)
-const expandedWeek = ref(false)
+const selectedDayIndex = ref(0)
 const selectedCard = ref(null)
 
 const currentPlan = computed(() => lifePlanStore.currentPlan ? normalizePlan(lifePlanStore.currentPlan) : null)
 const riskMeta = computed(() => getRiskMeta(currentPlan.value))
 const dayCards = computed(() => currentPlan.value?.dailySchedule?.length ? currentPlan.value.dailySchedule : [])
-const visibleDays = computed(() => expandedWeek.value ? dayCards.value.slice(0, 7) : dayCards.value.slice(0, 1))
+const visibleDays = computed(() => {
+  const selected = dayCards.value[selectedDayIndex.value] || dayCards.value[0]
+  return selected ? [selected] : []
+})
+const daySwitchButtons = computed(() => {
+  const palette = [
+    ['#4A8A6A', '#DFF5E7'],
+    ['#3D8BA6', '#E4F3FB'],
+    ['#B8862A', '#FEF3E2'],
+    ['#7A6AC9', '#EEEAFB'],
+    ['#D06B7A', '#FCE8EC'],
+    ['#4E8F88', '#E0F3EF'],
+    ['#7A9BD4', '#E8EEF9']
+  ]
+  return Array.from({ length: 7 }, (_, index) => ({
+    index,
+    label: String(index + 1),
+    color: palette[index][0],
+    bg: palette[index][1]
+  }))
+})
 
 const reminderTips = computed(() => {
   const tips = currentPlan.value?.healthTips || []
@@ -242,6 +273,12 @@ const reminderTips = computed(() => {
 })
 
 onMounted(loadCurrentPlan)
+
+watch(dayCards, (days) => {
+  if (!days.length || selectedDayIndex.value >= days.length) {
+    selectedDayIndex.value = 0
+  }
+})
 
 async function loadCurrentPlan() {
   try {
@@ -259,8 +296,8 @@ function decorateExerciseCards(day) {
   return day.exerciseCards.map((item) => ({ ...item, ...(cardMeta[item.key] || cardMeta.aerobic) }))
 }
 
-function toggleWeek() {
-  expandedWeek.value = !expandedWeek.value
+function selectDay(index) {
+  selectedDayIndex.value = Math.min(index, Math.max(dayCards.value.length - 1, 0))
   selectedCard.value = null
 }
 
@@ -294,7 +331,7 @@ async function regeneratePlan() {
   try {
     selectedCard.value = null
     await lifePlanStore.generateLifePlan(lifePlanStore.currentGenerateOptions)
-    expandedWeek.value = false
+    selectedDayIndex.value = 0
     showToast('生活方案已更新')
   } catch {
     showToast(lifePlanStore.generateError || '方案生成失败，请稍后重试')
@@ -305,7 +342,7 @@ async function submitGenerate(payload) {
   try {
     selectedCard.value = null
     await lifePlanStore.generateLifePlan(payload)
-    expandedWeek.value = false
+    selectedDayIndex.value = 0
     showGenerateDialog.value = false
     showToast('生活方案已更新')
   } catch {
