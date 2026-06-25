@@ -31,7 +31,7 @@
 
       <div v-if="uploading" class="image-uploader__mask">
         <LoaderCircle class="image-uploader__spin" />
-        <span>上传中</span>
+        <span>上传中...</span>
       </div>
     </div>
 
@@ -115,6 +115,7 @@ async function upload(file) {
     emit('uploaded', result)
     revokeLocalPreview()
   } catch (error) {
+    revokeLocalPreview()
     errorMessage.value = error?.response?.data?.message || '图片上传失败，请稍后重试'
     emit('error', errorMessage.value)
   } finally {
