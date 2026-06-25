@@ -12,12 +12,12 @@ export function register(payload) {
   return request.post('/auth/register', payload).then(unwrap)
 }
 
-export function getCurrentUser() {
-  return request.get('/user/me').then(unwrap)
+export function getCurrentUser(scope = 'patient') {
+  return request.get('/user/me', { sessionScope: scope }).then(unwrap)
 }
 
-export function updateCurrentUser(payload) {
-  return request.put('/user/me', payload).then(unwrap)
+export function updateCurrentUser(payload, scope = 'patient') {
+  return request.put('/user/me', payload, { sessionScope: scope }).then(unwrap)
 }
 
 export function adminListUsers(params) {

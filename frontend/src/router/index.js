@@ -16,12 +16,15 @@ router.beforeEach((to) => {
   }
 
   if (to.path.startsWith('/app')) {
-    authStore.restoreSession('patient')
+    const token = authStore.restoreSession('patient')
     const payload = decodeTokenPayload(getToken('patient'))
-    if (payload?.role === 'admin') {
+    if (!token || payload?.role !== 'patient') {
       removeToken('patient')
       authStore.clearSession('patient')
       return { path: '/login' }
+    }
+    if (authStore.user?.role === 'admin') {
+      authStore.setUser(null)
     }
   }
 
@@ -45,12 +48,16 @@ function guardAdmin(to, authStore) {
     }
   }
 
+  if (authStore.user?.role && authStore.user.role !== 'admin') {
+    authStore.setUser(null)
+  }
+
   const storedAdmin = localStorage.getItem('diabetes_admin_user')
-  if (!authStore.user && storedAdmin) {
+  if (storedAdmin) {
     try {
       const parsed = JSON.parse(storedAdmin)
       if (parsed?.role === 'admin') {
-        authStore.setUser(parsed)
+        authStore.setUser(parsed, 'admin')
       } else {
         localStorage.removeItem('diabetes_admin_user')
       }
@@ -59,7 +66,6 @@ function guardAdmin(to, authStore) {
     }
   }
 
-  authStore.role = 'admin'
   return true
 }
 

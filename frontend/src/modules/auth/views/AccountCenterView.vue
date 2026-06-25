@@ -159,8 +159,8 @@ onMounted(async () => {
 
   authStore.restoreSession('patient')
   try {
-    const user = await getCurrentUser()
-    authStore.setUser(user)
+    const user = await getCurrentUser('patient')
+    authStore.setUser(user, 'patient')
   } catch {
     showToast('登录状态已失效，请重新登录')
     authStore.clearSession('patient')

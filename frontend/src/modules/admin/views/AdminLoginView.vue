@@ -101,6 +101,7 @@ async function handleLogin() {
       return
     }
 
+    authStore.setUser(null)
     authStore.setSession({ ...session, role: 'admin' })
     localStorage.setItem('diabetes_admin_user', JSON.stringify(session.user))
     ElMessage.success('登录成功')

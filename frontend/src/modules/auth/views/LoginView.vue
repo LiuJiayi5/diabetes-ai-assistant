@@ -98,6 +98,12 @@ async function handleLogin() {
       authStore.clearSession('admin')
       return
     }
+    if (!isAdmin.value && session.user?.role === 'admin') {
+      showToast('请使用患者账号登录')
+      authStore.clearSession('patient')
+      return
+    }
+    authStore.setUser(null)
     authStore.setSession(session)
     showToast('登录成功')
     router.push(isAdmin.value ? '/admin/dashboard' : '/app/account')

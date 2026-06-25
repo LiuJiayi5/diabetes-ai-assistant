@@ -74,6 +74,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Save } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
 import { getCurrentUser, updateCurrentUser } from '@/api/auth'
 import ImageUploader from '@/components/ImageUploader.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -81,6 +82,7 @@ import { resolveAvatarUrl, useDefaultAvatar } from '@/utils/assets'
 import { statusLabel } from '@/modules/admin/utils'
 
 const authStore = useAuthStore()
+const router = useRouter()
 const loading = ref(false)
 const saving = ref(false)
 const form = reactive({
@@ -105,9 +107,13 @@ onMounted(loadProfile)
 async function loadProfile() {
   loading.value = true
   try {
-    const user = await getCurrentUser()
+    const user = await getCurrentUser('admin')
+    if (user?.role !== 'admin') {
+      handleInvalidAdminSession()
+      return
+    }
     assignForm(user)
-    authStore.setUser(user)
+    authStore.setUser(user, 'admin')
     localStorage.setItem('diabetes_admin_user', JSON.stringify(user))
   } catch (error) {
     ElMessage.error(error?.response?.data?.message || '管理员资料加载失败')
@@ -129,9 +135,13 @@ async function saveProfile() {
       phone: form.phone,
       email: form.email,
       avatar: form.avatar
-    })
+    }, 'admin')
+    if (updated?.role !== 'admin') {
+      handleInvalidAdminSession()
+      return
+    }
     assignForm(updated)
-    authStore.setUser(updated)
+    authStore.setUser(updated, 'admin')
     localStorage.setItem('diabetes_admin_user', JSON.stringify(updated))
     ElMessage.success('管理员资料已保存')
   } catch (error) {
@@ -139,6 +149,13 @@ async function saveProfile() {
   } finally {
     saving.value = false
   }
+}
+
+function handleInvalidAdminSession() {
+  authStore.clearSession('admin')
+  localStorage.removeItem('diabetes_admin_user')
+  ElMessage.error('管理员登录状态已失效，请重新登录')
+  router.push('/admin/login')
 }
 
 function assignForm(user = {}) {

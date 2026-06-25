@@ -61,7 +61,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   ChevronRight,
@@ -120,8 +120,25 @@ const navGroups = [
   }
 ]
 
-const adminName = computed(() => authStore.user?.username || authStore.user?.name || '管理员')
-const adminAvatar = computed(() => resolveAvatarUrl(authStore.user?.avatar))
+const adminUser = computed(() => authStore.user?.role === 'admin' ? authStore.user : null)
+const adminName = computed(() => adminUser.value?.username || adminUser.value?.name || '管理员')
+const adminAvatar = computed(() => resolveAvatarUrl(adminUser.value?.avatar))
+
+onMounted(ensureAdminUser)
+
+watch(() => authStore.user?.role, ensureAdminUser)
+
+function ensureAdminUser() {
+  const token = authStore.restoreSession('admin')
+  if (!token) {
+    router.push('/admin/login')
+    return
+  }
+
+  if (authStore.user && authStore.user.role !== 'admin') {
+    authStore.setUser(null)
+  }
+}
 
 function logout() {
   ElMessageBox.confirm('退出后需要重新登录管理端，确认退出？', '确认退出登录', {

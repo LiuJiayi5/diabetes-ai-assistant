@@ -15,25 +15,33 @@ public class CurrentUserUtil {
     private final JwtUtil jwtUtil;
 
     public Integer getCurrentUserId(HttpServletRequest request) {
+        TokenPrincipal principal = getCurrentPrincipal(request);
+        return principal.userId();
+    }
+
+    public TokenPrincipal getCurrentPrincipal(HttpServletRequest request) {
         String authorization = request.getHeader("Authorization");
         if (StringUtils.hasText(authorization) && authorization.startsWith(BEARER_PREFIX)) {
             String token = authorization.substring(BEARER_PREFIX.length());
             if (!jwtUtil.validateToken(token)) {
                 throw new BusinessException(401, "登录凭证无效或已过期");
             }
-            return jwtUtil.getUserIdFromToken(token);
+            return new TokenPrincipal(jwtUtil.getUserIdFromToken(token), jwtUtil.getRoleFromToken(token));
         }
 
         // Dev/test fallback until the login filter is wired into the project.
         String devUserId = request.getHeader("X-Dev-User-Id");
         if (StringUtils.hasText(devUserId)) {
             try {
-                return Integer.valueOf(devUserId);
+                return new TokenPrincipal(Integer.valueOf(devUserId), request.getHeader("X-Dev-User-Role"));
             } catch (NumberFormatException exception) {
                 throw new BusinessException(400, "X-Dev-User-Id 必须是数字");
             }
         }
 
         throw new BusinessException(401, "请先登录");
+    }
+
+    public record TokenPrincipal(Integer userId, String role) {
     }
 }

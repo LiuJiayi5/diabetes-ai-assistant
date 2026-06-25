@@ -66,12 +66,13 @@ const form = reactive({
 })
 
 onMounted(async () => {
-  const user = authStore.user || await getCurrentUser()
+  const cachedUser = authStore.user?.role === 'patient' ? authStore.user : null
+  const user = cachedUser || await getCurrentUser('patient')
   form.username = user.username || ''
   form.phone = user.phone || ''
   form.email = user.email || ''
   form.avatar = user.avatar || ''
-  authStore.setUser(user)
+  authStore.setUser(user, 'patient')
 })
 
 async function save() {
@@ -82,8 +83,8 @@ async function save() {
 
   saving.value = true
   try {
-    const updated = await updateCurrentUser({ ...form })
-    authStore.setUser(updated)
+    const updated = await updateCurrentUser({ ...form }, 'patient')
+    authStore.setUser(updated, 'patient')
     showToast('账号信息已保存')
     router.push('/app/account')
   } catch (error) {

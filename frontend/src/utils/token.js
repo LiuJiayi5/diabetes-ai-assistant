@@ -36,6 +36,10 @@ export function getTokenForRequest(url = '') {
   return getToken(resolveSessionScope(url || window.location?.pathname || ''))
 }
 
+export function getTokenForScope(scope = currentScope()) {
+  return getToken(resolveSessionScope(scope))
+}
+
 export function migrateLegacyToken() {
   const legacy = localStorage.getItem(LEGACY_TOKEN_KEY)
   if (!legacy) return
