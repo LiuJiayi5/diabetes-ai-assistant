@@ -58,7 +58,7 @@
         <el-table-column label="用户信息" min-width="240">
           <template #default="{ row }">
             <div class="admin-table-main">
-              <el-avatar :size="30" :src="asset(row.avatar)">{{ row.username?.slice(0, 1) }}</el-avatar>
+              <el-avatar :size="30" :src="asset(row.avatar)" @error="useDefaultAvatar" />
               <span class="admin-table-main__body">
                 <strong class="admin-table-title">{{ row.username || '未命名用户' }}</strong>
                 <span class="admin-table-subtitle">{{ row.phone || '未填写手机号' }} · {{ row.email || '未填写邮箱' }}</span>
@@ -124,7 +124,7 @@ import { AlertCircle, Search } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminListUsers, adminUpdateUserStatus } from '@/api/admin'
 import { assignPage, createPagination, pageParams, resolveAdminError, statusLabel, unwrapPage } from '@/modules/admin/utils'
-import { resolveAssetUrl } from '@/utils/assets'
+import { resolveAvatarUrl, useDefaultAvatar } from '@/utils/assets'
 
 const router = useRouter()
 const users = ref([])
@@ -194,7 +194,7 @@ function confirmStatus(user) {
 onMounted(loadUsers)
 
 function asset(value) {
-  return resolveAssetUrl(value)
+  return resolveAvatarUrl(value)
 }
 </script>
 

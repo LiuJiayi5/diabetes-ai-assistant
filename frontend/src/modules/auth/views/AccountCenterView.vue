@@ -5,8 +5,7 @@
       <div class="profile-card__glow profile-card__glow--bottom" />
       <button type="button" class="profile-card__body profile-card__body--clickable" @click="router.push('/app/account/edit')">
         <div class="avatar">
-          <img v-if="avatarUrl" :src="avatarUrl" alt="用户头像" />
-          <User v-else />
+          <img :src="avatarUrl" alt="用户头像" @error="useDefaultAvatar" />
         </div>
         <div class="profile-card__info">
           <h1>{{ currentUser.username || '未命名用户' }}</h1>
@@ -104,12 +103,11 @@ import {
   Info,
   LogOut,
   MessageSquare,
-  User,
   Utensils
 } from 'lucide-vue-next'
 import { getCurrentUser } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
-import { resolveAssetUrl } from '@/utils/assets'
+import { resolveAvatarUrl, useDefaultAvatar } from '@/utils/assets'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -124,7 +122,7 @@ const currentUser = computed(() => authStore.user || {
   lastLogin: ''
 })
 
-const avatarUrl = computed(() => resolveAssetUrl(currentUser.value.avatar))
+const avatarUrl = computed(() => resolveAvatarUrl(currentUser.value.avatar))
 const statusText = computed(() => currentUser.value.status === 'disabled' ? '已禁用' : '正常')
 
 const accountRows = computed(() => [

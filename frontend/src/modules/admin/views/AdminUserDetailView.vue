@@ -22,7 +22,7 @@
 
     <template v-else-if="user">
       <section class="admin-card user-hero">
-        <el-avatar :size="68" :src="asset(user.avatar)">{{ user.username?.slice(0, 1) }}</el-avatar>
+        <el-avatar :size="68" :src="asset(user.avatar)" @error="useDefaultAvatar" />
         <div>
           <h2>{{ user.username }}</h2>
           <p>ID #{{ user.user_id }} · {{ statusLabel(user.role) }}</p>
@@ -86,7 +86,7 @@ import { ArrowLeft, FileText, Newspaper } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminListUsers, adminUpdateUserStatus } from '@/api/admin'
 import { statusLabel, unwrapPage } from '@/modules/admin/utils'
-import { resolveAssetUrl } from '@/utils/assets'
+import { resolveAvatarUrl, useDefaultAvatar } from '@/utils/assets'
 
 const route = useRoute()
 const router = useRouter()
@@ -130,7 +130,7 @@ function confirmStatus(target) {
 onMounted(loadUser)
 
 function asset(value) {
-  return resolveAssetUrl(value)
+  return resolveAvatarUrl(value)
 }
 </script>
 

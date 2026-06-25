@@ -14,7 +14,7 @@
 
     <template v-else>
       <section class="admin-card admin-profile-hero">
-        <el-avatar :size="72" :src="avatarUrl">{{ avatarInitial }}</el-avatar>
+        <el-avatar :size="72" :src="avatarUrl" @error="useDefaultAvatar">{{ avatarInitial }}</el-avatar>
         <div>
           <h2>{{ form.username || '管理员' }}</h2>
           <p>{{ roleLabel }} · {{ statusLabel(form.status) }}</p>
@@ -76,7 +76,7 @@ import { Save } from 'lucide-vue-next'
 import { getCurrentUser, updateCurrentUser } from '@/api/auth'
 import ImageUploader from '@/components/ImageUploader.vue'
 import { useAuthStore } from '@/stores/auth'
-import { resolveAssetUrl } from '@/utils/assets'
+import { resolveAvatarUrl, useDefaultAvatar } from '@/utils/assets'
 import { statusLabel } from '@/modules/admin/utils'
 
 const authStore = useAuthStore()
@@ -95,7 +95,7 @@ const form = reactive({
   last_login_time: ''
 })
 
-const avatarUrl = computed(() => resolveAssetUrl(form.avatar))
+const avatarUrl = computed(() => resolveAvatarUrl(form.avatar))
 const avatarInitial = computed(() => (form.username || '管').slice(0, 1).toUpperCase())
 const roleLabel = computed(() => form.role === 'admin' ? '管理员' : statusLabel(form.role))
 

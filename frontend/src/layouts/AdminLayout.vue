@@ -49,8 +49,7 @@
           </div>
           <button class="admin-user-chip" type="button" @click="router.push('/admin/profile')">
             <span class="admin-user-avatar">
-              <img v-if="adminAvatar" :src="adminAvatar" alt="管理员头像" />
-              <span v-else>{{ adminInitial }}</span>
+              <img :src="adminAvatar" alt="管理员头像" @error="useDefaultAvatar" />
             </span>
             <strong>{{ adminName }}</strong>
           </button>
@@ -84,7 +83,7 @@ import {
 } from 'lucide-vue-next'
 import { ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
-import { resolveAssetUrl } from '@/utils/assets'
+import { resolveAvatarUrl, useDefaultAvatar } from '@/utils/assets'
 import '@/modules/admin/styles/admin.css'
 
 const route = useRoute()
@@ -122,8 +121,7 @@ const navGroups = [
 ]
 
 const adminName = computed(() => authStore.user?.username || authStore.user?.name || '管理员')
-const adminInitial = computed(() => adminName.value.slice(0, 1).toUpperCase())
-const adminAvatar = computed(() => resolveAssetUrl(authStore.user?.avatar))
+const adminAvatar = computed(() => resolveAvatarUrl(authStore.user?.avatar))
 
 function logout() {
   ElMessageBox.confirm('退出后需要重新登录管理端，确认退出？', '确认退出登录', {
