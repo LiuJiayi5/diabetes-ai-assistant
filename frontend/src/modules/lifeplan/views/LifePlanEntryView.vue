@@ -25,7 +25,7 @@
           <div class="summary-card__glow summary-card__glow--green" />
           <div class="summary-card__glow summary-card__glow--blue" />
           <div class="summary-card__head">
-            <div>
+            <div class="summary-card__title">
               <h2>{{ currentPlan.title }}</h2>
               <p>{{ currentPlan.summary }}</p>
             </div>
@@ -33,7 +33,7 @@
           </div>
           <div class="tag-row">
             <span>{{ currentPlan.goal }}</span>
-            <span>{{ dayCards.length || 1 }} 天安排</span>
+            <span>{{ dayCards.length }} 天安排</span>
             <span>已生成</span>
           </div>
           <div class="summary-card__footer">
@@ -43,14 +43,14 @@
             </span>
             <button type="button" class="regenerate-button" :disabled="lifePlanStore.generating" @click="regeneratePlan">
               <RefreshCw :class="{ spin: lifePlanStore.generating }" />
-              {{ lifePlanStore.generating ? '正在生成方案…' : '重新生成方案' }}
+              {{ lifePlanStore.generating ? '正在生成方案...' : '重新生成方案' }}
             </button>
           </div>
         </section>
 
         <section v-if="currentPlan && lifePlanStore.generating" class="generating-notice">
           <LoaderCircle class="spin" />
-          <span>正在生成新方案，完成后会自动刷新当前内容</span>
+          <span>正在生成新方案，完成后会刷新当前内容</span>
         </section>
 
         <section v-if="!currentPlan" class="empty-card">
@@ -61,7 +61,7 @@
           <p>完善健康档案、健康指标和风险评估后，可以生成个性化控糖生活方案。</p>
           <button type="button" class="regenerate-button" :disabled="lifePlanStore.generating" @click="regeneratePlan">
             <LoaderCircle v-if="lifePlanStore.generating" class="spin" />
-            {{ lifePlanStore.generating ? '正在生成方案…' : '立即生成' }}
+            {{ lifePlanStore.generating ? '正在生成方案...' : '立即生成' }}
           </button>
         </section>
 
@@ -77,40 +77,52 @@
           <div class="week-title-row">
             <div>
               <h2>{{ expandedWeek ? '一周安排' : '第 1 天重点' }}</h2>
-              <p>{{ expandedWeek ? '按天查看饮食、运动和作息提醒' : '首屏先聚焦今天最重要的安排' }}</p>
+              <p>{{ expandedWeek ? '按天查看饮食、运动和控糖提醒' : '首屏先聚焦今天的具体执行卡片' }}</p>
             </div>
-            <button type="button" class="week-toggle-button" @click="expandedWeek = !expandedWeek">
+            <button type="button" class="week-toggle-button" @click="toggleWeek">
               {{ expandedWeek ? '收起一周安排' : '展开一周安排' }}
             </button>
           </div>
 
-          <section class="day-plan-list">
-            <article v-for="day in visibleDays" :key="day.title" class="day-plan-card">
-              <header>
+          <section class="structured-day-list">
+            <article v-for="day in visibleDays" :key="day.title" class="structured-day">
+              <header class="structured-day__header">
                 <span>{{ day.title }}</span>
+                <small>{{ day.dietCards.length + day.exerciseCards.length }} 项建议</small>
               </header>
-              <div class="day-plan-block day-plan-block--diet">
-                <span><Utensils /></span>
-                <div>
-                  <strong>饮食建议</strong>
-                  <p>{{ day.diet }}</p>
-                </div>
-              </div>
-              <div class="day-plan-block day-plan-block--exercise">
-                <span><Dumbbell /></span>
-                <div>
-                  <strong>运动建议</strong>
-                  <p>{{ day.exercise }}</p>
-                </div>
-              </div>
-              <div class="day-plan-block day-plan-block--reminder">
-                <span><Clock /></span>
-                <div>
-                  <strong>作息/控糖提醒</strong>
-                  <p>{{ day.reminder }}</p>
-                </div>
-              </div>
+
+              <PlanSection
+                type="diet"
+                title="饮食管理"
+                subtitle="早餐、午餐、晚餐和加餐建议"
+                :items="decorateDietCards(day)"
+                @select="selectCard(day, $event, '饮食管理')"
+              />
+
+              <PlanSection
+                type="exercise"
+                title="运动管理"
+                subtitle="轻运动、有氧、抗阻和注意事项"
+                :items="decorateExerciseCards(day)"
+                @select="selectCard(day, $event, '运动管理')"
+              />
+
+              <section class="reminder-card reminder-card--day">
+                <h2>作息/控糖提醒</h2>
+                <ul>
+                  <li v-for="tip in day.reminders" :key="`${day.title}-${tip}`">{{ tip }}</li>
+                </ul>
+              </section>
             </article>
+          </section>
+
+          <section v-if="selectedCard" class="selected-card-detail">
+            <div>
+              <span>{{ selectedCard.dayTitle }} · {{ selectedCard.group }}</span>
+              <h2>{{ selectedCard.title }}</h2>
+              <p>{{ selectedCard.content }}</p>
+            </div>
+            <button type="button" @click="selectedCard = null">收起详情</button>
           </section>
 
           <section class="reminder-card">
@@ -135,54 +147,92 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, defineComponent, h, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import {
+  Activity,
+  Apple,
   ArrowLeft,
+  CheckCircle2,
   ChevronRight,
   CircleAlert,
   Clock,
   Dumbbell,
   FileText,
+  Footprints,
   History,
   LoaderCircle,
+  Moon,
   RefreshCw,
+  Sun,
   Utensils
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { useLifePlanStore } from '@/stores/lifePlan'
-import { formatPlanTime, getRiskMeta, normalizePlan, toText } from '../utils'
+import { formatPlanTime, getRiskMeta, normalizePlan } from '../utils'
 import PlanGenerateDialog from '../components/PlanGenerateDialog.vue'
 import '../styles/life-plan.css'
+
+const cardMeta = {
+  breakfast: { icon: Sun, iconBg: '#FEF3E2', iconColor: '#E8A840' },
+  lunch: { icon: Utensils, iconBg: '#E5F6EE', iconColor: '#5BBF8A' },
+  dinner: { icon: Moon, iconBg: '#E8EEF9', iconColor: '#7A9BD4' },
+  snack: { icon: Apple, iconBg: '#F3EAF8', iconColor: '#B07CD4' },
+  light: { icon: Footprints, iconBg: '#FEF3E2', iconColor: '#E8A840' },
+  aerobic: { icon: Dumbbell, iconBg: '#E4F3FB', iconColor: '#4FAAC4' },
+  resistance: { icon: Activity, iconBg: '#E5F6EE', iconColor: '#5BBF8A' },
+  notice: { icon: CheckCircle2, iconBg: '#FEF8EC', iconColor: '#B8862A' }
+}
+
+const PlanSection = defineComponent({
+  name: 'PlanSection',
+  props: {
+    type: { type: String, required: true },
+    title: { type: String, required: true },
+    subtitle: { type: String, required: true },
+    items: { type: Array, required: true }
+  },
+  emits: ['select'],
+  setup(props, { emit }) {
+    return () => h('section', { class: 'plan-section' }, [
+      h('div', { class: ['section-header', `section-header--${props.type}`] }, [
+        h('div', { class: 'section-header__left' }, [
+          h('span', { class: 'section-header__icon' }, [h(props.type === 'diet' ? Utensils : Dumbbell)]),
+          h('div', [h('h2', props.title), h('p', props.subtitle)])
+        ]),
+        h('span', { class: 'checkin-pill' }, [h(CheckCircle2), '今日执行'])
+      ]),
+      h('div', { class: 'plan-card-list' }, props.items.map((item) => h('button', {
+        type: 'button',
+        class: 'plan-item-card',
+        onClick: () => emit('select', item)
+      }, [
+        h('span', {
+          class: 'plan-item-card__icon',
+          style: { background: item.iconBg, color: item.iconColor }
+        }, [h(item.icon)]),
+        h('span', { class: 'plan-item-card__content' }, [
+          h('strong', item.title),
+          h('span', item.content)
+        ]),
+        h('span', { class: 'plan-item-card__side' }, [h('small', item.time), h(ChevronRight)])
+      ])))
+    ])
+  }
+})
 
 const router = useRouter()
 const authStore = useAuthStore()
 const lifePlanStore = useLifePlanStore()
 const showGenerateDialog = ref(false)
 const expandedWeek = ref(false)
+const selectedCard = ref(null)
 
 const currentPlan = computed(() => lifePlanStore.currentPlan ? normalizePlan(lifePlanStore.currentPlan) : null)
 const riskMeta = computed(() => getRiskMeta(currentPlan.value))
-const dayCards = computed(() => {
-  const days = currentPlan.value?.dailySchedule || []
-  return days.length ? days : [fallbackDay.value]
-})
+const dayCards = computed(() => currentPlan.value?.dailySchedule?.length ? currentPlan.value.dailySchedule : [])
 const visibleDays = computed(() => expandedWeek.value ? dayCards.value.slice(0, 7) : dayCards.value.slice(0, 1))
-const fallbackDay = computed(() => {
-  const diet = currentPlan.value?.dietPlan || {}
-  const exercise = currentPlan.value?.exercisePlan || {}
-  return {
-    title: '第 1 天',
-    diet: [
-      toText(diet.breakfast, ''),
-      toText(diet.lunch, ''),
-      toText(diet.dinner, '')
-    ].filter(Boolean).join('；') || '保持三餐规律，主食定量，搭配足量蔬菜和优质蛋白。',
-    exercise: toText(exercise.exercise_type || exercise.frequency || exercise.duration, '餐后进行低到中等强度活动，循序渐进完成当天运动目标。'),
-    reminder: toText(currentPlan.value?.workRestPlan, '按时监测血糖，避免久坐，保持规律睡眠。')
-  }
-})
 
 const reminderTips = computed(() => {
   const tips = currentPlan.value?.healthTips || []
@@ -203,6 +253,28 @@ async function loadCurrentPlan() {
   }
 }
 
+function decorateDietCards(day) {
+  return day.dietCards.map((item) => ({ ...item, ...(cardMeta[item.key] || cardMeta.lunch) }))
+}
+
+function decorateExerciseCards(day) {
+  return day.exerciseCards.map((item) => ({ ...item, ...(cardMeta[item.key] || cardMeta.aerobic) }))
+}
+
+function toggleWeek() {
+  expandedWeek.value = !expandedWeek.value
+  selectedCard.value = null
+}
+
+function selectCard(day, item, group) {
+  selectedCard.value = {
+    dayTitle: day.title,
+    group,
+    title: item.title,
+    content: item.content
+  }
+}
+
 function openGenerateDialog() {
   if (!authStore.isLoggedIn) {
     showToast('请先登录后再生成生活方案')
@@ -220,6 +292,7 @@ async function regeneratePlan() {
   }
 
   try {
+    selectedCard.value = null
     await lifePlanStore.generateLifePlan(lifePlanStore.currentGenerateOptions)
     expandedWeek.value = false
     showToast('生活方案已更新')
@@ -230,6 +303,7 @@ async function regeneratePlan() {
 
 async function submitGenerate(payload) {
   try {
+    selectedCard.value = null
     await lifePlanStore.generateLifePlan(payload)
     expandedWeek.value = false
     showGenerateDialog.value = false

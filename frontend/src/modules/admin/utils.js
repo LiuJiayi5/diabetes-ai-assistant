@@ -45,6 +45,31 @@ export function totalPages(pagination) {
   return Math.max(1, Math.ceil((pagination.total || 0) / size))
 }
 
+export function statusPriority(value) {
+  const map = {
+    published: 0,
+    enabled: 0,
+    active: 0,
+    success: 0,
+    running: 1,
+    draft: 2,
+    offline: 3,
+    disabled: 3,
+    failed: 3
+  }
+  return map[value] ?? 2
+}
+
+export function sortByStatusThenOrder(list = [], statusKey = 'status', orderKey = 'sort_order') {
+  return [...list].sort((a, b) => {
+    const statusDiff = statusPriority(a?.[statusKey]) - statusPriority(b?.[statusKey])
+    if (statusDiff) return statusDiff
+    const orderDiff = Number(a?.[orderKey] || 0) - Number(b?.[orderKey] || 0)
+    if (orderDiff) return orderDiff
+    return Number(b?.update_time ? new Date(b.update_time).getTime() : 0) - Number(a?.update_time ? new Date(a.update_time).getTime() : 0)
+  })
+}
+
 export function ensurePageAfterDelete(pagination) {
   const total = Math.max(0, (pagination.total || 0) - 1)
   const pages = Math.max(1, Math.ceil(total / (pagination.page_size || 10)))

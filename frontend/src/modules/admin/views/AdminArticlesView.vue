@@ -166,6 +166,7 @@ import {
   ensurePageAfterDelete,
   pageParams,
   resolveAdminError,
+  sortByStatusThenOrder,
   statusLabel,
   unwrapPage
 } from '@/modules/admin/utils'
@@ -198,7 +199,7 @@ async function loadContent() {
   try {
     const response = await adminGetContentManagement({ ...query, ...pageParams(pagination) })
     const page = unwrapPage(response, 'articles')
-    articles.value = page.list
+    articles.value = sortByStatusThenOrder(page.list)
     assignPage(pagination, page)
   } catch (err) {
     error.value = resolveAdminError(err, '资讯管理数据加载失败')

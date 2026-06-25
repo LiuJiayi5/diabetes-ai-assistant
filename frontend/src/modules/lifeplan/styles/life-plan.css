@@ -113,8 +113,15 @@
 
 .summary-card__head {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 14px;
+  gap: 12px;
+}
+
+.summary-card__title {
+  min-width: 0;
+  flex: 1;
+  padding-right: 4px;
 }
 
 .summary-card h2 {
@@ -144,6 +151,8 @@
   flex-shrink: 0;
   height: 28px;
   padding: 5px 12px;
+  align-self: flex-start;
+  margin-top: 1px;
 }
 
 .risk-medium {
@@ -163,6 +172,7 @@
 
 .tag-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 18px;
 }
@@ -273,12 +283,13 @@
 }
 
 .section-header {
-  min-height: 106px;
+  min-height: 92px;
   margin-top: 18px;
-  padding: 0 24px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   border-radius: 24px;
 }
 
@@ -297,8 +308,8 @@
 }
 
 .section-header__icon {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -310,21 +321,22 @@
 .section-header h2 {
   margin: 0;
   color: var(--figma-text-strong);
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
 }
 
 .section-header p {
   margin: 4px 0 0;
   color: rgba(36, 50, 61, 0.55);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .checkin-pill {
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
   gap: 5px;
-  padding: 6px 12px;
+  padding: 6px 10px;
   background: rgba(255, 255, 255, 0.50);
   color: #4A8A6A;
 }
@@ -836,4 +848,135 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Structured life-plan overrides: keep the original visual language, but restore
+   the multi-card plan layout and prevent narrow text columns on mobile. */
+.plan-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.plan-item-card {
+  min-height: 82px;
+  margin-top: 0;
+  padding: 13px 12px;
+  grid-template-columns: 36px minmax(0, 1fr) 58px;
+  gap: 9px;
+}
+
+.plan-item-card__icon {
+  width: 36px;
+  height: 36px;
+}
+
+.plan-item-card__icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.plan-item-card__content strong {
+  font-size: 14px;
+}
+
+.plan-item-card__content span {
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.plan-item-card__side {
+  gap: 4px;
+  min-width: 0;
+  font-size: 11px;
+}
+
+.plan-item-card__side small {
+  overflow: hidden;
+  max-width: 42px;
+  text-overflow: ellipsis;
+}
+
+.structured-day-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.structured-day {
+  margin-top: 12px;
+}
+
+.structured-day__header {
+  margin: 0 0 -4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.structured-day__header span,
+.structured-day__header small {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.structured-day__header span {
+  padding: 5px 12px;
+  background: #DFF5E7;
+  color: #4A8A6A;
+  font-size: 12px;
+}
+
+.structured-day__header small {
+  padding: 4px 10px;
+  background: rgba(174, 232, 199, 0.22);
+  color: var(--figma-text-faint);
+  font-size: 11px;
+}
+
+.reminder-card--day {
+  margin-top: 10px;
+}
+
+.selected-card-detail {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid rgba(174, 232, 199, 0.35);
+  border-radius: 24px;
+  background: linear-gradient(145deg, #FFFFFF 0%, #EDF8F4 100%);
+  box-shadow: var(--figma-shadow-card);
+}
+
+.selected-card-detail span {
+  color: #4A8A6A;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.selected-card-detail h2 {
+  margin: 8px 0 6px;
+  color: var(--figma-text-strong);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.selected-card-detail p {
+  margin: 0;
+  color: var(--figma-text-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.selected-card-detail button {
+  margin-top: 12px;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(174, 232, 199, 0.30);
+  color: #4A8A6A;
+  font-size: 12px;
+  font-weight: 700;
 }

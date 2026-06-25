@@ -132,7 +132,7 @@ import { Image as ImageIcon, Plus } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminDeleteHomeContent, adminGetContentManagement, adminSaveHomeContent } from '@/api/admin'
 import ImageUploader from '@/components/ImageUploader.vue'
-import { createPagination, resolveAdminError, totalPages } from '@/modules/admin/utils'
+import { createPagination, resolveAdminError, sortByStatusThenOrder, totalPages } from '@/modules/admin/utils'
 import { resolveAssetUrl } from '@/utils/assets'
 
 const contents = ref([])
@@ -149,7 +149,7 @@ const pagedContents = computed(() => {
   return sortedContents.value.slice(start, start + pagination.page_size)
 })
 
-const sortedContents = computed(() => [...contents.value].sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0)))
+const sortedContents = computed(() => sortByStatusThenOrder(contents.value))
 
 function defaultForm() {
   return {

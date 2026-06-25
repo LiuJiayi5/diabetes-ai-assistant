@@ -3,6 +3,12 @@
   color: var(--admin-text-title);
 }
 
+.admin-layout .admin-sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+}
+
 .admin-page-header {
   display: flex;
   align-items: flex-start;

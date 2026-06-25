@@ -21,10 +21,10 @@ function resolveErrorMessage(error, fallback = '请求失败，请稍后重试')
   const message = data?.message || data?.error_message || data?.error || error?.message
 
   if (status === 401) return '登录已失效，请重新登录'
-  if (status === 403) return '当前账号无权限生成生活方案'
+  if (status === 403) return '当前账号无权生成生活方案'
   if (status === 400) return '请先完善健康档案、健康数据和风险评估'
   if (status === 502) return 'AI 方案生成失败，请稍后重试'
-  if (status === 500) return '服务器保存失败，请稍后重试'
+  if (status === 500) return '服务保存失败，请稍后重试'
   if (message && !/exception|stack|dify|sql|\/api|http/i.test(message)) return message
   return fallback
 }
@@ -63,7 +63,7 @@ function saveGenerateOptions(options) {
   try {
     window.localStorage.setItem(GENERATE_OPTIONS_KEY, JSON.stringify(normalizeGenerateOptions(options)))
   } catch {
-    // Local storage is only a convenience cache for the next regeneration.
+    // 本地缓存只用于下次重新生成时沿用用户偏好。
   }
 }
 
@@ -96,7 +96,7 @@ export const useLifePlanStore = defineStore('lifePlan', {
       try {
         const response = await getLifePlans()
         this.plans = normalizeList(response)
-        this.currentPlan = this.plans.find(isActiveSuccessPlan) || null
+        this.currentPlan = this.plans.find(isActiveSuccessPlan) || this.plans[0] || null
         return this.plans
       } catch (error) {
         this.error = resolveErrorMessage(error, '生活方案加载失败')
@@ -140,7 +140,7 @@ export const useLifePlanStore = defineStore('lifePlan', {
         await this.fetchLifePlans()
         return plan
       } catch (error) {
-        this.generateError = resolveErrorMessage(error, '生活方案生成失败')
+        this.generateError = resolveErrorMessage(error, '生活方案生成失败，请稍后重试')
         throw error
       } finally {
         this.generating = false
