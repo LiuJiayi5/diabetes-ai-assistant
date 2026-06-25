@@ -1,7 +1,7 @@
 <template>
   <div class="article-detail-page">
     <header class="article-detail-topbar">
-      <button type="button" class="article-back-button" @click="router.push('/app/articles')">
+      <button type="button" class="article-back-button" @click="goBack">
         <ArrowLeft />
       </button>
       <h1>资讯详情</h1>
@@ -69,7 +69,7 @@
 
         <section class="article-info-note">
           <strong>健康科普说明</strong>
-          <p>本系统提供的健康资讯仅供科普参考，不能作为诊断依据。如出现明显身体不适或异常指标，请及时线下就医。</p>
+          <p>系统提供的健康资讯仅供科普参考，不能作为诊断依据。如出现明显身体不适或指标异常，请及时线下就医。</p>
         </section>
       </template>
     </main>
@@ -99,18 +99,10 @@ const sections = computed(() => {
     .split(/\n+/)
     .map((item) => item.trim())
     .filter(Boolean)
-    .map((paragraph, index) => {
-      if (index === 0) {
-        return { heading: '', body: paragraph }
-      }
-      const match = paragraph.match(/^(.{2,18}。)(.+)$/)
-      if (!match) {
-        return { heading: '', body: paragraph }
-      }
-      return {
-        heading: match[1].replace(/。$/, ''),
-        body: match[2].trim()
-      }
+    .flatMap((paragraph) => {
+      const match = paragraph.match(/^(.{2,18})[:：](.+)$/)
+      if (!match) return [{ heading: '', body: paragraph }]
+      return [{ heading: match[1].trim(), body: match[2].trim() }]
     })
 })
 
@@ -125,10 +117,19 @@ watch(coverUrl, () => {
   imageFailed.value = false
 })
 
+function goBack() {
+  if (window.history.length > 1) {
+    router.back()
+    return
+  }
+  router.push('/app/articles')
+}
+
 function toggleFavorite() {
   if (!article.value) return
+  const wasFavorite = articlesStore.isFavorite(article.value.article_id)
   articlesStore.toggleFavorite(article.value.article_id)
-  showToast(isFavorite.value ? '已收藏' : '已取消收藏')
+  showToast(wasFavorite ? '已取消收藏' : '已收藏')
 }
 
 function formatTime(value) {

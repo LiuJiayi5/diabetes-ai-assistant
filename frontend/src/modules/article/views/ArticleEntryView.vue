@@ -25,7 +25,6 @@
         <button type="button" class="article-carousel__slide" @click="openBanner(activeBanner)">
           <img v-if="activeBannerImage && !bannerImageFailed" :src="activeBannerImage" alt="" @error="bannerImageFailed = true" />
           <div class="article-carousel__overlay">
-            <span>精选健康科普</span>
             <h2>{{ activeBanner.title }}</h2>
             <p>{{ activeBanner.subtitle }}</p>
           </div>
@@ -49,25 +48,22 @@
         <Search />
         <input
           ref="searchInput"
-          v-model.trim="keyword"
+          v-model="keyword"
           type="search"
           placeholder="搜索饮食、运动、血糖、并发症"
-          @keyup.enter="refreshArticles"
         >
       </label>
-
-      <ArticleCategoryTabs v-model="activeCategory" :categories="articlesStore.categories" />
 
       <section class="featured-section">
         <h2>精选栏目</h2>
         <div class="featured-grid">
           <button
             v-for="category in featuredCategories"
-            :key="category.title"
+            :key="category.code"
             type="button"
             class="featured-card"
             :style="{ background: category.bg }"
-            @click="activeCategory = category.title"
+            @click="openCategory(category)"
           >
             <span class="featured-card__glow" />
             <strong>{{ category.title }}</strong>
@@ -81,8 +77,18 @@
 
       <section class="article-list-section">
         <div class="article-list-title">
-          <h2>{{ activeCategory === '全部' ? '全部资讯' : activeCategory }}</h2>
-          <span>{{ filteredArticles.length }} 篇</span>
+          <div>
+            <h2>{{ keyword.trim() || showFavoritesOnly ? '搜索结果' : '全部资讯' }}</h2>
+            <span>{{ listHint }}</span>
+          </div>
+          <button
+            v-if="!keyword.trim() && !showFavoritesOnly"
+            type="button"
+            class="article-more-button"
+            @click="router.push('/app/articles/all')"
+          >
+            更多
+          </button>
         </div>
 
         <div v-if="articlesStore.loading" class="article-state-card">
@@ -90,15 +96,15 @@
           <p>正在加载健康资讯...</p>
         </div>
 
-        <div v-else-if="!filteredArticles.length" class="article-state-card">
+        <div v-else-if="!displayArticles.length" class="article-state-card">
           <BookOpen />
-          <h3>{{ keyword ? '没有找到相关资讯' : '暂无资讯' }}</h3>
-          <p>{{ keyword ? '换个关键词或分类再试试' : '健康资讯上架后会在这里展示' }}</p>
+          <h3>{{ keyword.trim() ? '暂无相关资讯' : '暂无资讯' }}</h3>
+          <p>{{ keyword.trim() ? '换个关键词试试' : '健康资讯上架后会在这里展示' }}</p>
         </div>
 
         <template v-else>
           <ArticleCard
-            v-for="article in filteredArticles"
+            v-for="article in displayArticles"
             :key="article.article_id"
             :article="article"
             @open="openArticle"
@@ -108,7 +114,7 @@
 
       <section class="article-info-note">
         <strong>健康科普说明</strong>
-        <p>本系统提供的健康资讯仅供科普参考，不能作为诊断依据。如出现明显身体不适或异常指标，请及时线下就医。</p>
+        <p>系统提供的健康资讯仅供科普参考，不能作为诊断依据。如出现明显身体不适或指标异常，请及时线下就医。</p>
       </section>
     </main>
   </div>
@@ -119,17 +125,15 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { Bookmark, BookOpen, ChevronLeft, ChevronRight, LoaderCircle, Search } from 'lucide-vue-next'
-import { FEATURED_CATEGORIES, useArticlesStore } from '@/stores/articles'
+import { FEATURED_CATEGORIES, sampleArticlesByCategory, searchArticles, useArticlesStore } from '@/stores/articles'
 import { resolveAssetUrl } from '@/utils/assets'
 import ArticleCard from '../components/ArticleCard.vue'
-import ArticleCategoryTabs from '../components/ArticleCategoryTabs.vue'
 import '../styles/articles.css'
 
 const router = useRouter()
 const articlesStore = useArticlesStore()
 const searchInput = ref(null)
 const keyword = ref('')
-const activeCategory = ref('全部')
 const showFavoritesOnly = ref(false)
 const featuredCategories = FEATURED_CATEGORIES
 const activeBannerIndex = ref(0)
@@ -163,19 +167,22 @@ const activeBanner = computed(() => {
 
 const activeBannerImage = computed(() => resolveAssetUrl(activeBanner.value?.image_url))
 
-const filteredArticles = computed(() => {
-  const normalizedKeyword = keyword.value.trim().toLowerCase()
-  return articlesStore.articles.filter((article) => {
-    const matchCategory = activeCategory.value === '全部' || article.category === activeCategory.value
-    const matchKeyword = !normalizedKeyword || [
-      article.title,
-      article.summary,
-      article.category,
-      ...(article.tags || [])
-    ].join(' ').toLowerCase().includes(normalizedKeyword)
-    const matchFavorite = !showFavoritesOnly.value || articlesStore.isFavorite(article.article_id)
-    return matchCategory && matchKeyword && matchFavorite
-  })
+const baseArticles = computed(() => {
+  if (!showFavoritesOnly.value) return articlesStore.articles
+  return articlesStore.articles.filter((article) => articlesStore.isFavorite(article.article_id))
+})
+
+const displayArticles = computed(() => {
+  const term = keyword.value.trim()
+  if (term) return searchArticles(baseArticles.value, term)
+  return sampleArticlesByCategory(baseArticles.value, 10)
+})
+
+const listHint = computed(() => {
+  const term = keyword.value.trim()
+  if (term) return `找到 ${displayArticles.value.length} 篇相关内容`
+  if (showFavoritesOnly.value) return `${displayArticles.value.length} 篇收藏`
+  return '展示精选样例，更多内容可进入完整列表'
 })
 
 onMounted(async () => {
@@ -188,10 +195,6 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(stopCarousel)
-
-watch(activeCategory, () => {
-  showFavoritesOnly.value = false
-})
 
 watch(displayBanners, () => {
   activeBannerIndex.value = 0
@@ -213,11 +216,8 @@ function toggleFavoriteFilter() {
   }
 }
 
-function refreshArticles() {
-  articlesStore.fetchArticles({
-    category: activeCategory.value === '全部' ? undefined : activeCategory.value,
-    keyword: keyword.value || undefined
-  })
+function openCategory(category) {
+  router.push(`/app/articles/category/${category.code}`)
 }
 
 function openArticle(article) {
