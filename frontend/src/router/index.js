@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { routes } from './routes'
 import { useAuthStore } from '@/stores/auth'
+import { decodeTokenPayload, getToken, removeToken } from '@/utils/token'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -13,10 +14,26 @@ router.beforeEach((to) => {
   }
 
   const authStore = useAuthStore()
+  const tokenPayload = decodeTokenPayload(getToken())
+  if (tokenPayload?.role && tokenPayload.role !== 'admin') {
+    removeToken()
+    localStorage.removeItem('diabetes_admin_user')
+    authStore.clearSession()
+    return {
+      path: '/admin/login',
+      query: { redirect: to.fullPath }
+    }
+  }
+
   const storedAdmin = localStorage.getItem('diabetes_admin_user')
   if (!authStore.user && storedAdmin) {
     try {
-      authStore.setUser(JSON.parse(storedAdmin))
+      const parsed = JSON.parse(storedAdmin)
+      if (parsed?.role === 'admin') {
+        authStore.setUser(parsed)
+      } else {
+        localStorage.removeItem('diabetes_admin_user')
+      }
     } catch {
       localStorage.removeItem('diabetes_admin_user')
     }
