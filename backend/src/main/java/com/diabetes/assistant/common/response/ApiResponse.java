@@ -29,4 +29,8 @@ public class ApiResponse<T> {
     public static <T> ApiResponse<T> fail(Integer code, String message) {
         return new ApiResponse<>(code, message, null, LocalDateTime.now());
     }
+
+    public static <T> ApiResponse<T> fail(Integer code, String message, T data) {
+        return new ApiResponse<>(code, message, data, LocalDateTime.now());
+    }
 }

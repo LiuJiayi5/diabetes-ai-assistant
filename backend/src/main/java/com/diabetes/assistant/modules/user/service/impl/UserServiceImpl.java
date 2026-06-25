@@ -197,6 +197,26 @@ public class UserServiceImpl implements UserService, UserQueryApi {
     }
 
     @Override
+    public List<Integer> searchUserIdsByKeyword(String keyword) {
+        String normalizedKeyword = normalize(keyword);
+        if (!StringUtils.hasText(normalizedKeyword)) {
+            return List.of();
+        }
+        Integer keywordUserId = parseInteger(normalizedKeyword);
+        return userMapper.selectList(new LambdaQueryWrapper<User>()
+                        .like(User::getUsername, normalizedKeyword)
+                        .or()
+                        .like(User::getPhone, normalizedKeyword)
+                        .or()
+                        .like(User::getEmail, normalizedKeyword)
+                        .or(keywordUserId != null)
+                        .eq(keywordUserId != null, User::getUserId, keywordUserId))
+                .stream()
+                .map(User::getUserId)
+                .toList();
+    }
+
+    @Override
     public boolean existsActiveUser(Integer userId) {
         User user = userMapper.selectById(userId);
         return user != null && StatusConstants.ACTIVE.equals(user.getStatus());

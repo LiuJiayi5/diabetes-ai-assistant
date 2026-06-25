@@ -2,6 +2,7 @@ package com.diabetes.assistant.modules.dify.service;
 
 import com.diabetes.assistant.modules.dify.client.DifyClient;
 import com.diabetes.assistant.modules.dify.config.DifyProperties;
+import com.diabetes.assistant.modules.dify.dto.DifyWorkflowResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -14,7 +15,7 @@ public class DifyService {
     private final DifyClient difyClient;
     private final DifyProperties difyProperties;
 
-    public String callRiskPrediction(Map<String, Object> inputs, String user) {
+    public DifyWorkflowResult callRiskPrediction(Map<String, Object> inputs, String user) {
         return difyClient.runWorkflow(difyProperties.getRiskPredictApiKey(), inputs, user);
     }
 
@@ -22,11 +23,11 @@ public class DifyService {
         return difyClient.sendChatMessage(difyProperties.getAiDoctorApiKey(), message, conversationId, context, user);
     }
 
-    public String callLifePlan(Map<String, Object> inputs, String user) {
+    public DifyWorkflowResult callLifePlan(Map<String, Object> inputs, String user) {
         return difyClient.runWorkflow(difyProperties.getLifePlanApiKey(), inputs, user);
     }
 
-    public String callCheckinAnalysis(Map<String, Object> inputs, String user) {
+    public DifyWorkflowResult callCheckinAnalysis(Map<String, Object> inputs, String user) {
         return difyClient.runWorkflow(difyProperties.getCheckinAnalysisApiKey(), inputs, user);
     }
 }
