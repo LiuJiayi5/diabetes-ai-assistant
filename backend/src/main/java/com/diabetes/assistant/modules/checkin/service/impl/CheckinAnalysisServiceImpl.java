@@ -5,8 +5,10 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.diabetes.assistant.common.exception.BusinessException;
 import com.diabetes.assistant.common.response.PageResult;
 import com.diabetes.assistant.modules.checkin.dto.CheckinAnalysisResponse;
+import com.diabetes.assistant.modules.checkin.entity.ApiCallLog;
 import com.diabetes.assistant.modules.checkin.entity.CheckinAnalysis;
 import com.diabetes.assistant.modules.checkin.entity.CheckinRecord;
+import com.diabetes.assistant.modules.checkin.mapper.ApiCallLogMapper;
 import com.diabetes.assistant.modules.checkin.mapper.CheckinAnalysisMapper;
 import com.diabetes.assistant.modules.checkin.mapper.CheckinRecordMapper;
 import com.diabetes.assistant.modules.checkin.service.CheckinAnalysisService;
@@ -44,9 +46,11 @@ public class CheckinAnalysisServiceImpl implements CheckinAnalysisService {
     private static final String STATUS_COMPLETED = "completed";
     private static final String CALL_STATUS_SUCCESS = "success";
     private static final String CALL_STATUS_FAILED = "failed";
+    private static final String SERVICE_CHECKIN_ANALYSIS = "checkin_analysis";
 
     private final CheckinRecordMapper checkinRecordMapper;
     private final CheckinAnalysisMapper checkinAnalysisMapper;
+    private final ApiCallLogMapper apiCallLogMapper;
     private final LifePlanQueryApi lifePlanQueryApi;
     private final PatientProfileQueryApi patientProfileQueryApi;
     private final HealthMetricQueryApi healthMetricQueryApi;
@@ -71,10 +75,12 @@ public class CheckinAnalysisServiceImpl implements CheckinAnalysisService {
             JsonNode analysisJson = extractAnalysisJson(rawResponse);
             CheckinAnalysis analysis = buildSuccessAnalysis(userId, currentPlan, stats, inputSummary, analysisJson);
             checkinAnalysisMapper.insert(analysis);
+            saveCallLog(userId, inputSummary, analysis.getSummary(), CALL_STATUS_SUCCESS, null);
             return toResponse(analysis);
         } catch (Exception exception) {
             CheckinAnalysis failed = buildFailedAnalysis(userId, currentPlan, stats, inputSummary, exception);
             checkinAnalysisMapper.insert(failed);
+            saveCallLog(userId, inputSummary, failed.getSummary(), CALL_STATUS_FAILED, failed.getErrorMessage());
             return toResponse(failed);
         }
     }
@@ -397,6 +403,19 @@ public class CheckinAnalysisServiceImpl implements CheckinAnalysisService {
             return "Unknown Dify call failure";
         }
         return value.length() <= maxLength ? value : value.substring(0, maxLength);
+    }
+
+    private void saveCallLog(Integer userId, String requestSummary, String responseSummary, String callStatus,
+                             String errorMessage) {
+        ApiCallLog log = new ApiCallLog();
+        log.setUserId(userId);
+        log.setServiceType(SERVICE_CHECKIN_ANALYSIS);
+        log.setRequestSummary(truncate(requestSummary, 2000));
+        log.setResponseSummary(truncate(responseSummary, 2000));
+        log.setCallStatus(callStatus);
+        log.setErrorMessage(truncate(errorMessage, 1000));
+        log.setCreateTime(LocalDateTime.now());
+        apiCallLogMapper.insert(log);
     }
 
     @FunctionalInterface

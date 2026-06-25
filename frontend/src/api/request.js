@@ -11,7 +11,10 @@ request.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   } else if (import.meta.env.DEV) {
-    config.headers['X-Dev-User-Id'] = import.meta.env.VITE_DEV_USER_ID || '1'
+    const isAdminApi = String(config.url || '').startsWith('/admin/')
+    config.headers['X-Dev-User-Id'] = isAdminApi
+      ? (import.meta.env.VITE_DEV_ADMIN_USER_ID || '2')
+      : (import.meta.env.VITE_DEV_USER_ID || '1')
   }
   return config
 })

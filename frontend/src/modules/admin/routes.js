@@ -1,7 +1,9 @@
 import AdminDashboardView from './views/AdminDashboardView.vue'
 import AdminModuleEntryView from './views/AdminModuleEntryView.vue'
+import AdminCheckinManagementView from '@/modules/checkin/views/AdminCheckinManagementView.vue'
 
 export default [
+  { path: '', redirect: '/admin/dashboard' },
   { path: 'dashboard', name: 'AdminDashboard', component: AdminDashboardView, meta: { title: '管理端仪表盘', backend: '/api/health' } },
   { path: 'users', name: 'AdminUsers', component: AdminModuleEntryView, meta: { title: '用户管理', backend: '/api/user/*' } },
   { path: 'profiles', name: 'AdminProfiles', component: AdminModuleEntryView, meta: { title: '健康档案管理', backend: '/api/profile/*' } },
@@ -11,6 +13,6 @@ export default [
   { path: 'life-plans', name: 'AdminLifePlans', component: AdminModuleEntryView, meta: { title: '生活方案管理', backend: '/api/life-plan/*', ai: 'personalized_life_plan_workflow' } },
   { path: 'articles', name: 'AdminArticles', component: AdminModuleEntryView, meta: { title: '健康资讯管理', backend: '/api/content/*' } },
   { path: 'home-contents', name: 'AdminHomeContents', component: AdminModuleEntryView, meta: { title: '首页内容管理', backend: '/api/content/*' } },
-  { path: 'checkins', name: 'AdminCheckins', component: AdminModuleEntryView, meta: { title: '打卡记录管理', backend: '/api/checkin/*' } },
-  { path: 'checkin-analysis', name: 'AdminCheckinAnalysis', component: AdminModuleEntryView, meta: { title: '打卡行为分析管理', backend: '/api/checkin/analysis/*', ai: 'checkin_behavior_analysis_workflow' } }
+  { path: 'checkins', name: 'AdminCheckins', component: AdminCheckinManagementView, meta: { title: '生活打卡分析管理', backend: '/api/admin/checkins/*' } },
+  { path: 'checkin-analysis', name: 'AdminCheckinAnalysis', component: AdminCheckinManagementView, meta: { title: '打卡行为分析管理', backend: '/api/admin/checkins/analyses', ai: 'checkin_behavior_analysis_workflow' } }
 ]
