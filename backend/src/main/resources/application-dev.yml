@@ -4,6 +4,10 @@ spring:
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:123456}
     driver-class-name: ${DB_DRIVER_CLASS_NAME:com.mysql.cj.jdbc.Driver}
+  servlet:
+    multipart:
+      max-file-size: ${UPLOAD_MAX_FILE_SIZE:5MB}
+      max-request-size: ${UPLOAD_MAX_REQUEST_SIZE:6MB}
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
@@ -11,12 +15,17 @@ mybatis-plus:
     map-underscore-to-camel-case: true
 
 dify:
-  base-url: http://localhost/v1
-  risk-predict-api-key: your_risk_predict_api_key
-  ai-doctor-api-key: app-JMvHEBsRxPmF6ZFMwxM1hlSV
-  life-plan-api-key: your_life_plan_api_key
-  checkin-analysis-api-key: ${DIFY_CHECKIN_ANALYSIS_API_KEY:app-7dU4g4eJSjMm3jWD9cV4GgTU}
+  base-url: ${DIFY_BASE_URL:http://localhost/v1}
+  risk-predict-api-key: ${DIFY_RISK_PREDICT_API_KEY:your_risk_predict_api_key}
+  ai-doctor-api-key: ${DIFY_AI_DOCTOR_API_KEY:your_ai_doctor_api_key}
+  life-plan-api-key: ${DIFY_LIFE_PLAN_API_KEY:your_life_plan_api_key}
+  checkin-analysis-api-key: ${DIFY_CHECKIN_ANALYSIS_API_KEY:your_checkin_analysis_api_key}
 
 jwt:
-  secret: diabetes_assistant_dev_secret
-  expire-seconds: 86400
+  secret: ${JWT_SECRET:diabetes_assistant_dev_secret}
+  expire-seconds: ${JWT_EXPIRE_SECONDS:86400}
+
+app:
+  upload:
+    root-dir: ${APP_UPLOAD_ROOT_DIR:uploads}
+    max-image-size-mb: ${APP_UPLOAD_MAX_IMAGE_SIZE_MB:5}

@@ -3,14 +3,18 @@ frontend/node_modules/
 frontend/dist/
 frontend/.vite/
 frontend/coverage/
+frontend/新建文件夹/
 
 # Backend
 backend/target/
+backend/uploads/
+uploads/
 
 # Local env
 .env
 .env.local
 *.local
+backend/src/main/resources/application-local.yml
 
 # Logs
 *.log

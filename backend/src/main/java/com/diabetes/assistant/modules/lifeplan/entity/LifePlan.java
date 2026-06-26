@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @TableName("life_plans")
 public class LifePlan {
 
-    @TableId(value = "plan_id", type = IdType.AUTO)
+    @TableId(type = IdType.AUTO)
     private Integer planId;
     private Integer userId;
     private Integer profileId;
