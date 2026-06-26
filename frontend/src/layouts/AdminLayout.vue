@@ -87,7 +87,7 @@ const navGroups = [
     items: [
       { label: '健康资讯管理', to: '/admin/articles', icon: Newspaper },
       { label: '首页内容管理', to: '/admin/home-contents', icon: Home },
-      { label: 'AI 咨询配置', to: '/admin/ai-chat', icon: MessageCircle }
+      { label: 'AI 咨询日志', to: '/admin/ai-chat', icon: MessageCircle }
     ]
   }
 ]

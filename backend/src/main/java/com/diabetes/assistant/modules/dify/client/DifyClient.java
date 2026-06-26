@@ -60,13 +60,13 @@ public class DifyClient {
 
     public String sendChatMessage(String apiKey, String query, String conversationId, Map<String, Object> inputs, String user) {
         if (useDevMock(apiKey)) {
-            return "{\"answer\":\"Dify ai doctor dev mock response\"}";
+            return buildMockChatResponse(query, conversationId, inputs);
         }
 
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("inputs", inputs == null ? Map.of() : inputs);
+        body.put("inputs", normalizeChatInputs(inputs));
         body.put("query", query);
-        body.put("response_mode", "blocking");
+        body.put("response_mode", "streaming");
         body.put("user", StringUtils.hasText(user) ? user : "dev-user");
         if (StringUtils.hasText(conversationId)) {
             body.put("conversation_id", conversationId);
@@ -85,7 +85,7 @@ public class DifyClient {
                 throw new IllegalStateException("Dify chat request failed: HTTP " + response.statusCode()
                         + " " + response.body());
             }
-            return response.body();
+            return parseChatStreamResponse(response.body());
         } catch (IOException exception) {
             throw new IllegalStateException("Dify chat request failed: " + exception.getMessage(), exception);
         } catch (InterruptedException exception) {
@@ -104,6 +104,82 @@ public class DifyClient {
 
     private boolean useDevMock(String apiKey) {
         return !StringUtils.hasText(apiKey) || apiKey.startsWith("your_");
+    }
+
+    private Map<String, Object> normalizeChatInputs(Map<String, Object> inputs) {
+        if (inputs == null || inputs.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Object> normalized = new LinkedHashMap<>();
+        inputs.forEach((key, value) -> normalized.put(key, toPromptInputText(value)));
+        return normalized;
+    }
+
+    private String toPromptInputText(Object value) {
+        if (value == null) {
+            return "";
+        }
+        if (value instanceof String text) {
+            return text;
+        }
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException exception) {
+            return String.valueOf(value);
+        }
+    }
+
+    private String parseChatStreamResponse(String body) {
+        if (!StringUtils.hasText(body) || !body.contains("data:")) {
+            return body;
+        }
+
+        StringBuilder answer = new StringBuilder();
+        String conversationId = "";
+        String messageId = "";
+
+        for (String rawLine : body.split("\\R")) {
+            String line = rawLine.trim();
+            if (!line.startsWith("data:")) {
+                continue;
+            }
+            String payload = line.substring("data:".length()).trim();
+            if (!StringUtils.hasText(payload) || "[DONE]".equals(payload)) {
+                continue;
+            }
+            try {
+                var node = objectMapper.readTree(payload);
+                String event = node.path("event").asText();
+                if ("error".equals(event)) {
+                    throw new IllegalStateException(node.path("message").asText("Dify chat stream returned error"));
+                }
+                String chunk = node.path("answer").asText("");
+                if (StringUtils.hasText(chunk)) {
+                    answer.append(chunk);
+                }
+                if (!StringUtils.hasText(conversationId)) {
+                    conversationId = node.path("conversation_id").asText("");
+                }
+                if (!StringUtils.hasText(messageId)) {
+                    messageId = node.path("message_id").asText("");
+                    if (!StringUtils.hasText(messageId)) {
+                        messageId = node.path("id").asText("");
+                    }
+                }
+            } catch (JsonProcessingException exception) {
+                throw new IllegalStateException("Dify chat stream returned invalid event", exception);
+            }
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("answer", answer.toString());
+        response.put("conversation_id", conversationId);
+        response.put("message_id", messageId);
+        try {
+            return objectMapper.writeValueAsString(response);
+        } catch (JsonProcessingException exception) {
+            return "{\"answer\":\"" + answer + "\"}";
+        }
     }
 
     private String buildMockWorkflowResponse(Map<String, Object> inputs) {
@@ -147,6 +223,32 @@ public class DifyClient {
             return objectMapper.writeValueAsString(response);
         } catch (JsonProcessingException exception) {
             return "{\"data\":{\"status\":\"succeeded\",\"outputs\":{\"analysis_result\":\"{}\"}}}";
+        }
+    }
+
+    private String buildMockChatResponse(String query, String conversationId, Map<String, Object> inputs) {
+        String answer = "根据目前提供的信息，可以先从饮食、运动、监测和作息四个方面排查。"
+                + "如果你是在询问最近打卡或分析结果，建议重点看完成率、饮食记录是否连续、运动是否稳定。"
+                + "可以先尝试每天完成一次饮食记录和一次运动记录，连续 7 天后再看趋势。"
+                + "如果出现明显不适或血糖读数异常，请尽快线下就医或复查。";
+        String lowerQuery = StringUtils.hasText(query) ? query.toLowerCase() : "";
+        if (lowerQuery.contains("completion") || lowerQuery.contains("完成率")) {
+            answer = "完成率偏低通常说明饮食或运动任务还没有形成稳定习惯。"
+                    + "建议先从最容易坚持的一项开始，比如饭后固定步行 15 到 30 分钟，"
+                    + "同时连续记录 7 天饮食内容，再结合趋势调整。"
+                    + "以上是一般健康建议，不能替代线下医生诊疗。";
+        }
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("answer", answer);
+        response.put("conversation_id", StringUtils.hasText(conversationId) ? conversationId : "dev-ai-doctor-conversation");
+        response.put("message_id", "dev-ai-doctor-message");
+        response.put("safety_notice", "AI 建议仅供参考，不能替代线下医生诊疗。");
+        response.put("context_received", inputs != null && !inputs.isEmpty());
+        try {
+            return objectMapper.writeValueAsString(response);
+        } catch (JsonProcessingException exception) {
+            return "{\"answer\":\"AI doctor development mock response.\",\"conversation_id\":\"dev-ai-doctor-conversation\"}";
         }
     }
 

@@ -164,14 +164,16 @@ CREATE TABLE IF NOT EXISTS ai_chat_sessions (
     session_id          INT             NOT NULL AUTO_INCREMENT  COMMENT '会话编号',
     user_id             INT             NOT NULL                COMMENT '用户编号',
     session_title       VARCHAR(256)    DEFAULT NULL            COMMENT '会话标题（可取首条用户消息摘要）',
+    dify_conversation_id VARCHAR(128)   DEFAULT NULL            COMMENT 'Dify 会话编号，用于多轮对话续聊',
     status              VARCHAR(16)     NOT NULL DEFAULT 'active'
-                        COMMENT '会话状态：active（进行中）/ deleted（已删除，软删除）',
+                                                            COMMENT '会话状态：active（进行中）/ deleted（已删除，软删除）',
     last_message_time   DATETIME        DEFAULT NULL            COMMENT '最近一条消息时间',
     create_time         DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '会话创建时间',
     update_time         DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (session_id),
     INDEX idx_user_id       (user_id),
     INDEX idx_status        (status),
+    INDEX idx_dify_conversation (dify_conversation_id),
     INDEX idx_last_message  (last_message_time),
     CONSTRAINT fk_session_user FOREIGN KEY (user_id) REFERENCES users(user_id)
         ON DELETE CASCADE ON UPDATE CASCADE

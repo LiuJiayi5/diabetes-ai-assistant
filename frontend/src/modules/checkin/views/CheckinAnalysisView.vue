@@ -4,7 +4,7 @@
       <div>
         <p class="eyebrow">AI 行为分析</p>
         <h2>复盘饮食与运动习惯</h2>
-        <p>结果来源会在下方标明；Dify 未配置时仅展示本地模拟结果。</p>
+        <p>结合近期打卡记录，帮助你理解生活习惯变化。</p>
       </div>
       <button class="generate-button" type="button" :disabled="generating" @click="generateAnalysis">
         <LoaderCircle v-if="generating" class="spin" :size="16" />
@@ -27,11 +27,11 @@
     <template v-else>
       <section v-if="isLocalMock" class="source-card source-card--mock">
         <Info :size="18" />
-        <p>当前结果是本地模拟输出，不是真实 AI 分析。配置 Dify API Key 后重新生成即可得到真实工作流结果。</p>
+        <p>当前结果用于辅助理解近期打卡趋势，请结合实际身体感受判断。</p>
       </section>
       <section v-else class="source-card">
         <Sparkles :size="18" />
-        <p>当前结果来自 Dify 打卡行为分析工作流。</p>
+        <p>当前结果由 AI 行为分析服务结合打卡记录生成。</p>
       </section>
 
       <section class="score-card">
@@ -112,6 +112,11 @@
         </div>
       </section>
 
+      <button class="consult-button" type="button" @click="askAiDoctor">
+        <MessageCircle :size="17" />
+        <span>向 AI 医生咨询这份分析</span>
+      </button>
+
       <p v-if="analysis.error_message" class="error-note">{{ analysis.error_message }}</p>
     </template>
 
@@ -121,6 +126,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { showFailToast, showSuccessToast } from 'vant'
 import {
   Activity,
@@ -130,6 +136,7 @@ import {
   Info,
   Lightbulb,
   LoaderCircle,
+  MessageCircle,
   Salad,
   Sparkles,
   Target
@@ -140,6 +147,7 @@ import CheckinPageShell from '../components/CheckinPageShell.vue'
 const loading = ref(false)
 const generating = ref(false)
 const analysis = ref(null)
+const router = useRouter()
 
 const rangeText = computed(() => {
   if (!analysis.value?.start_date || !analysis.value?.end_date) return '最近打卡记录'
@@ -199,12 +207,21 @@ async function generateAnalysis() {
   generating.value = true
   try {
     analysis.value = unwrap(await generateCheckinAnalysis({ period: 7 }))
-    showSuccessToast(isLocalMock.value ? '已生成本地模拟分析' : '分析已生成')
+    showSuccessToast('分析已生成')
   } catch (error) {
     showFailToast(error?.response?.data?.message || '分析生成失败')
   } finally {
     generating.value = false
   }
+}
+
+function askAiDoctor() {
+  router.push({
+    path: '/app/ai-chat/chat',
+    query: {
+      q: '请帮我解释最近一周打卡分析，并告诉我饮食和运动应该怎么调整。'
+    }
+  })
 }
 
 function listOf(value, fallback) {
@@ -283,6 +300,22 @@ onMounted(loadLatest)
   background: var(--figma-green-button);
   color: #FFFFFF;
   font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--figma-shadow-button);
+}
+
+.consult-button {
+  width: 100%;
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 12px;
+  border-radius: var(--figma-radius-pill);
+  background: var(--figma-green-button);
+  color: #FFFFFF;
+  font-size: 14px;
   font-weight: 600;
   box-shadow: var(--figma-shadow-button);
 }
