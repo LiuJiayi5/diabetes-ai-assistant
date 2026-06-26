@@ -217,6 +217,11 @@ public class UserServiceImpl implements UserService, UserQueryApi {
     }
 
     @Override
+    public List<Integer> listUserIdsByKeyword(String keyword) {
+        return searchUserIdsByKeyword(keyword);
+    }
+
+    @Override
     public boolean existsActiveUser(Integer userId) {
         User user = userMapper.selectById(userId);
         return user != null && StatusConstants.ACTIVE.equals(user.getStatus());

@@ -11,7 +11,7 @@ function nowText() {
 }
 
 function shouldUseMock() {
-  return import.meta.env.DEV && import.meta.env.VITE_CHECKIN_MOCK !== 'false'
+  return import.meta.env.VITE_CHECKIN_MOCK === 'true'
 }
 
 function readMockState() {

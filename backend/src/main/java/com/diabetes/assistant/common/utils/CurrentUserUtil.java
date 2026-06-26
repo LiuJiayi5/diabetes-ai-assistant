@@ -1,5 +1,6 @@
 package com.diabetes.assistant.common.utils;
 
+import com.diabetes.assistant.common.constants.RoleConstants;
 import com.diabetes.assistant.common.exception.BusinessException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +41,16 @@ public class CurrentUserUtil {
         }
 
         throw new BusinessException(401, "请先登录");
+    }
+
+    public String getCurrentRole(HttpServletRequest request) {
+        return getCurrentPrincipal(request).role();
+    }
+
+    public void requireAdmin(HttpServletRequest request) {
+        if (!RoleConstants.ADMIN.equals(getCurrentRole(request))) {
+            throw new BusinessException(403, "Admin permission required");
+        }
     }
 
     public record TokenPrincipal(Integer userId, String role) {

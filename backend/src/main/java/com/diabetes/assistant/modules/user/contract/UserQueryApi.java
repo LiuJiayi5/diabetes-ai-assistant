@@ -13,4 +13,6 @@ public interface UserQueryApi {
     boolean existsActiveUser(Integer userId);
 
     boolean isAdmin(Integer userId);
+
+    List<Integer> listUserIdsByKeyword(String keyword);
 }

@@ -4,6 +4,14 @@ export function getHealthMetricEntry() {
   return request.get('/health-metric/entry')
 }
 
+export function getLatestMetric() {
+  return request.get('/health-metric/latest')
+}
+
+export function getMetricHistory(params) {
+  return request.get('/health-metric/history', { params })
+}
+
 export function saveMetric(payload) {
   return request.post('/health-metric', payload)
 }
