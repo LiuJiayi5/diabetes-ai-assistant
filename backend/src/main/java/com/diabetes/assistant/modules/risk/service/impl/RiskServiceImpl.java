@@ -231,7 +231,7 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
 
     private Map<String, Object> buildDifyInputs(PatientProfileDTO profile, HealthMetricDTO metric) {
         Map<String, Object> inputs = new HashMap<>();
-        inputs.put("user_id", profile.getUserId());
+        inputs.put("user_id", String.valueOf(profile.getUserId()));
         inputs.put("age", profile.getAge());
         inputs.put("gender", profile.getGender());
         inputs.put("height_cm", profile.getHeightCm());

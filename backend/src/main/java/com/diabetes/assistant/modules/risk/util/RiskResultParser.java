@@ -62,11 +62,47 @@ public final class RiskResultParser {
     }
 
     private static JsonNode readNode(String text) {
+        String normalized = normalizeModelText(text);
         try {
-            return OBJECT_MAPPER.readTree(text);
+            return OBJECT_MAPPER.readTree(normalized);
         } catch (Exception exception) {
             throw new IllegalArgumentException("Dify outputs 不是合法 JSON", exception);
         }
+    }
+
+    private static String normalizeModelText(String text) {
+        if (text == null) {
+            return "";
+        }
+        String cleaned = stripThinkBlock(text);
+        if (cleaned.startsWith("```")) {
+            cleaned = cleaned.replaceFirst("^```(?:json)?\\s*", "");
+            int fenceEnd = cleaned.lastIndexOf("```");
+            if (fenceEnd >= 0) {
+                cleaned = cleaned.substring(0, fenceEnd).trim();
+            }
+        }
+        int start = cleaned.indexOf('{');
+        int end = cleaned.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            return cleaned.substring(start, end + 1);
+        }
+        return cleaned;
+    }
+
+    private static String stripThinkBlock(String text) {
+        String openTag = "<" + "think" + ">";
+        String closeTag = "</" + "think" + ">";
+        int openIndex = text.indexOf(openTag);
+        while (openIndex >= 0) {
+            int closeIndex = text.indexOf(closeTag, openIndex);
+            if (closeIndex < 0) {
+                break;
+            }
+            text = text.substring(0, openIndex) + text.substring(closeIndex + closeTag.length());
+            openIndex = text.indexOf(openTag);
+        }
+        return text.trim();
     }
 
     @Data
