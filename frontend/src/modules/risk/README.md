@@ -3,7 +3,7 @@
 ## 功能
 
 - 患者端：指标录入、自动/手动风险预测、评估历史、评估详情
-- 管理端：后端 admin 列表/详情 API 已实现（前端 admin 页为占位）
+- 管理端：后端 admin 列表/详情 API + 前端 `/admin/risk-assessments`
 
 ## 路由
 

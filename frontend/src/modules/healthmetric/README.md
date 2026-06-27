@@ -3,7 +3,7 @@
 ## 功能
 
 - 患者端：健康数据录入（在风险预测页）、历史列表
-- 管理端：后端 admin 列表/异常数据 API 已实现（前端 admin 页为占位）
+- 管理端：后端 admin 列表 API + 前端 `/admin/health-metrics`
 
 ## 路由
 

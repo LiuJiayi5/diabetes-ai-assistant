@@ -15,3 +15,11 @@ export function getMetricHistory(params) {
 export function saveMetric(payload) {
   return request.post('/health-metric', payload)
 }
+
+export function adminListMetrics(params) {
+  return request.get('/health-metric/admin', { params })
+}
+
+export function adminListAbnormalMetrics(params) {
+  return request.get('/health-metric/admin/abnormal', { params })
+}

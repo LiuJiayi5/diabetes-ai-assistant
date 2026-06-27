@@ -19,3 +19,11 @@ export function getRiskHistory(params) {
 export function getRiskDetail(assessmentId) {
   return request.get(`/risk/${assessmentId}`)
 }
+
+export function adminListAssessments(params) {
+  return request.get('/risk/admin', { params })
+}
+
+export function adminGetRiskDetail(assessmentId) {
+  return request.get(`/risk/admin/${assessmentId}`)
+}
