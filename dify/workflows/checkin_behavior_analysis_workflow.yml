@@ -1,0 +1,1062 @@
+app:
+  description: 生活打卡行为分析工作流，用于根据用户健康档案、生活方案、打卡记录和统计趋势生成结构化复盘建议。
+  icon: 📊
+  icon_background: '#E8F7F1'
+  icon_type: emoji
+  mode: workflow
+  name: checkin_behavior_analysis_workflow
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/deepseek:0.0.17@f7a5c1d222d17ee419b17a80d6e4923838fe93788dc724a3af73fbc6990b3a32
+    version: null
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  rag_pipeline_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 20
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: code
+      id: start-source-validate_and_normalize_input-target
+      source: start
+      sourceHandle: source
+      target: validate_and_normalize_input
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: if-else
+      id: validate_and_normalize_input-source-check_can_analyze-target
+      source: validate_and_normalize_input
+      sourceHandle: source
+      target: check_can_analyze
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: llm
+      id: check_can_analyze-true-generate_behavior_analysis-target
+      source: check_can_analyze
+      sourceHandle: 'true'
+      target: generate_behavior_analysis
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: generate_behavior_analysis-source-repair_and_validate_result-target
+      source: generate_behavior_analysis
+      sourceHandle: source
+      target: repair_and_validate_result
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: repair_and_validate_result-source-success_end-target
+      source: repair_and_validate_result
+      sourceHandle: source
+      target: success_end
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: check_can_analyze-false-build_invalid_input_response-target
+      source: check_can_analyze
+      sourceHandle: 'false'
+      target: build_invalid_input_response
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: build_invalid_input_response-source-failed_end-target
+      source: build_invalid_input_response
+      sourceHandle: source
+      target: failed_end
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: 接收后端组装的健康档案、最新健康数据、风险评估、生活方案、打卡明细、统计趋势和安全规则。
+        selected: false
+        title: 用户输入
+        type: start
+        variables:
+        - label: 用户编号
+          max_length: 64
+          options: []
+          required: false
+          type: text-input
+          variable: user_id
+        - label: 用户健康档案摘要
+          max_length: null
+          options: []
+          required: true
+          type: paragraph
+          variable: user_profile
+        - label: 最新健康数据摘要
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: latest_health_data
+        - label: 最近风险评估摘要
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: risk_result
+        - label: 当前生活方案摘要
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: life_plan
+        - label: 方案标题
+          max_length: null
+          options: []
+          required: false
+          type: text-input
+          variable: plan_title
+        - label: 方案目标
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: plan_goal
+        - label: 方案打卡任务 JSON
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: plan_tasks_json
+        - label: 打卡记录 JSON
+          max_length: null
+          options: []
+          required: true
+          type: paragraph
+          variable: checkin_records
+        - label: 打卡统计 JSON
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: checkin_stats_json
+        - label: 每日趋势 JSON
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: checkin_trend_json
+        - label: 任务拆解 JSON
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: task_breakdown_json
+        - label: 饮食完成天数
+          max_length: null
+          options: []
+          required: true
+          type: number
+          variable: diet_completion_count
+        - label: 运动完成天数
+          max_length: null
+          options: []
+          required: true
+          type: number
+          variable: exercise_completion_count
+        - label: 统计天数
+          max_length: null
+          options: []
+          required: true
+          type: number
+          variable: total_days
+        - label: 后端完成率
+          max_length: null
+          options: []
+          required: false
+          type: number
+          variable: completion_rate
+        - label: 开始日期
+          max_length: 64
+          options: []
+          required: false
+          type: text-input
+          variable: start_date
+        - label: 结束日期
+          max_length: 64
+          options: []
+          required: false
+          type: text-input
+          variable: end_date
+        - label: 用户备注
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: user_notes
+        - label: 安全规则
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: safety_rules
+      height: 430
+      id: start
+      position:
+        x: 80
+        y: 260
+      positionAbsolute:
+        x: 80
+        y: 260
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          import json
+
+          def _parse_json(raw, default, field_name, errors):
+              if raw is None or str(raw).strip() == "":
+                  return default
+              try:
+                  value = json.loads(raw) if isinstance(raw, str) else raw
+                  if isinstance(default, list) and not isinstance(value, list):
+                      errors.append(f"{field_name} 必须是 JSON 数组")
+                      return default
+                  if isinstance(default, dict) and not isinstance(value, dict):
+                      errors.append(f"{field_name} 必须是 JSON 对象")
+                      return default
+                  return value
+              except Exception:
+                  errors.append(f"{field_name} 不是合法 JSON")
+                  return default
+
+          def _to_int(value, default=0):
+              try:
+                  if value is None or value == "":
+                      return default
+                  return int(float(value))
+              except Exception:
+                  return default
+
+          def _to_rate(value):
+              try:
+                  if value is None or value == "":
+                      return None
+                  return round(float(value), 2)
+              except Exception:
+                  return None
+
+          def _status_count(records, status):
+              return len([item for item in records if isinstance(item, dict) and status in [item.get("diet"), item.get("exercise"), item.get("diet_status"), item.get("exercise_status")]])
+
+          def main(user_id: str = "",
+                   user_profile: str = "",
+                   latest_health_data: str = "",
+                   risk_result: str = "",
+                   life_plan: str = "",
+                   plan_title: str = "",
+                   plan_goal: str = "",
+                   plan_tasks_json: str = "",
+                   checkin_records: str = "",
+                   checkin_stats_json: str = "",
+                   checkin_trend_json: str = "",
+                   task_breakdown_json: str = "",
+                   diet_completion_count = 0,
+                   exercise_completion_count = 0,
+                   total_days = 0,
+                   completion_rate = None,
+                   start_date: str = "",
+                   end_date: str = "",
+                   user_notes: str = "",
+                   safety_rules: str = "") -> dict:
+              errors = []
+              records = _parse_json(checkin_records, [], "checkin_records", errors)
+              stats = _parse_json(checkin_stats_json, {}, "checkin_stats_json", errors)
+              trend = _parse_json(checkin_trend_json, [], "checkin_trend_json", errors)
+              task_breakdown = _parse_json(task_breakdown_json, {}, "task_breakdown_json", errors)
+              plan_tasks = _parse_json(plan_tasks_json, [], "plan_tasks_json", errors)
+
+              days = _to_int(total_days, _to_int(stats.get("total_days"), 0))
+              diet_count = _to_int(diet_completion_count, _to_int(stats.get("diet_completion_count"), 0))
+              exercise_count = _to_int(exercise_completion_count, _to_int(stats.get("exercise_completion_count"), 0))
+              backend_rate = _to_rate(completion_rate)
+
+              total_task_count = _to_int(stats.get("total_task_count"), 0)
+              completed_task_count = _to_int(stats.get("completed_task_count"), 0)
+              if total_task_count <= 0:
+                  total_task_count = max(len(records), days * 2)
+              if completed_task_count <= 0:
+                  completed_task_count = diet_count + exercise_count
+              if backend_rate is None:
+                  completion_rate_value = 0 if total_task_count <= 0 else round(completed_task_count / total_task_count * 100, 2)
+              else:
+                  completion_rate_value = backend_rate
+
+              record_count = len(records)
+              trend_days = len(trend)
+              missing_days = max(0, days - trend_days)
+              completed_dates = []
+              weak_dates = []
+              for item in trend:
+                  if not isinstance(item, dict):
+                      continue
+                  completed = _to_int(item.get("completed_count"), 0)
+                  date = str(item.get("date") or "")
+                  if completed >= 2 and date:
+                      completed_dates.append(date)
+                  if completed == 0 and date:
+                      weak_dates.append(date)
+
+              data_sufficiency = "enough"
+              missing_fields = []
+              if not user_profile or user_profile == "No data":
+                  missing_fields.append("user_profile")
+              if not records:
+                  missing_fields.append("checkin_records")
+              if days < 3 or record_count < 3:
+                  data_sufficiency = "insufficient"
+              can_analyze = len(errors) == 0 and len(missing_fields) == 0
+
+              if errors:
+                  error_message = "；".join(errors)
+              elif missing_fields:
+                  error_message = "打卡分析缺少必要数据：" + "、".join(missing_fields)
+              else:
+                  error_message = ""
+
+              risk_flags = []
+              risk_text = str(risk_result or "")
+              latest_text = str(latest_health_data or "")
+              if any(word in risk_text for word in ["高风险", "偏高", "high", "High"]):
+                  risk_flags.append("风险结果提示需更谨慎控制饮食和运动强度")
+              if any(word in latest_text for word in ["高血糖", "偏高", "低血糖", "异常"]):
+                  risk_flags.append("最近健康数据存在异常或波动，需要提醒复查")
+
+              normalized_context = {
+                  "user_id": user_id,
+                  "period": {
+                      "start_date": start_date,
+                      "end_date": end_date,
+                      "total_days": days
+                  },
+                  "user_profile": user_profile,
+                  "latest_health_data": latest_health_data,
+                  "risk_result": risk_result,
+                  "life_plan": {
+                      "title": plan_title,
+                      "goal": plan_goal,
+                      "summary": life_plan,
+                      "checkin_tasks": plan_tasks
+                  },
+                  "checkin": {
+                      "records": records,
+                      "trend": trend,
+                      "stats": stats,
+                      "task_breakdown": task_breakdown,
+                      "completion_rate": completion_rate_value,
+                      "diet_completion_count": diet_count,
+                      "exercise_completion_count": exercise_count,
+                      "total_task_count": total_task_count,
+                      "completed_task_count": completed_task_count,
+                      "completed_dates": completed_dates,
+                      "weak_dates": weak_dates,
+                      "missing_trend_days": missing_days
+                  },
+                  "user_notes": user_notes,
+                  "risk_flags": risk_flags,
+                  "safety_rules": safety_rules or "仅做健康管理建议，不替代医生诊断。"
+              }
+
+              input_summary = {
+                  "user_id": user_id,
+                  "start_date": start_date,
+                  "end_date": end_date,
+                  "total_days": days,
+                  "record_count": record_count,
+                  "completion_rate": completion_rate_value,
+                  "diet_completion_count": diet_count,
+                  "exercise_completion_count": exercise_count,
+                  "data_sufficiency": data_sufficiency,
+                  "weak_dates": weak_dates[:5],
+                  "risk_flags": risk_flags
+              }
+
+              return {
+                  "can_analyze": can_analyze,
+                  "error_message": error_message,
+                  "missing_fields": missing_fields,
+                  "normalized_context": json.dumps(normalized_context, ensure_ascii=False, indent=2),
+                  "input_summary": json.dumps(input_summary, ensure_ascii=False),
+                  "completion_rate": completion_rate_value,
+                  "data_sufficiency": data_sufficiency,
+                  "data_sufficiency_text": "打卡数据较少，分析仅供参考" if data_sufficiency == "insufficient" else "打卡数据量基本满足本周期分析",
+                  "weak_dates": weak_dates,
+                  "risk_flags": risk_flags
+              }
+        code_language: python3
+        desc: 解析 JSON 输入，校验必要字段，统一计算完成率、数据充分性、薄弱日期和安全提示，生成 LLM 可用上下文。
+        outputs:
+          can_analyze:
+            children: null
+            type: boolean
+          completion_rate:
+            children: null
+            type: number
+          data_sufficiency:
+            children: null
+            type: string
+          data_sufficiency_text:
+            children: null
+            type: string
+          error_message:
+            children: null
+            type: string
+          input_summary:
+            children: null
+            type: string
+          missing_fields:
+            children: null
+            type: array[string]
+          normalized_context:
+            children: null
+            type: string
+          risk_flags:
+            children: null
+            type: array[string]
+          weak_dates:
+            children: null
+            type: array[string]
+        selected: false
+        title: 校验输入
+        type: code
+        variables:
+        - value_selector:
+          - start
+          - user_id
+          variable: user_id
+        - value_selector:
+          - start
+          - user_profile
+          variable: user_profile
+        - value_selector:
+          - start
+          - latest_health_data
+          variable: latest_health_data
+        - value_selector:
+          - start
+          - risk_result
+          variable: risk_result
+        - value_selector:
+          - start
+          - life_plan
+          variable: life_plan
+        - value_selector:
+          - start
+          - plan_title
+          variable: plan_title
+        - value_selector:
+          - start
+          - plan_goal
+          variable: plan_goal
+        - value_selector:
+          - start
+          - plan_tasks_json
+          variable: plan_tasks_json
+        - value_selector:
+          - start
+          - checkin_records
+          variable: checkin_records
+        - value_selector:
+          - start
+          - checkin_stats_json
+          variable: checkin_stats_json
+        - value_selector:
+          - start
+          - checkin_trend_json
+          variable: checkin_trend_json
+        - value_selector:
+          - start
+          - task_breakdown_json
+          variable: task_breakdown_json
+        - value_selector:
+          - start
+          - diet_completion_count
+          variable: diet_completion_count
+        - value_selector:
+          - start
+          - exercise_completion_count
+          variable: exercise_completion_count
+        - value_selector:
+          - start
+          - total_days
+          variable: total_days
+        - value_selector:
+          - start
+          - completion_rate
+          variable: completion_rate
+        - value_selector:
+          - start
+          - start_date
+          variable: start_date
+        - value_selector:
+          - start
+          - end_date
+          variable: end_date
+        - value_selector:
+          - start
+          - user_notes
+          variable: user_notes
+        - value_selector:
+          - start
+          - safety_rules
+          variable: safety_rules
+      height: 88
+      id: validate_and_normalize_input
+      position:
+        x: 390
+        y: 260
+      positionAbsolute:
+        x: 390
+        y: 260
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: is
+            id: can-analyze-is-true
+            value: true
+            varType: boolean
+            variable_selector:
+            - validate_and_normalize_input
+            - can_analyze
+          id: 'true'
+          logical_operator: and
+        desc: can_analyze 为 true 时进入 AI 分析，否则返回输入错误。
+        selected: false
+        title: 是否分析
+        type: if-else
+      height: 126
+      id: check_can_analyze
+      position:
+        x: 700
+        y: 260
+      positionAbsolute:
+        x: 700
+        y: 260
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: 使用 DeepSeek 模型生成结构化的生活打卡行为分析 JSON。
+        memory:
+          enabled: false
+          window:
+            enabled: false
+            size: 50
+        model:
+          completion_params:
+            temperature: 0.25
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: system-prompt
+          role: system
+          text: |
+            你是“糖尿病预防智能助手”的生活打卡行为分析工作流，负责把用户的健康档案、风险评估、生活方案、打卡记录和趋势统计整理成可保存到系统中的 JSON 分析结果。
+
+            边界规则：
+            1. 你不是医生，不能给出最终医学诊断、处方或药物剂量建议。
+            2. 如发现持续高血糖、疑似低血糖、胸闷胸痛、明显不适或指标显著异常，只能建议用户线下就医或复查。
+            3. 必须同时分析饮食打卡和运动打卡，不能只泛泛评价。
+            4. 必须结合当前生活方案目标和打卡任务，判断用户是否按方案执行。
+            5. 建议必须具体、温和、可执行，避免“继续保持”“注意饮食”这类空话。
+            6. 如果数据充分性为 insufficient，必须明确说明“打卡数据较少，分析仅供参考”，并避免过度下结论。
+            7. 只输出合法 JSON 对象，不要输出 Markdown、代码块或 JSON 之外的解释文字。
+        - id: user-prompt
+          role: user
+          text: |
+            请根据以下标准化上下文生成本周期生活打卡行为分析。
+
+            标准化上下文：
+            {{#validate_and_normalize_input.normalized_context#}}
+
+            数据充分性：
+            {{#validate_and_normalize_input.data_sufficiency_text#}}
+
+            风险提示：
+            {{#validate_and_normalize_input.risk_flags#}}
+
+            输出字段必须严格如下：
+            {
+              "completion_rate": 数字,
+              "diet_summary": "饮食打卡完成情况总结，包含完成频率、薄弱日期或薄弱行为",
+              "exercise_summary": "运动打卡完成情况总结，包含完成频率、薄弱日期或薄弱行为",
+              "habit_score": 数字,
+              "life_evaluation": "结合方案目标、风险信息和实际打卡的生活状态评价",
+              "main_problems": ["主要问题1", "主要问题2"],
+              "improvement_suggestions": ["改进建议1", "改进建议2", "改进建议3"],
+              "next_focus": "下一阶段最需要关注的一件事或一组行动",
+              "summary": "整体总结"
+            }
+
+            字段规则：
+            1. completion_rate 必须等于 {{#validate_and_normalize_input.completion_rate#}}。
+            2. habit_score 必须是 0 到 100 的整数，综合完成率、连续性、饮食运动均衡度、风险提示和备注给出。
+            3. main_problems 至少 2 条，最多 4 条；如果表现较好，也要写成“仍需关注的点”。
+            4. improvement_suggestions 至少 3 条，最多 5 条，每条要能直接执行。
+            5. 饮食建议要尽量具体到主食比例、烹饪方式、加餐或晚餐控制。
+            6. 运动建议要尽量具体到饭后步行、频率、时长、强度或不适时停止。
+            7. summary 适合展示在页面摘要区，控制在 80 字以内。
+        selected: false
+        structured_output:
+          enabled: false
+        title: 生成打卡分析
+        type: llm
+        variables: []
+        vision:
+          configs:
+            detail: high
+          enabled: false
+      height: 126
+      id: generate_behavior_analysis
+      position:
+        x: 1010
+        y: 150
+      positionAbsolute:
+        x: 1010
+        y: 150
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          import json
+
+          REQUIRED_FIELDS = [
+              "completion_rate",
+              "diet_summary",
+              "exercise_summary",
+              "habit_score",
+              "life_evaluation",
+              "main_problems",
+              "improvement_suggestions",
+              "next_focus",
+              "summary"
+          ]
+
+          def _strip_to_json(text):
+              if text is None:
+                  return ""
+              value = str(text).strip()
+              if value.startswith("```"):
+                  value = value.strip("`")
+                  if value.lower().startswith("json"):
+                      value = value[4:].strip()
+              start = value.find("{")
+              end = value.rfind("}")
+              if start >= 0 and end > start:
+                  return value[start:end + 1]
+              return value
+
+          def _ensure_list(value):
+              if value is None:
+                  return []
+              if isinstance(value, list):
+                  return [str(item).strip() for item in value if str(item).strip()]
+              text = str(value).strip()
+              return [text] if text else []
+
+          def _to_rate(value):
+              try:
+                  return round(float(value), 2)
+              except Exception:
+                  return 0
+
+          def _to_score(value, fallback):
+              try:
+                  score = int(round(float(value)))
+              except Exception:
+                  score = fallback
+              return max(0, min(100, score))
+
+          def main(llm_output: str,
+                   completion_rate = 0,
+                   data_sufficiency: str = "",
+                   input_summary: str = "") -> dict:
+              expected_rate = _to_rate(completion_rate)
+              try:
+                  analysis = json.loads(_strip_to_json(llm_output))
+                  if not isinstance(analysis, dict):
+                      raise ValueError("root is not object")
+              except Exception:
+                  return {
+                      "success": False,
+                      "error_message": "AI 输出不是合法 JSON，请重新生成",
+                      "missing_fields": [],
+                      "input_summary": input_summary,
+                      "analysis_result": ""
+                  }
+
+              missing = []
+              for field in REQUIRED_FIELDS:
+                  if field not in analysis or analysis[field] in [None, ""]:
+                      missing.append(field)
+
+              analysis["completion_rate"] = expected_rate
+              analysis["main_problems"] = _ensure_list(analysis.get("main_problems"))
+              analysis["improvement_suggestions"] = _ensure_list(analysis.get("improvement_suggestions"))
+
+              if len(analysis["main_problems"]) < 2:
+                  missing.append("main_problems")
+                  while len(analysis["main_problems"]) < 2:
+                      analysis["main_problems"].append("打卡数据维度仍需继续积累，便于后续判断习惯稳定性")
+              if len(analysis["improvement_suggestions"]) < 3:
+                  missing.append("improvement_suggestions")
+                  defaults = [
+                      "接下来一周继续完成饮食和运动打卡，优先保证记录完整",
+                      "晚餐主食控制在平时的三分之二，并搭配足量蔬菜和优质蛋白",
+                      "餐后选择舒适强度步行 15 到 20 分钟，如有不适立即停止"
+                  ]
+                  for item in defaults:
+                      if len(analysis["improvement_suggestions"]) >= 3:
+                          break
+                      analysis["improvement_suggestions"].append(item)
+
+              analysis["habit_score"] = _to_score(analysis.get("habit_score"), int(max(40, min(90, expected_rate))))
+              if not str(analysis.get("diet_summary", "")).strip():
+                  analysis["diet_summary"] = "本周期饮食打卡信息不足，建议继续记录主食、蔬菜、蛋白质和加餐情况。"
+              if not str(analysis.get("exercise_summary", "")).strip():
+                  analysis["exercise_summary"] = "本周期运动打卡信息不足，建议继续记录餐后活动、运动时长和身体感受。"
+              if not str(analysis.get("life_evaluation", "")).strip():
+                  analysis["life_evaluation"] = "当前分析基于生活方案和打卡记录生成，仅用于健康管理参考。"
+              if not str(analysis.get("next_focus", "")).strip():
+                  analysis["next_focus"] = "下一阶段优先提升饮食和运动打卡的连续性。"
+              if not str(analysis.get("summary", "")).strip():
+                  analysis["summary"] = "本周期打卡分析已生成，请结合页面详情查看具体建议。"
+
+              if data_sufficiency == "insufficient" and "打卡数据较少" not in analysis["summary"]:
+                  analysis["summary"] = "打卡数据较少，分析仅供参考。" + analysis["summary"]
+
+              return {
+                  "success": True,
+                  "error_message": "",
+                  "missing_fields": [],
+                  "input_summary": input_summary,
+                  "analysis_result": json.dumps(analysis, ensure_ascii=False)
+              }
+        code_language: python3
+        desc: 清理 LLM 可能输出的代码块，解析并校验 JSON，补齐后端必需字段，统一 completion_rate。
+        outputs:
+          analysis_result:
+            children: null
+            type: string
+          error_message:
+            children: null
+            type: string
+          input_summary:
+            children: null
+            type: string
+          missing_fields:
+            children: null
+            type: array[string]
+          success:
+            children: null
+            type: boolean
+        selected: false
+        title: 校验结果
+        type: code
+        variables:
+        - value_selector:
+          - generate_behavior_analysis
+          - text
+          variable: llm_output
+        - value_selector:
+          - validate_and_normalize_input
+          - completion_rate
+          variable: completion_rate
+        - value_selector:
+          - validate_and_normalize_input
+          - data_sufficiency
+          variable: data_sufficiency
+        - value_selector:
+          - validate_and_normalize_input
+          - input_summary
+          variable: input_summary
+      height: 88
+      id: repair_and_validate_result
+      position:
+        x: 1320
+        y: 150
+      positionAbsolute:
+        x: 1320
+        y: 150
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          def main(error_message: str = "", missing_fields = None, input_summary: str = "", completion_rate = 0) -> dict:
+              if missing_fields is None:
+                  missing_fields = []
+              if not error_message:
+                  error_message = "打卡记录不足或输入不完整，无法生成本周期打卡分析"
+              return {
+                  "success": False,
+                  "error_message": error_message,
+                  "missing_fields": missing_fields,
+                  "input_summary": input_summary,
+                  "analysis_result": "",
+                  "completion_rate": completion_rate
+              }
+        code_language: python3
+        desc: 构造输入不完整或 JSON 不合法时的统一错误响应。
+        outputs:
+          analysis_result:
+            children: null
+            type: string
+          completion_rate:
+            children: null
+            type: number
+          error_message:
+            children: null
+            type: string
+          input_summary:
+            children: null
+            type: string
+          missing_fields:
+            children: null
+            type: array[string]
+          success:
+            children: null
+            type: boolean
+        selected: false
+        title: 输入错误
+        type: code
+        variables:
+        - value_selector:
+          - validate_and_normalize_input
+          - error_message
+          variable: error_message
+        - value_selector:
+          - validate_and_normalize_input
+          - missing_fields
+          variable: missing_fields
+        - value_selector:
+          - validate_and_normalize_input
+          - input_summary
+          variable: input_summary
+        - value_selector:
+          - validate_and_normalize_input
+          - completion_rate
+          variable: completion_rate
+      height: 88
+      id: build_invalid_input_response
+      position:
+        x: 1010
+        y: 430
+      positionAbsolute:
+        x: 1010
+        y: 430
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: 成功分支输出，后端读取 analysis_result 并保存到 checkin_analysis。
+        outputs:
+        - value_selector:
+          - repair_and_validate_result
+          - success
+          value_type: boolean
+          variable: success
+        - value_selector:
+          - repair_and_validate_result
+          - analysis_result
+          value_type: string
+          variable: analysis_result
+        - value_selector:
+          - validate_and_normalize_input
+          - completion_rate
+          value_type: number
+          variable: completion_rate
+        - value_selector:
+          - repair_and_validate_result
+          - error_message
+          value_type: string
+          variable: error_message
+        - value_selector:
+          - repair_and_validate_result
+          - input_summary
+          value_type: string
+          variable: input_summary
+        - value_selector:
+          - repair_and_validate_result
+          - missing_fields
+          value_type: array[string]
+          variable: missing_fields
+        selected: false
+        title: 成功输出
+        type: end
+      height: 166
+      id: success_end
+      position:
+        x: 1630
+        y: 150
+      positionAbsolute:
+        x: 1630
+        y: 150
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: 失败分支输出，后端会识别 success=false 并保存失败原因。
+        outputs:
+        - value_selector:
+          - build_invalid_input_response
+          - success
+          value_type: boolean
+          variable: success
+        - value_selector:
+          - build_invalid_input_response
+          - analysis_result
+          value_type: string
+          variable: analysis_result
+        - value_selector:
+          - build_invalid_input_response
+          - completion_rate
+          value_type: number
+          variable: completion_rate
+        - value_selector:
+          - build_invalid_input_response
+          - error_message
+          value_type: string
+          variable: error_message
+        - value_selector:
+          - build_invalid_input_response
+          - input_summary
+          value_type: string
+          variable: input_summary
+        - value_selector:
+          - build_invalid_input_response
+          - missing_fields
+          value_type: array[string]
+          variable: missing_fields
+        selected: false
+        title: 失败输出
+        type: end
+      height: 166
+      id: failed_end
+      position:
+        x: 1320
+        y: 430
+      positionAbsolute:
+        x: 1320
+        y: 430
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.7

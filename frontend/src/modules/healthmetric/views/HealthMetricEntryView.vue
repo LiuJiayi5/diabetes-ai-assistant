@@ -2,10 +2,8 @@
   <div class="module-entry">
     <div class="entry-panel">
       <h2>健康数据</h2>
-      <p>模块3：健康数据模块</p>
-      <p>后续接入：Spring Boot 健康数据接口、MySQL 指标记录。</p>
-      <p>是否涉及 Dify：否。</p>
-      <p>后续可扩展：数据录入、最新指标、历史趋势。</p>
+      <p>记录体重、血糖、血压等指标后，可以更清楚地观察身体变化趋势。</p>
+      <p>暂无数据时，请先添加近期健康指标。</p>
     </div>
   </div>
 </template>

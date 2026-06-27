@@ -1,0 +1,1194 @@
+app:
+  description: 根据健康档案、最新健康数据和糖尿病风险评估结果，生成可保存到 LifePlan 表的结构化个性化控糖生活方案。
+  icon: 🩺
+  icon_background: '#E0F2FE'
+  icon_type: emoji
+  mode: workflow
+  name: personalized_life_plan_workflow
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/deepseek:0.0.17@f7a5c1d222d17ee419b17a80d6e4923838fe93788dc724a3af73fbc6990b3a32
+    version: null
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  rag_pipeline_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 20
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: code
+      id: start-source-validate_and_normalize_input-target
+      source: start
+      sourceHandle: source
+      target: validate_and_normalize_input
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: if-else
+      id: validate_and_normalize_input-source-check_can_generate-target
+      source: validate_and_normalize_input
+      sourceHandle: source
+      target: check_can_generate
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: llm
+      id: check_can_generate-true-generate_life_plan-target
+      source: check_can_generate
+      sourceHandle: 'true'
+      target: generate_life_plan
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: generate_life_plan-source-repair_and_validate_json-target
+      source: generate_life_plan
+      sourceHandle: source
+      target: repair_and_validate_json
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: repair_and_validate_json-source-success_end-target
+      source: repair_and_validate_json
+      sourceHandle: source
+      target: success_end
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: check_can_generate-false-build_invalid_input_response-target
+      source: check_can_generate
+      sourceHandle: 'false'
+      target: build_invalid_input_response
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: build_invalid_input_response-source-failed_end-target
+      source: build_invalid_input_response
+      sourceHandle: source
+      target: failed_end
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: 接收后端组装好的用户健康档案、最新健康数据、风险评估结果和计划目标。
+        selected: false
+        title: 用户输入
+        type: start
+        variables:
+        - label: 用户编号
+          max_length: null
+          options: []
+          required: true
+          type: text-input
+          variable: user_id
+        - label: 用户健康档案 JSON 字符串
+          max_length: null
+          options: []
+          required: true
+          type: paragraph
+          variable: user_profile_json
+        - label: 最新健康数据 JSON 字符串
+          max_length: null
+          options: []
+          required: true
+          type: paragraph
+          variable: latest_health_data_json
+        - label: 最近一次风险评估结果 JSON 字符串
+          max_length: null
+          options: []
+          required: true
+          type: paragraph
+          variable: risk_result_json
+        - default: 控糖、减重、改善饮食和运动习惯
+          label: 计划目标
+          max_length: null
+          options: []
+          required: false
+          type: text-input
+          variable: plan_goal
+        - default: ''
+          label: 忌口或不适合项目
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: avoid_items
+        - default: 7
+          label: 计划天数
+          max_length: 3
+          options: []
+          required: false
+          type: number
+          variable: plan_days
+      height: 220
+      id: start
+      position:
+        x: 80
+        y: 260
+      positionAbsolute:
+        x: 80
+        y: 260
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          import json
+          import math
+
+          def _parse_json(raw, field_name, errors):
+              if raw is None or str(raw).strip() == "":
+                  errors.append(f"{field_name} 为空")
+                  return {}
+              try:
+                  value = json.loads(raw)
+                  if not isinstance(value, dict):
+                      errors.append(f"{field_name} 必须是 JSON 对象")
+                      return {}
+                  return value
+              except Exception:
+                  errors.append(f"{field_name} 不是合法 JSON")
+                  return {}
+
+          def _num(value):
+              if value is None or value == "":
+                  return None
+              try:
+                  return float(value)
+              except Exception:
+                  return None
+
+          def _text_contains(value, words):
+              text = str(value or "")
+              return any(word in text for word in words)
+
+          def main(user_id: str,
+                   user_profile_json: str,
+                   latest_health_data_json: str,
+                   risk_result_json: str,
+                   plan_goal: str = "",
+                   avoid_items: str = "",
+                   plan_days: int = 7) -> dict:
+              errors = []
+              profile = _parse_json(user_profile_json, "user_profile_json", errors)
+              health = _parse_json(latest_health_data_json, "latest_health_data_json", errors)
+              risk = _parse_json(risk_result_json, "risk_result_json", errors)
+
+              missing_fields = []
+              for key in ["age", "gender", "height_cm"]:
+                  if profile.get(key) in [None, ""]:
+                      missing_fields.append(f"user_profile_json.{key}")
+              weight_source = "latest_health_data_json.weight_kg"
+              if health.get("weight_kg") in [None, ""] and profile.get("base_weight_kg") not in [None, ""]:
+                  health["weight_kg"] = profile.get("base_weight_kg")
+                  health["weight_kg_source"] = "fallback_from_user_profile_json.base_weight_kg"
+                  weight_source = "user_profile_json.base_weight_kg"
+              if health.get("weight_kg") in [None, ""]:
+                  missing_fields.append("latest_health_data_json.weight_kg")
+              if risk.get("risk_level") in [None, ""]:
+                  missing_fields.append("risk_result_json.risk_level")
+
+              if not plan_goal:
+                  plan_goal = "控糖、减重、改善饮食和运动习惯"
+              if avoid_items is None:
+                  avoid_items = ""
+              try:
+                  plan_days = int(plan_days or 7)
+              except Exception:
+                  plan_days = 7
+              plan_days = max(1, min(plan_days, 30))
+
+              height_cm = _num(profile.get("height_cm"))
+              weight_kg = _num(health.get("weight_kg") or profile.get("base_weight_kg"))
+              bmi = 0
+              if height_cm and weight_kg and height_cm > 0:
+                  bmi = round(weight_kg / ((height_cm / 100) ** 2), 1)
+
+              age = _num(profile.get("age"))
+              systolic_bp = _num(health.get("systolic_bp"))
+              diastolic_bp = _num(health.get("diastolic_bp"))
+              fasting_glucose = _num(health.get("fasting_glucose"))
+              postprandial_glucose = _num(health.get("postprandial_glucose"))
+              chronic_history = profile.get("chronic_history", "")
+
+              safety_flags = []
+              if age is not None and age >= 60:
+                  safety_flags.append("高龄或中老年用户，运动建议需保守")
+              if (systolic_bp is not None and systolic_bp >= 140) or (diastolic_bp is not None and diastolic_bp >= 90):
+                  safety_flags.append("血压偏高，运动强度需谨慎")
+              if fasting_glucose is not None and fasting_glucose >= 7.0:
+                  safety_flags.append("空腹血糖偏高，建议线下复查")
+              if postprandial_glucose is not None and postprandial_glucose >= 11.1:
+                  safety_flags.append("餐后血糖明显偏高，建议线下复查")
+              if _text_contains(chronic_history, ["心脏病", "冠心病", "心血管"]):
+                  safety_flags.append("存在心血管相关病史，不建议高强度运动")
+              if bmi >= 28:
+                  safety_flags.append("体重偏高，方案应兼顾减重和控糖")
+
+              can_generate = len(errors) == 0 and len(missing_fields) == 0
+              error_message = ""
+              if errors:
+                  error_message = "；".join(errors)
+              elif missing_fields:
+                  error_message = "用户健康档案、最新健康数据或风险评估结果不完整，无法生成个性化生活方案"
+
+              normalized = {
+                  "user_id": user_id,
+                  "user_profile": profile,
+                  "latest_health_data": health,
+                  "risk_result": risk,
+                  "computed": {
+                      "bmi": bmi,
+                      "plan_days": plan_days
+                  },
+                  "plan_goal": plan_goal,
+                  "avoid_items": avoid_items,
+                  "safety_flags": safety_flags,
+                  "important_note": "仅用于健康管理建议，不能替代线下医生诊断或治疗。"
+              }
+
+              input_summary = {
+                  "user_id": user_id,
+                  "age": profile.get("age"),
+                  "gender": profile.get("gender"),
+                  "height_cm": profile.get("height_cm"),
+                  "weight_kg": health.get("weight_kg"),
+                  "weight_source": weight_source,
+                  "bmi": bmi,
+                  "risk_level": risk.get("risk_level"),
+                  "risk_score": risk.get("risk_score"),
+                  "plan_goal": plan_goal,
+                  "avoid_items": avoid_items,
+                  "plan_days": plan_days,
+                  "safety_flags": safety_flags
+              }
+
+              return {
+                  "can_generate": can_generate,
+                  "error_message": error_message,
+                  "missing_fields": missing_fields,
+                  "normalized_context": json.dumps(normalized, ensure_ascii=False, indent=2),
+                  "input_summary": json.dumps(input_summary, ensure_ascii=False),
+                  "bmi": bmi,
+                  "safety_flags": safety_flags,
+                  "plan_goal": plan_goal,
+                  "avoid_items": avoid_items,
+                  "plan_days": plan_days
+              }
+        code_language: python3
+        desc: 解析输入 JSON、检查必要字段、计算 BMI，并生成 LLM 可用的标准化上下文。
+        outputs:
+          avoid_items:
+            children: null
+            type: string
+          bmi:
+            children: null
+            type: number
+          can_generate:
+            children: null
+            type: boolean
+          error_message:
+            children: null
+            type: string
+          input_summary:
+            children: null
+            type: string
+          missing_fields:
+            children: null
+            type: array[string]
+          normalized_context:
+            children: null
+            type: string
+          plan_days:
+            children: null
+            type: number
+          plan_goal:
+            children: null
+            type: string
+          safety_flags:
+            children: null
+            type: array[string]
+        selected: false
+        title: 校验输入
+        type: code
+        variables:
+        - value_selector:
+          - start
+          - user_id
+          variable: user_id
+        - value_selector:
+          - start
+          - user_profile_json
+          variable: user_profile_json
+        - value_selector:
+          - start
+          - latest_health_data_json
+          variable: latest_health_data_json
+        - value_selector:
+          - start
+          - risk_result_json
+          variable: risk_result_json
+        - value_selector:
+          - start
+          - plan_goal
+          variable: plan_goal
+        - value_selector:
+          - start
+          - avoid_items
+          variable: avoid_items
+        - value_selector:
+          - start
+          - plan_days
+          variable: plan_days
+      height: 88
+      id: validate_and_normalize_input
+      position:
+        x: 390
+        y: 260
+      positionAbsolute:
+        x: 390
+        y: 260
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: is
+            id: can-generate-is-true
+            value: true
+            varType: boolean
+            variable_selector:
+            - validate_and_normalize_input
+            - can_generate
+          id: 'true'
+          logical_operator: and
+        desc: can_generate 为 true 时生成方案，否则返回输入错误。
+        selected: false
+        title: 是否生成
+        type: if-else
+      height: 126
+      id: check_can_generate
+      position:
+        x: 700
+        y: 260
+      positionAbsolute:
+        x: 700
+        y: 260
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: 使用 DeepSeek 模型生成严格 JSON 格式的个性化控糖生活方案。
+        model:
+          completion_params:
+            temperature: 0.35
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: system-prompt
+          role: system
+          text: |
+            你是“糖尿病预治智能助手”的个性化生活方案生成器，负责根据用户健康档案、最新健康数据和风险评估结果，生成饮食、运动、作息和控糖注意事项方案。
+
+            你不是医生，不能做最终医学诊断，不能输出“确诊糖尿病”“必须服药”“处方剂量”等内容。你只能提供健康管理、饮食、运动、作息和生活方式建议。遇到血糖、血压明显异常，或用户存在高龄、心脏病、高血压等情况时，需要提醒用户线下复查或咨询医生。
+
+            你必须严格输出合法 JSON。不要输出 Markdown，不要输出代码块，不要输出 JSON 以外的解释文字。
+            你必须严格使用用户提示词给出的字段名，不能自行改名、增删核心字段或把对象字段改成字符串字段。
+        - id: user-prompt
+          role: user
+          text: |
+            请根据以下用户健康上下文生成个性化控糖生活方案。
+
+            用户编号：
+            {{#start.user_id#}}
+
+            整理后的用户健康上下文：
+            {{#validate_and_normalize_input.normalized_context#}}
+
+            BMI：
+            {{#validate_and_normalize_input.bmi#}}
+
+            安全提醒标记：
+            {{#validate_and_normalize_input.safety_flags#}}
+
+            计划目标：
+            {{#validate_and_normalize_input.plan_goal#}}
+
+            用户忌口或不适合项目：
+            {{#validate_and_normalize_input.avoid_items#}}
+
+            计划天数：
+            {{#validate_and_normalize_input.plan_days#}}
+
+            生成要求：
+            1. 方案必须结合年龄、性别、身高、体重、BMI、腰围、血压、血糖、慢病史、家族病史和风险等级。
+            2. 饮食建议必须具体到早餐、午餐、晚餐、加餐。
+            3. 运动建议必须包含运动类型、每周频率、每次时长、运动强度和注意事项。
+            4. 作息建议必须包含睡眠、饮水、久坐提醒和血糖监测提醒。
+            5. 方案不能极端，不允许建议完全不吃主食、过度节食、突然高强度运动。
+            6. 如果用户高龄、有心脏病、高血压或血糖明显异常，运动建议必须保守。
+            7. 输出必须包含 checkin_tasks，供模块8生成饮食打卡和运动打卡任务。
+            8. 输出必须包含 daily_schedule，供前端展示每日安排。
+            9. 输出必须包含 medical_warning，提醒 AI 建议不能替代线下诊疗。
+            10. 只输出合法 JSON，不要输出 Markdown，不要使用代码块。
+            11. 字段名称必须严格使用下面 JSON 结构，禁止使用 diet_principle、exercise_principle、daily_routine、task_id、frequency 替代规定字段。
+            12. diet_plan 中 breakfast、lunch、dinner、snack、avoid_foods、diet_principles 必须填写，不能留空。
+            13. exercise_plan 中 exercise_type、frequency、duration、intensity、precautions 必须填写，不能留空。
+            14. work_rest_plan 中 sleep、water、sedentary_reminder、glucose_monitoring 必须填写，不能留空。
+            15. checkin_tasks 每个任务必须使用 task_type、task_name、description、default_status，其中 default_status 固定为“未完成”。
+            16. daily_schedule 必须严格覆盖 day=1 到 day={{#validate_and_normalize_input.plan_days#}}，每一天至少包含早餐、午餐、晚餐、运动 4 条安排，可以额外包含加餐、睡前准备、血糖监测提醒。
+            17. 如果 plan_days=7，daily_schedule 中必须出现 day=1、day=2、day=3、day=4、day=5、day=6、day=7。day 字段必须是数字，不能是字符串。
+            18. daily_schedule 可以在同一饮食运动原则下适度复用和微调，但不能缺少任何一天，也不能只输出 day=1 示例。
+
+            必须严格按下面 JSON 结构输出：
+
+            {
+              "plan_title": "个性化控糖生活方案",
+              "user_id": "{{#start.user_id#}}",
+              "plan_days": {{#validate_and_normalize_input.plan_days#}},
+              "risk_summary": "根据用户数据总结当前主要风险，只能说风险倾向，不能确诊",
+              "diet_plan": {
+                "breakfast": "早餐建议，包含主食、蛋白质、蔬菜或其他搭配",
+                "lunch": "午餐建议",
+                "dinner": "晚餐建议",
+                "snack": "加餐建议",
+                "avoid_foods": ["需要少吃或避免的食物1", "需要少吃或避免的食物2"],
+                "diet_principles": ["饮食原则1", "饮食原则2", "饮食原则3"]
+              },
+              "exercise_plan": {
+                "exercise_type": "推荐运动类型",
+                "frequency": "每周频率",
+                "duration": "每次时长",
+                "intensity": "运动强度",
+                "precautions": ["运动注意事项1", "运动注意事项2"]
+              },
+              "work_rest_plan": {
+                "sleep": "睡眠建议",
+                "water": "饮水建议",
+                "sedentary_reminder": "久坐提醒",
+                "glucose_monitoring": "血糖监测提醒"
+              },
+              "daily_schedule": [
+                {
+                  "day": 1,
+                  "time": "07:00-07:30",
+                  "task": "早餐",
+                  "content": "第1天早餐具体建议"
+                },
+                {
+                  "day": 1,
+                  "time": "12:00-12:30",
+                  "task": "午餐",
+                  "content": "第1天午餐具体建议"
+                },
+                {
+                  "day": 1,
+                  "time": "18:00-18:30",
+                  "task": "晚餐",
+                  "content": "第1天晚餐具体建议"
+                },
+                {
+                  "day": 1,
+                  "time": "19:00-19:30",
+                  "task": "运动",
+                  "content": "第1天运动具体建议"
+                },
+                {
+                  "day": 2,
+                  "time": "07:00-07:30",
+                  "task": "早餐",
+                  "content": "第2天早餐具体建议。实际输出必须继续生成到计划天数最后一天"
+                }
+              ],
+              "checkin_tasks": [
+                {
+                  "task_type": "diet",
+                  "task_name": "饮食打卡",
+                  "description": "记录今日饮食是否符合控糖方案",
+                  "default_status": "未完成"
+                },
+                {
+                  "task_type": "exercise",
+                  "task_name": "运动打卡",
+                  "description": "记录今日是否完成推荐运动",
+                  "default_status": "未完成"
+                }
+              ],
+              "health_tips": ["建议1", "建议2", "建议3"],
+              "medical_warning": "AI 生成内容仅用于健康管理参考，不能替代线下医生诊断或治疗。若血糖、血压持续异常或出现明显不适，请及时线下就医。",
+              "summary": "用普通用户能看懂的话总结本方案"
+            }
+        selected: false
+        title: 生成方案
+        type: llm
+        vision:
+          enabled: false
+      height: 132
+      id: generate_life_plan
+      position:
+        x: 1010
+        y: 150
+      positionAbsolute:
+        x: 1010
+        y: 150
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          import json
+          import re
+
+          REQUIRED_FIELDS = [
+              "plan_title",
+              "user_id",
+              "plan_days",
+              "risk_summary",
+              "diet_plan",
+              "exercise_plan",
+              "work_rest_plan",
+              "daily_schedule",
+              "checkin_tasks",
+              "health_tips",
+              "medical_warning",
+              "summary",
+          ]
+
+          DEFAULT_WARNING = "AI 生成内容仅用于健康管理参考，不能替代线下医生诊断或治疗。若血糖、血压持续异常或出现明显不适，请及时线下就医。"
+
+          def _strip_to_json(text):
+              text = str(text or "").strip()
+              text = re.sub(r"^```(?:json)?", "", text, flags=re.IGNORECASE).strip()
+              text = re.sub(r"```$", "", text).strip()
+              start = text.find("{")
+              end = text.rfind("}")
+              if start >= 0 and end > start:
+                  return text[start:end + 1]
+              return text
+
+          def _ensure_list(value):
+              if isinstance(value, list):
+                  return value
+              if value in [None, ""]:
+                  return []
+              return [str(value)]
+
+          def _is_blank(value):
+              if value is None:
+                  return True
+              if isinstance(value, str):
+                  return not value.strip()
+              if isinstance(value, (list, dict)):
+                  return len(value) == 0
+              return False
+
+          def _text(value):
+              return str(value or "").strip()
+
+          def _has_text(value):
+              return bool(_text(value))
+
+          def _normalize_checkin_tasks(value):
+              tasks = _ensure_list(value)
+              normalized = []
+              for item in tasks:
+                  if not isinstance(item, dict):
+                      continue
+                  task_type = _text(item.get("task_type"))
+                  task_name = _text(item.get("task_name"))
+                  description = _text(item.get("description"))
+                  default_status = _text(item.get("default_status")) or "未完成"
+
+                  if not task_type:
+                      raw_id = _text(item.get("task_id")).lower()
+                      raw_name = task_name
+                      if "exercise" in raw_id or "运动" in raw_name:
+                          task_type = "exercise"
+                      elif "diet" in raw_id or "早餐" in raw_name or "午餐" in raw_name or "晚餐" in raw_name or "饮食" in raw_name:
+                          task_type = "diet"
+                      elif "glucose" in raw_id or "血糖" in raw_name:
+                          task_type = "glucose_monitoring"
+                      else:
+                          task_type = "diet"
+
+                  if not task_name:
+                      task_name = "运动打卡" if task_type == "exercise" else "饮食打卡"
+                  if not description:
+                      description = "记录今日是否完成推荐任务"
+
+                  normalized.append({
+                      "task_type": task_type,
+                      "task_name": task_name,
+                      "description": description,
+                      "default_status": default_status
+                  })
+
+              if not normalized:
+                  normalized = [
+                      {
+                          "task_type": "diet",
+                          "task_name": "饮食打卡",
+                          "description": "记录今日饮食是否符合控糖方案",
+                          "default_status": "未完成"
+                      },
+                      {
+                          "task_type": "exercise",
+                          "task_name": "运动打卡",
+                          "description": "记录今日是否完成推荐运动",
+                          "default_status": "未完成"
+                      }
+                  ]
+              return normalized
+
+          def _normalize_aliases(plan):
+              if "diet_plan" not in plan and "diet_principle" in plan:
+                  text = _text(plan.get("diet_principle"))
+                  plan["diet_plan"] = {
+                      "breakfast": "早餐遵循控糖饮食原则，选择全谷物主食、优质蛋白和蔬菜搭配。",
+                      "lunch": "午餐遵循控糖饮食原则，控制主食分量，搭配鱼禽蛋豆和充足蔬菜。",
+                      "dinner": "晚餐遵循控糖饮食原则，清淡少油，避免过量主食和夜间加餐。",
+                      "snack": "加餐优先选择无糖酸奶、低糖水果或少量原味坚果。",
+                      "avoid_foods": ["含糖饮料", "甜点", "油炸食品", "高盐腌制食品"],
+                      "diet_principles": [text] if text else []
+                  }
+
+              if "exercise_plan" not in plan and "exercise_principle" in plan:
+                  text = _text(plan.get("exercise_principle"))
+                  plan["exercise_plan"] = {
+                      "exercise_type": "低强度有氧运动，如散步、太极拳、八段锦或坐姿上肢操",
+                      "frequency": "每周 5-7 天",
+                      "duration": "每次 20-30 分钟",
+                      "intensity": "低至中等强度，以能正常交谈、不气喘为宜",
+                      "precautions": [text] if text else ["运动中如出现胸闷、头晕、心悸，应立即停止并及时就医"]
+                  }
+
+              if "work_rest_plan" not in plan and isinstance(plan.get("daily_routine"), dict):
+                  routine = plan.get("daily_routine") or {}
+                  plan["work_rest_plan"] = {
+                      "sleep": _text(routine.get("sleep")),
+                      "water": _text(routine.get("water")),
+                      "sedentary_reminder": _text(routine.get("sedentary_reminder")),
+                      "glucose_monitoring": _text(routine.get("glucose_monitoring"))
+                  }
+
+          def main(llm_output: str, user_id: str, plan_days: int = 7, input_summary: str = "") -> dict:
+              cleaned = _strip_to_json(llm_output)
+              try:
+                  plan = json.loads(cleaned)
+                  if not isinstance(plan, dict):
+                      raise ValueError("root is not object")
+              except Exception:
+                  return {
+                      "success": False,
+                      "user_id": user_id,
+                      "error_message": "AI 输出不是合法 JSON，请重新生成",
+                      "input_summary": input_summary,
+                      "missing_fields": [],
+                      "plan_result": {}
+                  }
+
+              try:
+                  plan_days = int(plan_days or 7)
+              except Exception:
+                  plan_days = 7
+              plan_days = max(1, min(plan_days, 30))
+
+              _normalize_aliases(plan)
+
+              defaults = {
+                  "plan_title": "个性化控糖生活方案",
+                  "user_id": user_id,
+                  "plan_days": plan_days,
+                  "risk_summary": "根据用户数据存在糖尿病相关风险倾向，建议结合线下检查结果持续管理。",
+                  "diet_plan": {
+                      "breakfast": "",
+                      "lunch": "",
+                      "dinner": "",
+                      "snack": "",
+                      "avoid_foods": [],
+                      "diet_principles": []
+                  },
+                  "exercise_plan": {
+                      "exercise_type": "",
+                      "frequency": "",
+                      "duration": "",
+                      "intensity": "",
+                      "precautions": []
+                  },
+                  "work_rest_plan": {
+                      "sleep": "",
+                      "water": "",
+                      "sedentary_reminder": "",
+                      "glucose_monitoring": ""
+                  },
+                  "daily_schedule": [],
+                  "checkin_tasks": [
+                      {
+                          "task_type": "diet",
+                          "task_name": "饮食打卡",
+                          "description": "记录今日饮食是否符合控糖方案",
+                          "default_status": "未完成"
+                      },
+                      {
+                          "task_type": "exercise",
+                          "task_name": "运动打卡",
+                          "description": "记录今日是否完成推荐运动",
+                          "default_status": "未完成"
+                      }
+                  ],
+                  "health_tips": [],
+                  "medical_warning": DEFAULT_WARNING,
+                  "summary": ""
+              }
+
+              missing = []
+              for field in REQUIRED_FIELDS:
+                  if field not in plan or plan[field] in [None, ""]:
+                      missing.append(field)
+                      plan[field] = defaults[field]
+
+              plan["user_id"] = str(plan.get("user_id") or user_id)
+              try:
+                  plan["plan_days"] = max(1, min(int(plan.get("plan_days") or plan_days), 30))
+              except Exception:
+                  plan["plan_days"] = plan_days
+              plan["daily_schedule"] = _ensure_list(plan.get("daily_schedule"))
+              plan["checkin_tasks"] = _normalize_checkin_tasks(plan.get("checkin_tasks"))
+              plan["health_tips"] = _ensure_list(plan.get("health_tips"))
+              if not str(plan.get("medical_warning", "")).strip():
+                  plan["medical_warning"] = DEFAULT_WARNING
+
+              if not isinstance(plan.get("diet_plan"), dict):
+                  plan["diet_plan"] = defaults["diet_plan"]
+              if not isinstance(plan.get("exercise_plan"), dict):
+                  plan["exercise_plan"] = defaults["exercise_plan"]
+              if not isinstance(plan.get("work_rest_plan"), dict):
+                  plan["work_rest_plan"] = defaults["work_rest_plan"]
+
+              diet_plan = plan.get("diet_plan") or {}
+              exercise_plan = plan.get("exercise_plan") or {}
+              work_rest_plan = plan.get("work_rest_plan") or {}
+
+              if not _has_text(diet_plan.get("breakfast")):
+                  diet_plan["breakfast"] = "早餐建议选择全谷物主食、鸡蛋或豆制品等优质蛋白，并搭配蔬菜。"
+              if not _has_text(diet_plan.get("lunch")):
+                  diet_plan["lunch"] = "午餐建议控制主食分量，搭配瘦肉、鱼虾或豆制品，并保证蔬菜摄入。"
+              if not _has_text(diet_plan.get("dinner")):
+                  diet_plan["dinner"] = "晚餐建议清淡少油，避免过量主食和高糖食物。"
+              if not _has_text(diet_plan.get("snack")):
+                  diet_plan["snack"] = "加餐可选择无糖酸奶、低糖水果或少量原味坚果。"
+              diet_plan["avoid_foods"] = _ensure_list(diet_plan.get("avoid_foods")) or ["含糖饮料", "甜点", "油炸食品", "高盐腌制食品"]
+              diet_plan["diet_principles"] = _ensure_list(diet_plan.get("diet_principles")) or ["主食粗细搭配并控制总量", "每餐搭配优质蛋白和蔬菜", "少油少盐，避免含糖饮料和甜食"]
+
+              if not _has_text(exercise_plan.get("exercise_type")):
+                  exercise_plan["exercise_type"] = "散步、太极拳、八段锦或坐姿上肢操等低强度运动"
+              if not _has_text(exercise_plan.get("frequency")):
+                  exercise_plan["frequency"] = "每周 5-7 天"
+              if not _has_text(exercise_plan.get("duration")):
+                  exercise_plan["duration"] = "每次 20-30 分钟"
+              if not _has_text(exercise_plan.get("intensity")):
+                  exercise_plan["intensity"] = "低至中等强度，以能正常交谈、不气喘为宜"
+              exercise_plan["precautions"] = _ensure_list(exercise_plan.get("precautions")) or ["运动前热身，运动后放松", "如出现胸闷、头晕、心悸，应立即停止并及时就医"]
+
+              if not _has_text(work_rest_plan.get("sleep")):
+                  work_rest_plan["sleep"] = "建议保持规律作息，尽量保证 7-8 小时睡眠。"
+              if not _has_text(work_rest_plan.get("water")):
+                  work_rest_plan["water"] = "建议少量多次饮水，避免含糖饮料。"
+              if not _has_text(work_rest_plan.get("sedentary_reminder")):
+                  work_rest_plan["sedentary_reminder"] = "每久坐 45-60 分钟起身活动 3-5 分钟。"
+              if not _has_text(work_rest_plan.get("glucose_monitoring")):
+                  work_rest_plan["glucose_monitoring"] = "建议按医嘱或健康管理计划记录空腹及餐后血糖。"
+
+              plan["diet_plan"] = diet_plan
+              plan["exercise_plan"] = exercise_plan
+              plan["work_rest_plan"] = work_rest_plan
+
+              if not plan["health_tips"]:
+                  plan["health_tips"] = ["记录饮食、运动和血糖变化", "避免突然增加运动强度", "血糖或血压持续异常时及时线下复查"]
+              if not _has_text(plan.get("summary")):
+                  plan["summary"] = "本方案围绕控糖、减重和改善生活习惯制定，重点是规律饮食、保守运动、规律作息和持续监测。"
+
+              expected_days = set(range(1, plan["plan_days"] + 1))
+              actual_days = set()
+              normalized_schedule = []
+              for item in plan["daily_schedule"]:
+                  if not isinstance(item, dict):
+                      continue
+                  try:
+                      day_num = int(item.get("day"))
+                  except Exception:
+                      continue
+                  item["day"] = day_num
+                  item["time"] = _text(item.get("time"))
+                  item["task"] = _text(item.get("task"))
+                  item["content"] = _text(item.get("content"))
+                  if not item["time"] or not item["task"] or not item["content"]:
+                      continue
+                  actual_days.add(day_num)
+                  normalized_schedule.append(item)
+              plan["daily_schedule"] = normalized_schedule
+
+              missing_days = sorted(expected_days - actual_days)
+              if missing_days:
+                  return {
+                      "success": False,
+                      "user_id": user_id,
+                      "error_message": "daily_schedule 未覆盖完整计划天数，缺少 day: " + ", ".join(str(x) for x in missing_days),
+                      "input_summary": input_summary,
+                      "missing_fields": ["daily_schedule"],
+                      "plan_result": {}
+                  }
+
+              critical_empty = []
+              if _is_blank(plan.get("risk_summary")):
+                  critical_empty.append("risk_summary")
+              if _is_blank(plan.get("diet_plan")):
+                  critical_empty.append("diet_plan")
+              if _is_blank(plan.get("exercise_plan")):
+                  critical_empty.append("exercise_plan")
+              if _is_blank(plan.get("work_rest_plan")):
+                  critical_empty.append("work_rest_plan")
+              if _is_blank(plan.get("checkin_tasks")):
+                  critical_empty.append("checkin_tasks")
+              if _is_blank(plan.get("summary")):
+                  critical_empty.append("summary")
+              if critical_empty:
+                  return {
+                      "success": False,
+                      "user_id": user_id,
+                      "error_message": "AI 输出 JSON 字段结构不完整，缺少或为空: " + ", ".join(critical_empty),
+                      "input_summary": input_summary,
+                      "missing_fields": critical_empty,
+                      "plan_result": {}
+                  }
+
+              return {
+                  "success": True,
+                  "user_id": user_id,
+                  "error_message": "",
+                  "input_summary": input_summary,
+                  "missing_fields": [],
+                  "plan_result": plan
+              }
+        code_language: python3
+        desc: 清理 LLM 可能输出的代码块，解析 JSON，补齐必须字段，并输出统一结果。
+        outputs:
+          error_message:
+            children: null
+            type: string
+          input_summary:
+            children: null
+            type: string
+          missing_fields:
+            children: null
+            type: array[string]
+          plan_result:
+            children: null
+            type: object
+          success:
+            children: null
+            type: boolean
+          user_id:
+            children: null
+            type: string
+        selected: false
+        title: 校验结果
+        type: code
+        variables:
+        - value_selector:
+          - generate_life_plan
+          - text
+          variable: llm_output
+        - value_selector:
+          - start
+          - user_id
+          variable: user_id
+        - value_selector:
+          - validate_and_normalize_input
+          - plan_days
+          variable: plan_days
+        - value_selector:
+          - validate_and_normalize_input
+          - input_summary
+          variable: input_summary
+      height: 88
+      id: repair_and_validate_json
+      position:
+        x: 1320
+        y: 150
+      positionAbsolute:
+        x: 1320
+        y: 150
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          def main(user_id: str, error_message: str = "", missing_fields = None, input_summary: str = "") -> dict:
+              if missing_fields is None:
+                  missing_fields = []
+              if not error_message:
+                  error_message = "用户健康档案、最新健康数据或风险评估结果不完整，无法生成个性化生活方案"
+              return {
+                  "success": False,
+                  "user_id": user_id,
+                  "error_message": error_message,
+                  "input_summary": input_summary,
+                  "missing_fields": missing_fields,
+                  "plan_result": {}
+              }
+        code_language: python3
+        desc: 构造输入不完整或 JSON 不合法时的统一错误响应。
+        outputs:
+          error_message:
+            children: null
+            type: string
+          input_summary:
+            children: null
+            type: string
+          missing_fields:
+            children: null
+            type: array[string]
+          plan_result:
+            children: null
+            type: object
+          success:
+            children: null
+            type: boolean
+          user_id:
+            children: null
+            type: string
+        selected: false
+        title: 输入错误
+        type: code
+        variables:
+        - value_selector:
+          - start
+          - user_id
+          variable: user_id
+        - value_selector:
+          - validate_and_normalize_input
+          - error_message
+          variable: error_message
+        - value_selector:
+          - validate_and_normalize_input
+          - missing_fields
+          variable: missing_fields
+        - value_selector:
+          - validate_and_normalize_input
+          - input_summary
+          variable: input_summary
+      height: 88
+      id: build_invalid_input_response
+      position:
+        x: 1010
+        y: 430
+      positionAbsolute:
+        x: 1010
+        y: 430
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: 成功分支输出。
+        outputs:
+        - value_selector:
+          - repair_and_validate_json
+          - success
+          value_type: boolean
+          variable: success
+        - value_selector:
+          - repair_and_validate_json
+          - user_id
+          value_type: string
+          variable: user_id
+        - value_selector:
+          - repair_and_validate_json
+          - error_message
+          value_type: string
+          variable: error_message
+        - value_selector:
+          - repair_and_validate_json
+          - input_summary
+          value_type: string
+          variable: input_summary
+        - value_selector:
+          - repair_and_validate_json
+          - missing_fields
+          value_type: array[string]
+          variable: missing_fields
+        - value_selector:
+          - repair_and_validate_json
+          - plan_result
+          value_type: object
+          variable: plan_result
+        selected: false
+        title: 成功输出
+        type: end
+      height: 142
+      id: success_end
+      position:
+        x: 1630
+        y: 150
+      positionAbsolute:
+        x: 1630
+        y: 150
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: 失败分支输出。
+        outputs:
+        - value_selector:
+          - build_invalid_input_response
+          - success
+          value_type: boolean
+          variable: success
+        - value_selector:
+          - build_invalid_input_response
+          - user_id
+          value_type: string
+          variable: user_id
+        - value_selector:
+          - build_invalid_input_response
+          - error_message
+          value_type: string
+          variable: error_message
+        - value_selector:
+          - build_invalid_input_response
+          - input_summary
+          value_type: string
+          variable: input_summary
+        - value_selector:
+          - build_invalid_input_response
+          - missing_fields
+          value_type: array[string]
+          variable: missing_fields
+        - value_selector:
+          - build_invalid_input_response
+          - plan_result
+          value_type: object
+          variable: plan_result
+        selected: false
+        title: 失败输出
+        type: end
+      height: 142
+      id: failed_end
+      position:
+        x: 1320
+        y: 430
+      positionAbsolute:
+        x: 1320
+        y: 430
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.7

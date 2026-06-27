@@ -16,6 +16,7 @@ import BottomNav from '@/components/mobile/BottomNav.vue'
 
 <style scoped>
 .patient-layout {
+  position: relative;
   min-height: 100%;
   display: flex;
   flex: 1;
