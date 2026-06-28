@@ -100,7 +100,6 @@ public class HealthReportServiceImpl implements HealthReportService {
         report.setReportMarkdown(markdown);
         report.setReportSummary(context.getSummary());
         report.setDataSnapshotJson(toJson(context));
-        report.setCompletenessScore(context.getCompletenessScore());
         report.setReportStatus(STATUS_GENERATED);
         reportMapper.insert(report);
 
@@ -134,7 +133,7 @@ public class HealthReportServiceImpl implements HealthReportService {
     @Override
     public byte[] exportMarkdown(Integer userId, Integer reportId) {
         HealthReport report = requireReport(userId, reportId);
-        return report.getReportMarkdown().getBytes(StandardCharsets.UTF_8);
+        return displayMarkdown(report).getBytes(StandardCharsets.UTF_8);
     }
 
     @Override
@@ -150,7 +149,7 @@ public class HealthReportServiceImpl implements HealthReportService {
             writer.writeSmall("报告编号：RPT" + report.getReportId() + "    生成时间：" + formatDateTime(report.getCreateTime()));
             writer.writeSmall("追溯链接：" + buildTraceUrl(report.getReportId()));
             writer.drawQrCode(buildTraceUrl(report.getReportId()));
-            writer.writeMarkdown(report.getReportMarkdown());
+            writer.writeMarkdown(displayMarkdown(report));
             writer.writeSmall(DISCLAIMER);
             writer.close();
             document.save(output);
@@ -208,33 +207,25 @@ public class HealthReportServiceImpl implements HealthReportService {
 
     private void applyQuality(ReportContext context) {
         List<String> missing = new ArrayList<>();
-        int score = 100;
         if (context.getProfile() == null) {
             missing.add("健康档案");
-            score -= 20;
         }
         if (context.getLatestMetric() == null) {
             missing.add("近期健康指标");
-            score -= 25;
         }
         if (context.getRiskAssessment() == null) {
             missing.add("糖尿病风险评估");
-            score -= 20;
         }
         if (context.getLifePlan() == null) {
             missing.add("当前生活方案");
-            score -= 15;
         }
         if (context.getCheckinRecords().isEmpty()) {
             missing.add("近期打卡记录");
-            score -= 10;
         }
         if (!StringUtils.hasText(context.getAiChatSummary()) || context.getAiChatSummary().startsWith("No ")) {
             missing.add("AI 医生咨询摘要");
-            score -= 10;
         }
         context.setMissingItems(missing);
-        context.setCompletenessScore(Math.max(0, score));
     }
 
     private String buildReportSummary(ReportContext context) {
@@ -251,7 +242,6 @@ public class HealthReportServiceImpl implements HealthReportService {
         md.append("- 报告类型：").append(context.getReportTypeLabel()).append("\n");
         md.append("- 报告版本：v1.0\n");
         md.append("- 报告周期：").append(context.getStartDate()).append(" 至 ").append(context.getEndDate()).append("\n");
-        md.append("- 完整度评分：").append(context.getCompletenessScore()).append("/100\n");
         md.append("- 追溯链接：").append(context.getTraceUrl()).append("\n\n");
 
         if (TYPE_DOCTOR.equals(context.getReportType())) {
@@ -279,11 +269,16 @@ public class HealthReportServiceImpl implements HealthReportService {
     }
 
     private void appendPersonalOpening(StringBuilder md, ReportContext context) {
-        md.append("## 一、我的健康概览\n\n");
-        md.append("- 当前结论：").append(context.getSummary()).append("\n");
-        md.append("- 本周重点：优先关注血糖记录、饮食结构和打卡执行稳定性。\n");
-        md.append("- 行动建议：继续按当前生活方案执行；若指标明显异常或身体不适，应线下复查。\n");
-        md.append("- 数据完整度：").append(context.getMissingItems().isEmpty() ? "资料较完整，可作为就医沟通参考。" : "仍缺少" + String.join("、", context.getMissingItems()) + "，建议补充后重新生成。").append("\n\n");
+        md.append("## 一、我的控糖小结 🌿\n\n");
+        md.append("　　这份报告把你最近的健康档案、血糖血压、风险评估、生活方案和打卡情况整理在一起，方便你快速了解自己这一阶段的状态。\n\n");
+        md.append("　　当前整体情况是：").append(context.getSummary()).append("如果某几项指标偶尔不理想，也不用被数字吓住，先把记录做稳定，再根据医生建议一点点调整。\n\n");
+        md.append("### 本周期执行小仪表盘 📊\n\n");
+        md.append("| 项目 | 当前状态 |\n| --- | --- |\n");
+        md.append("| 风险提示 | ").append(riskLabel(context.getRiskAssessment() == null ? null : context.getRiskAssessment().getRiskLevel())).append(" |\n");
+        md.append("| 打卡完成率 | ").append(context.getCompletionRate() == null ? "暂无" : context.getCompletionRate() + "%").append(" |\n");
+        md.append("| 近期记录 | ").append(context.getMetrics().size()).append(" 条健康指标，").append(context.getCheckinRecords().size()).append(" 条打卡 |\n");
+        md.append("| 资料提醒 | ").append(context.getMissingItems().isEmpty() ? "资料比较齐，可以继续观察趋势。" : "还缺少" + String.join("、", context.getMissingItems()) + "，补齐后报告会更有参考价值。").append(" |\n\n");
+        md.append("　　下个阶段可以先抓三件小事：稳定记录血糖，优先完成饮食和运动打卡，发现连续异常时及时线下复查。把目标拆小一点，更容易坚持下来。✨\n\n");
     }
 
     private void appendDoctorOpening(StringBuilder md, ReportContext context) {
@@ -503,7 +498,7 @@ public class HealthReportServiceImpl implements HealthReportService {
         resource.put("conclusion", report.getReportSummary());
         resource.put("presentedForm", List.of(Map.of(
                 "contentType", "text/markdown; charset=UTF-8",
-                "data", Base64.getEncoder().encodeToString(report.getReportMarkdown().getBytes(StandardCharsets.UTF_8)),
+                "data", Base64.getEncoder().encodeToString(displayMarkdown(report).getBytes(StandardCharsets.UTF_8)),
                 "title", report.getReportTitle() + ".md"
         )));
         return resource;
@@ -544,14 +539,16 @@ public class HealthReportServiceImpl implements HealthReportService {
         response.setReportTypeLabel(reportTypeLabel(report.getReportType()));
         response.setReportTitle(report.getReportTitle());
         response.setReportSummary(report.getReportSummary());
-        response.setReportMarkdown(report.getReportMarkdown());
-        response.setCompletenessScore(report.getCompletenessScore());
+        response.setReportMarkdown(displayMarkdown(report));
         response.setReportStatus(report.getReportStatus());
         response.setTraceUrl(buildTraceUrl(report.getReportId()));
         response.setQrCodeDataUrl(buildQrCodeDataUrl(buildTraceUrl(report.getReportId())));
         response.setCreateTime(report.getCreateTime());
         response.setUpdateTime(report.getUpdateTime());
-        response.setMissingItems(readContext(report).getMissingItems());
+        ReportContext context = readContext(report);
+        response.setCompletionRate(context.getCompletionRate());
+        response.setRiskLevelLabel(riskLabel(context.getRiskAssessment() == null ? null : context.getRiskAssessment().getRiskLevel()));
+        response.setMissingItems(context.getMissingItems());
         return response;
     }
 
@@ -563,7 +560,6 @@ public class HealthReportServiceImpl implements HealthReportService {
             fallback.setReportTypeLabel(reportTypeLabel(report.getReportType()));
             fallback.setReportTitle(report.getReportTitle());
             fallback.setSummary(report.getReportSummary());
-            fallback.setCompletenessScore(report.getCompletenessScore());
             fallback.setMissingItems(List.of());
             return fallback;
         }
@@ -574,6 +570,17 @@ public class HealthReportServiceImpl implements HealthReportService {
         } catch (Exception exception) {
             throw new BusinessException(500, "报告快照读取失败");
         }
+    }
+
+    private String displayMarkdown(HealthReport report) {
+        return stripCompletenessScore(report.getReportMarkdown());
+    }
+
+    private String stripCompletenessScore(String markdown) {
+        if (!StringUtils.hasText(markdown)) {
+            return "";
+        }
+        return markdown.replaceAll("(?m)^- 完整度评分：[^\\r\\n]*(\\r?\\n)?", "");
     }
 
     private String normalizeReportType(String reportType) {
@@ -763,7 +770,6 @@ public class HealthReportServiceImpl implements HealthReportService {
         private CheckinAnalysisDTO checkinAnalysis;
         private List<AiChatSessionSummaryDTO> recentAiSessions = List.of();
         private String aiChatSummary;
-        private Integer completenessScore;
         private List<String> missingItems = List.of();
         private String summary;
         private String traceUrl;

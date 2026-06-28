@@ -26,9 +26,13 @@
             <h2>{{ report.report_title || report.reportTitle }}</h2>
             <p>{{ report.report_summary || report.reportSummary }}</p>
           </div>
-          <div class="score-ring score-ring--large">
-            <strong>{{ report.completeness_score ?? report.completenessScore ?? 0 }}</strong>
-            <small>完整度</small>
+          <div class="summary-qr">
+            <img
+              v-if="report.qr_code_data_url || report.qrCodeDataUrl"
+              :src="report.qr_code_data_url || report.qrCodeDataUrl"
+              alt="报告追溯二维码"
+            />
+            <small>追溯码</small>
           </div>
         </section>
 
@@ -39,26 +43,14 @@
           </button>
         </section>
 
-        <section class="trace-panel">
-          <img
-            v-if="report.qr_code_data_url || report.qrCodeDataUrl"
-            :src="report.qr_code_data_url || report.qrCodeDataUrl"
-            alt="报告追溯二维码"
-          />
-          <div>
-            <h2>报告追溯码</h2>
-            <p>{{ report.trace_url || report.traceUrl }}</p>
-          </div>
-        </section>
-
         <section v-if="missingItems.length" class="missing-panel">
-          <h2>数据完整度提醒</h2>
+          <h2>资料补充提醒</h2>
           <div>
             <span v-for="item in missingItems" :key="item">{{ item }}</span>
           </div>
         </section>
 
-        <section class="markdown-panel">
+        <section class="markdown-panel" :class="{ 'markdown-panel--personal': isPersonalReport }">
           <MarkdownContent :content="report.report_markdown || report.reportMarkdown" />
         </section>
       </template>
@@ -93,6 +85,7 @@ const exportItems = [
 ]
 
 const missingItems = computed(() => report.value?.missing_items || report.value?.missingItems || [])
+const isPersonalReport = computed(() => (report.value?.report_type || report.value?.reportType) !== 'doctor_summary')
 
 onMounted(loadDetail)
 

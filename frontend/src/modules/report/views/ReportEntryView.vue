@@ -88,9 +88,13 @@
             <h3>{{ report.report_title || report.reportTitle }}</h3>
             <p>{{ report.report_summary || report.reportSummary || '暂无摘要' }}</p>
           </div>
-          <div class="score-ring">
-            <strong>{{ report.completeness_score ?? report.completenessScore ?? 0 }}</strong>
-            <small>完整度</small>
+          <div class="report-qr-mini">
+            <img
+              v-if="report.qr_code_data_url || report.qrCodeDataUrl"
+              :src="report.qr_code_data_url || report.qrCodeDataUrl"
+              alt="报告二维码"
+            />
+            <span v-else>RPT{{ String(report.report_id || report.reportId).padStart(4, '0') }}</span>
           </div>
         </button>
       </section>

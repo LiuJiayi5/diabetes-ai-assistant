@@ -2,6 +2,7 @@ package com.diabetes.assistant.modules.report.dto;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -14,7 +15,8 @@ public class HealthReportResponse {
     private String reportTitle;
     private String reportSummary;
     private String reportMarkdown;
-    private Integer completenessScore;
+    private BigDecimal completionRate;
+    private String riskLevelLabel;
     private List<String> missingItems;
     private String reportStatus;
     private String traceUrl;
