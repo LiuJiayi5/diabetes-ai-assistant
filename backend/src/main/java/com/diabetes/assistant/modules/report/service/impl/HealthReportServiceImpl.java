@@ -131,6 +131,15 @@ public class HealthReportServiceImpl implements HealthReportService {
     }
 
     @Override
+    public HealthReportResponse getPublicDetail(Integer reportId) {
+        HealthReport report = reportMapper.selectById(reportId);
+        if (report == null) {
+            throw new BusinessException(404, "报告不存在");
+        }
+        return toResponse(report);
+    }
+
+    @Override
     public byte[] exportMarkdown(Integer userId, Integer reportId) {
         HealthReport report = requireReport(userId, reportId);
         return displayMarkdown(report).getBytes(StandardCharsets.UTF_8);
@@ -641,7 +650,7 @@ public class HealthReportServiceImpl implements HealthReportService {
         while (baseUrl.endsWith("/")) {
             baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
         }
-        return baseUrl + "/app/reports/" + reportId;
+        return baseUrl + "/report-view/" + reportId;
     }
 
     private String buildQrCodeDataUrl(String text) {

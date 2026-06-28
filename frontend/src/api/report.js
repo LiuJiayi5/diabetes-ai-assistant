@@ -1,5 +1,6 @@
 import request from './request'
 import { getTokenForRequest } from '@/utils/token'
+import { resolveApiBaseUrl } from '@/utils/apiBase'
 
 export function listReports(params = {}) {
   return request.get('/reports', { params })
@@ -7,6 +8,10 @@ export function listReports(params = {}) {
 
 export function getReportDetail(reportId) {
   return request.get(`/reports/${encodeURIComponent(reportId)}`)
+}
+
+export function getPublicReportDetail(reportId) {
+  return request.get(`/reports/public/${encodeURIComponent(reportId)}`)
 }
 
 export function generateReport(payload) {
@@ -17,7 +22,7 @@ export function generateReport(payload) {
 }
 
 export function getReportExportUrl(reportId, type) {
-  const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
+  const baseURL = resolveApiBaseUrl()
   return `${baseURL}/reports/${encodeURIComponent(reportId)}/export/${encodeURIComponent(type)}`
 }
 

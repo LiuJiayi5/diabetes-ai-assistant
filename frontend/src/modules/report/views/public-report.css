@@ -1,0 +1,134 @@
+.public-report-page {
+  min-height: 100vh;
+  background: #F7FCF9;
+  color: #24323D;
+}
+
+.public-report-document {
+  width: min(100%, 760px);
+  margin: 0 auto;
+  padding: 22px 16px 36px;
+}
+
+.public-report-header,
+.public-report-markdown,
+.public-report-state {
+  border: 1px solid rgba(174, 232, 199, 0.42);
+  border-radius: 18px;
+  background: #FFFFFF;
+  box-shadow: 0 8px 28px rgba(140, 190, 170, 0.10);
+}
+
+.public-report-header {
+  padding: 20px 18px;
+  background: linear-gradient(145deg, #FFFFFF 0%, #EDF8F4 58%, #EAF5FA 100%);
+}
+
+.public-report-header span {
+  color: #4A8A6A;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.public-report-header h1 {
+  margin: 8px 0;
+  color: #172635;
+  font-size: 24px;
+  line-height: 1.32;
+}
+
+.public-report-header p {
+  margin: 0;
+  color: #687789;
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.public-report-header small {
+  display: block;
+  margin-top: 12px;
+  color: #82959E;
+  font-size: 12px;
+}
+
+.public-report-markdown {
+  margin-top: 14px;
+  padding: 18px;
+}
+
+.public-report-markdown .markdown-content {
+  color: #24323D;
+  font-size: 15px;
+  line-height: 1.9;
+}
+
+.public-report-markdown--personal .markdown-content p {
+  text-indent: 2em;
+}
+
+.public-report-markdown .markdown-content h1 {
+  margin-top: 0;
+  font-size: 22px;
+}
+
+.public-report-markdown .markdown-content h2 {
+  margin-top: 22px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(174, 232, 199, 0.5);
+  font-size: 18px;
+}
+
+.public-report-markdown .markdown-content h3 {
+  margin-top: 16px;
+  font-size: 16px;
+}
+
+.public-report-markdown .markdown-content blockquote {
+  margin: 10px 0 14px;
+  padding: 10px 12px;
+  border-left: 4px solid #6FCF97;
+  border-radius: 0 10px 10px 0;
+  background: #F0FAF5;
+}
+
+.public-report-markdown .markdown-content table {
+  margin: 12px 0;
+  font-size: 13px;
+}
+
+.public-report-markdown .markdown-content th {
+  background: #EAF8F1;
+}
+
+.public-report-state {
+  width: min(calc(100% - 32px), 420px);
+  min-height: 180px;
+  margin: 18vh auto 0;
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  color: #687789;
+}
+
+.public-report-state svg {
+  width: 28px;
+  height: 28px;
+  color: #4A8A6A;
+}
+
+.public-report-state p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.spin {
+  animation: public-report-spin 0.9s linear infinite;
+}
+
+@keyframes public-report-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -15,6 +15,7 @@ import adminRoutes from '@/modules/admin/routes'
 
 export const routes = [
   { path: '/', redirect: '/welcome' },
+  { path: '/report-view/:reportId', name: 'PublicReportView', component: () => import('@/modules/report/views/PublicReportView.vue'), meta: { title: '健康报告' } },
   { path: '/', component: BlankLayout, children: authRoutes },
   {
     path: '/app',
