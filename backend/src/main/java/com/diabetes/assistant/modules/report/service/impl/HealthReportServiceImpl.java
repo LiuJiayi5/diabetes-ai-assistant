@@ -149,6 +149,15 @@ public class HealthReportServiceImpl implements HealthReportService {
     }
 
     @Override
+    public byte[] exportPublicPdf(Integer reportId) {
+        HealthReport report = reportMapper.selectById(reportId);
+        if (report == null) {
+            throw new BusinessException(404, "报告不存在");
+        }
+        return buildPdf(report);
+    }
+
+    @Override
     public byte[] exportMarkdown(Integer userId, Integer reportId) {
         HealthReport report = requireReport(userId, reportId);
         return displayMarkdown(report).getBytes(StandardCharsets.UTF_8);
@@ -157,7 +166,10 @@ public class HealthReportServiceImpl implements HealthReportService {
     @Override
     public byte[] exportPdf(Integer userId, Integer reportId) {
         HealthReport report = requireReport(userId, reportId);
-        ReportContext context = readContext(report);
+        return buildPdf(report);
+    }
+
+    private byte[] buildPdf(HealthReport report) {
         try (PDDocument document = new PDDocument();
              ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             PDType0Font font = loadChineseFont(document);
@@ -591,13 +603,15 @@ public class HealthReportServiceImpl implements HealthReportService {
     }
 
     private String displayMarkdown(HealthReport report) {
-        return stripCompletenessScore(report.getReportMarkdown());
+        String markdown = stripCompletenessScore(report.getReportMarkdown());
+        return markdown.replaceAll("(?m)^- 追溯链接：.*$", "- 追溯链接：" + buildTraceUrl(report.getReportId()));
     }
 
     private String buildPublicHtml(HealthReport report) {
         String body = markdownToHtml(displayMarkdown(report));
         String summary = escapeHtml(value(report.getReportSummary()));
         String title = escapeHtml(value(report.getReportTitle()));
+        String publicPdfUrl = "/api/reports/public/" + report.getReportId() + "/pdf";
         return """
                 <!doctype html>
                 <html lang="zh-CN">
@@ -607,9 +621,12 @@ public class HealthReportServiceImpl implements HealthReportService {
                   <title>%s</title>
                   <style>
                     * { box-sizing: border-box; }
+                    html { -webkit-text-size-adjust: 100%%; }
                     body { margin: 0; background: #F7FCF9; color: #24323D; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif; }
-                    main { width: min(100%%, 760px); margin: 0 auto; padding: 18px 14px 34px; }
-                    header, article { border: 1px solid rgba(174, 232, 199, .42); border-radius: 18px; background: #fff; box-shadow: 0 8px 28px rgba(140, 190, 170, .10); }
+                    main { width: min(100%%, 820px); margin: 0 auto; padding: 14px 12px 34px; }
+                    .toolbar { position: sticky; top: 0; z-index: 10; display: flex; justify-content: flex-end; padding: 8px 0 10px; background: rgba(247, 252, 249, .94); backdrop-filter: blur(10px); }
+                    .download-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: 0 14px; border-radius: 999px; background: #4A8A6A; color: #fff; font-size: 14px; font-weight: 800; text-decoration: none; box-shadow: 0 8px 18px rgba(74, 138, 106, .20); }
+                    header, article { border: 1px solid rgba(174, 232, 199, .42); border-radius: 16px; background: #fff; box-shadow: 0 8px 28px rgba(140, 190, 170, .10); }
                     header { padding: 20px 18px; background: linear-gradient(145deg, #FFFFFF 0%%, #EDF8F4 58%%, #EAF5FA 100%%); }
                     .report-id { color: #4A8A6A; font-size: 13px; font-weight: 800; }
                     h1 { margin: 8px 0; color: #172635; font-size: 24px; line-height: 1.32; }
@@ -626,10 +643,29 @@ public class HealthReportServiceImpl implements HealthReportService {
                     article table { display: block; width: 100%%; margin: 12px 0; overflow-x: auto; border-collapse: collapse; font-size: 13px; }
                     article th, article td { padding: 8px 9px; border: 1px solid rgba(174, 232, 199, .65); text-align: left; vertical-align: top; }
                     article th { background: #EAF8F1; }
+                    @media (max-width: 900px) {
+                      body { background: #fff; }
+                      main { width: 100%%; max-width: none; padding: 0 0 22px; }
+                      .toolbar { padding: 8px 12px; border-bottom: 1px solid rgba(174, 232, 199, .36); }
+                      .download-btn { min-height: 40px; padding: 0 16px; font-size: 15px; }
+                      header, article { border-left: 0; border-right: 0; border-radius: 0; box-shadow: none; }
+                      header { padding: 18px 16px; }
+                      article { margin-top: 0; padding: 18px 16px 30px; font-size: 17px; line-height: 2.0; }
+                      h1 { font-size: 24px; }
+                      .summary { font-size: 15px; }
+                      article h1 { font-size: 23px; }
+                      article h2 { font-size: 20px; }
+                      article h3 { font-size: 18px; }
+                      article table { font-size: 15px; }
+                      article th, article td { padding: 10px 11px; }
+                    }
                   </style>
                 </head>
                 <body>
                   <main>
+                    <nav class="toolbar">
+                      <a class="download-btn" href="%s" download="report-%s.pdf">下载 PDF</a>
+                    </nav>
                     <header>
                       <span class="report-id">RPT%s</span>
                       <h1>%s</h1>
@@ -640,7 +676,7 @@ public class HealthReportServiceImpl implements HealthReportService {
                   </main>
                 </body>
                 </html>
-                """.formatted(title, String.format("%04d", report.getReportId()), title, summary, formatDateTime(report.getCreateTime()), body);
+                """.formatted(title, publicPdfUrl, report.getReportId(), String.format("%04d", report.getReportId()), title, summary, formatDateTime(report.getCreateTime()), body);
     }
 
     private String markdownToHtml(String markdown) {

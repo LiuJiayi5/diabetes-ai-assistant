@@ -64,6 +64,12 @@ public class HealthReportController {
                 .body(reportService.exportPublicHtml(reportId));
     }
 
+    @GetMapping("/public/{reportId}/pdf")
+    public ResponseEntity<byte[]> publicPdf(@PathVariable Integer reportId) {
+        return download(reportService.exportPublicPdf(reportId), "report-" + reportId + ".pdf",
+                MediaType.APPLICATION_PDF);
+    }
+
     @GetMapping("/{reportId}/export/markdown")
     public ResponseEntity<byte[]> exportMarkdown(HttpServletRequest request, @PathVariable Integer reportId) {
         Integer userId = currentUserUtil.getCurrentUserId(request);
