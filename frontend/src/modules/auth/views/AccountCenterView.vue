@@ -103,7 +103,6 @@ import {
   FileText,
   Info,
   LogOut,
-  MessageSquare,
   Utensils
 } from 'lucide-vue-next'
 import { getCurrentUser } from '@/api/auth'
@@ -138,8 +137,7 @@ const healthRecords = [
   { label: '健康档案', icon: Activity, bg: '#E8F7EE', iconColor: '#5BBF8A', path: '/app/profile' },
   { label: '评估记录', icon: ClipboardList, bg: '#E2F3FA', iconColor: '#4FAAC4', path: '/app/risk/history' },
   { label: '生活方案', icon: Utensils, bg: '#EBF8F2', iconColor: '#5BBF8A', path: '/app/life-plan' },
-  { label: '健康报告', icon: FileHeart, bg: '#FEF3E2', iconColor: '#D99A32', path: '/app/reports' },
-  { label: '咨询记录', icon: MessageSquare, bg: '#E4F4FB', iconColor: '#4FAAC4', path: '/app/ai-chat/history' }
+  { label: '健康报告', icon: FileHeart, bg: '#FEF3E2', iconColor: '#D99A32', path: '/app/reports' }
 ]
 
 const settingsItems = [
