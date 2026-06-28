@@ -1,62 +1,50 @@
 <template>
-  <main class="public-report-page">
-    <section v-if="loading" class="public-report-state">
-      <LoaderCircle class="spin" />
-      <p>正在加载报告...</p>
-    </section>
-
-    <section v-else-if="report" class="public-report-document">
-      <header class="public-report-header">
-        <span>RPT{{ String(report.report_id || report.reportId).padStart(4, '0') }}</span>
-        <h1>{{ report.report_title || report.reportTitle }}</h1>
-        <p>{{ report.report_summary || report.reportSummary }}</p>
-        <small>生成时间：{{ formatDateTime(report.create_time || report.createTime) }}</small>
-      </header>
-
-      <article class="public-report-markdown" :class="{ 'public-report-markdown--personal': isPersonalReport }">
-        <MarkdownContent :content="report.report_markdown || report.reportMarkdown" />
-      </article>
-    </section>
-
-    <section v-else class="public-report-state">
-      <FileText />
-      <p>报告不存在或暂时无法访问。</p>
-    </section>
+  <main class="public-report-redirect">
+    <div>
+      <LoaderCircle class="public-report-redirect__icon" />
+      <p>正在打开报告...</p>
+    </div>
   </main>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { showToast } from 'vant'
-import { FileText, LoaderCircle } from 'lucide-vue-next'
-import MarkdownContent from '@/components/MarkdownContent.vue'
-import { getPublicReportDetail } from '@/api/report'
-import './public-report.css'
+import { LoaderCircle } from 'lucide-vue-next'
 
 const route = useRoute()
-const loading = ref(false)
-const report = ref(null)
 
-const isPersonalReport = computed(() => (report.value?.report_type || report.value?.reportType) !== 'doctor_summary')
+onMounted(() => {
+  const reportId = encodeURIComponent(route.params.reportId || '')
+  window.location.replace(`/api/reports/public/${reportId}/html`)
+})
+</script>
 
-onMounted(loadReport)
+<style scoped>
+.public-report-redirect {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  background: #f7fcf9;
+  color: #4a8a6a;
+  font-size: 15px;
+}
 
-async function loadReport() {
-  loading.value = true
-  try {
-    const response = await getPublicReportDetail(route.params.reportId)
-    report.value = response.data
-  } catch (error) {
-    showToast(error?.response?.data?.message || '报告加载失败')
-    report.value = null
-  } finally {
-    loading.value = false
+.public-report-redirect > div {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+
+.public-report-redirect__icon {
+  width: 28px;
+  height: 28px;
+  animation: public-report-spin 1s linear infinite;
+}
+
+@keyframes public-report-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
-
-function formatDateTime(value) {
-  if (!value) return '暂无'
-  return String(value).replace('T', ' ').slice(0, 16)
-}
-</script>
+</style>

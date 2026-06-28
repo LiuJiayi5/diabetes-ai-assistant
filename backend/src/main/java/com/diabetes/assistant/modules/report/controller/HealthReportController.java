@@ -57,6 +57,13 @@ public class HealthReportController {
         return ApiResponse.success(reportService.getPublicDetail(reportId));
     }
 
+    @GetMapping("/public/{reportId}/html")
+    public ResponseEntity<byte[]> publicHtml(@PathVariable Integer reportId) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/html; charset=UTF-8"))
+                .body(reportService.exportPublicHtml(reportId));
+    }
+
     @GetMapping("/{reportId}/export/markdown")
     public ResponseEntity<byte[]> exportMarkdown(HttpServletRequest request, @PathVariable Integer reportId) {
         Integer userId = currentUserUtil.getCurrentUserId(request);

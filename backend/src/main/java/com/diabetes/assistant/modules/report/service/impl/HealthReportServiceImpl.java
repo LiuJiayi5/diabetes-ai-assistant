@@ -140,6 +140,15 @@ public class HealthReportServiceImpl implements HealthReportService {
     }
 
     @Override
+    public byte[] exportPublicHtml(Integer reportId) {
+        HealthReport report = reportMapper.selectById(reportId);
+        if (report == null) {
+            throw new BusinessException(404, "报告不存在");
+        }
+        return buildPublicHtml(report).getBytes(StandardCharsets.UTF_8);
+    }
+
+    @Override
     public byte[] exportMarkdown(Integer userId, Integer reportId) {
         HealthReport report = requireReport(userId, reportId);
         return displayMarkdown(report).getBytes(StandardCharsets.UTF_8);
@@ -585,6 +594,151 @@ public class HealthReportServiceImpl implements HealthReportService {
         return stripCompletenessScore(report.getReportMarkdown());
     }
 
+    private String buildPublicHtml(HealthReport report) {
+        String body = markdownToHtml(displayMarkdown(report));
+        String summary = escapeHtml(value(report.getReportSummary()));
+        String title = escapeHtml(value(report.getReportTitle()));
+        return """
+                <!doctype html>
+                <html lang="zh-CN">
+                <head>
+                  <meta charset="UTF-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  <title>%s</title>
+                  <style>
+                    * { box-sizing: border-box; }
+                    body { margin: 0; background: #F7FCF9; color: #24323D; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+                    main { width: min(100%%, 760px); margin: 0 auto; padding: 18px 14px 34px; }
+                    header, article { border: 1px solid rgba(174, 232, 199, .42); border-radius: 18px; background: #fff; box-shadow: 0 8px 28px rgba(140, 190, 170, .10); }
+                    header { padding: 20px 18px; background: linear-gradient(145deg, #FFFFFF 0%%, #EDF8F4 58%%, #EAF5FA 100%%); }
+                    .report-id { color: #4A8A6A; font-size: 13px; font-weight: 800; }
+                    h1 { margin: 8px 0; color: #172635; font-size: 24px; line-height: 1.32; }
+                    .summary { margin: 0; color: #687789; font-size: 14px; line-height: 1.75; }
+                    .time { display: block; margin-top: 12px; color: #82959E; font-size: 12px; }
+                    article { margin-top: 14px; padding: 18px; font-size: 15px; line-height: 1.9; overflow-wrap: anywhere; }
+                    article h1 { font-size: 22px; }
+                    article h2 { margin: 22px 0 10px; padding-top: 10px; border-top: 1px solid rgba(174, 232, 199, .5); color: #24323D; font-size: 18px; }
+                    article h3 { margin: 16px 0 8px; color: #24323D; font-size: 16px; }
+                    article p { margin: 0 0 10px; }
+                    article blockquote { margin: 10px 0 14px; padding: 10px 12px; border-left: 4px solid #6FCF97; border-radius: 0 10px 10px 0; background: #F0FAF5; color: #526575; }
+                    article ul, article ol { padding-left: 20px; }
+                    article li { margin: 4px 0; }
+                    article table { display: block; width: 100%%; margin: 12px 0; overflow-x: auto; border-collapse: collapse; font-size: 13px; }
+                    article th, article td { padding: 8px 9px; border: 1px solid rgba(174, 232, 199, .65); text-align: left; vertical-align: top; }
+                    article th { background: #EAF8F1; }
+                  </style>
+                </head>
+                <body>
+                  <main>
+                    <header>
+                      <span class="report-id">RPT%s</span>
+                      <h1>%s</h1>
+                      <p class="summary">%s</p>
+                      <span class="time">生成时间：%s</span>
+                    </header>
+                    <article>%s</article>
+                  </main>
+                </body>
+                </html>
+                """.formatted(title, String.format("%04d", report.getReportId()), title, summary, formatDateTime(report.getCreateTime()), body);
+    }
+
+    private String markdownToHtml(String markdown) {
+        StringBuilder html = new StringBuilder();
+        String[] lines = markdown.split("\\R");
+        boolean inTable = false;
+        boolean inList = false;
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i].trim();
+            if (!StringUtils.hasText(line)) {
+                if (inList) {
+                    html.append("</ul>");
+                    inList = false;
+                }
+                if (inTable) {
+                    html.append("</tbody></table>");
+                    inTable = false;
+                }
+                continue;
+            }
+            if (line.startsWith("|") && line.endsWith("|")) {
+                if (i + 1 < lines.length && lines[i + 1].trim().matches("^\\|\\s*-+.*")) {
+                    if (inList) {
+                        html.append("</ul>");
+                        inList = false;
+                    }
+                    html.append("<table><thead><tr>");
+                    for (String cell : tableCells(line)) {
+                        html.append("<th>").append(escapeHtml(cell)).append("</th>");
+                    }
+                    html.append("</tr></thead><tbody>");
+                    inTable = true;
+                    i++;
+                    continue;
+                }
+                if (inTable) {
+                    html.append("<tr>");
+                    for (String cell : tableCells(line)) {
+                        html.append("<td>").append(escapeHtml(cell)).append("</td>");
+                    }
+                    html.append("</tr>");
+                    continue;
+                }
+            } else if (inTable) {
+                html.append("</tbody></table>");
+                inTable = false;
+            }
+            if (line.startsWith("- ")) {
+                if (!inList) {
+                    html.append("<ul>");
+                    inList = true;
+                }
+                html.append("<li>").append(escapeHtml(line.substring(2))).append("</li>");
+                continue;
+            } else if (inList) {
+                html.append("</ul>");
+                inList = false;
+            }
+            if (line.startsWith("### ")) {
+                html.append("<h3>").append(escapeHtml(line.substring(4))).append("</h3>");
+            } else if (line.startsWith("## ")) {
+                html.append("<h2>").append(escapeHtml(line.substring(3))).append("</h2>");
+            } else if (line.startsWith("# ")) {
+                html.append("<h1>").append(escapeHtml(line.substring(2))).append("</h1>");
+            } else if (line.startsWith("> ")) {
+                html.append("<blockquote>").append(escapeHtml(line.substring(2))).append("</blockquote>");
+            } else {
+                html.append("<p>").append(escapeHtml(line)).append("</p>");
+            }
+        }
+        if (inList) {
+            html.append("</ul>");
+        }
+        if (inTable) {
+            html.append("</tbody></table>");
+        }
+        return html.toString();
+    }
+
+    private List<String> tableCells(String line) {
+        String inner = line.substring(1, line.length() - 1);
+        String[] cells = inner.split("\\|");
+        List<String> result = new ArrayList<>();
+        for (String cell : cells) {
+            result.add(cell.trim());
+        }
+        return result;
+    }
+
+    private String escapeHtml(String text) {
+        return value(text)
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
+    }
+
     private String stripCompletenessScore(String markdown) {
         if (!StringUtils.hasText(markdown)) {
             return "";
@@ -650,7 +804,7 @@ public class HealthReportServiceImpl implements HealthReportService {
         while (baseUrl.endsWith("/")) {
             baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
         }
-        return baseUrl + "/report-view/" + reportId;
+        return baseUrl + "/api/reports/public/" + reportId + "/html";
     }
 
     private String buildQrCodeDataUrl(String text) {

@@ -14,6 +14,8 @@ public interface HealthReportService {
 
     HealthReportResponse getPublicDetail(Integer reportId);
 
+    byte[] exportPublicHtml(Integer reportId);
+
     byte[] exportMarkdown(Integer userId, Integer reportId);
 
     byte[] exportPdf(Integer userId, Integer reportId);
