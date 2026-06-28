@@ -39,6 +39,7 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -81,6 +82,9 @@ public class HealthReportServiceImpl implements HealthReportService {
     private final CheckinQueryApi checkinQueryApi;
     private final AiChatQueryApi aiChatQueryApi;
     private final ObjectMapper objectMapper;
+
+    @Value("${app.report.public-base-url:http://localhost:5173}")
+    private String reportPublicBaseUrl;
 
     @Override
     public HealthReportResponse generate(Integer userId, GenerateReportRequest request) {
@@ -245,14 +249,16 @@ public class HealthReportServiceImpl implements HealthReportService {
         md.append("# ").append(context.getReportTitle()).append("\n\n");
         md.append("> ").append(DISCLAIMER).append("\n\n");
         md.append("- 报告类型：").append(context.getReportTypeLabel()).append("\n");
+        md.append("- 报告版本：v1.0\n");
         md.append("- 报告周期：").append(context.getStartDate()).append(" 至 ").append(context.getEndDate()).append("\n");
         md.append("- 完整度评分：").append(context.getCompletenessScore()).append("/100\n");
         md.append("- 追溯链接：").append(context.getTraceUrl()).append("\n\n");
 
-        md.append("## 一、医生速览\n\n");
-        md.append("- 综合摘要：").append(context.getSummary()).append("\n");
-        md.append("- 风险等级：").append(riskLabel(context.getRiskAssessment() == null ? null : context.getRiskAssessment().getRiskLevel())).append("\n");
-        md.append("- 主要缺失：").append(context.getMissingItems().isEmpty() ? "暂无明显缺失" : String.join("、", context.getMissingItems())).append("\n\n");
+        if (TYPE_DOCTOR.equals(context.getReportType())) {
+            appendDoctorOpening(md, context);
+        } else {
+            appendPersonalOpening(md, context);
+        }
 
         appendProfile(md, context.getProfile());
         appendMetrics(md, context);
@@ -260,15 +266,33 @@ public class HealthReportServiceImpl implements HealthReportService {
         appendLifePlan(md, context.getLifePlan());
         appendCheckin(md, context);
         appendAiChat(md, context);
+        appendDataSources(md, context);
 
-        md.append("## 八、下一步建议\n\n");
+        md.append("## 九、下一步建议\n\n");
         md.append("- 携带本报告及近期线下检查结果，与内分泌科或全科医生沟通。\n");
         md.append("- 若近期空腹血糖多次达到或超过 7.0 mmol/L，或餐后血糖达到或超过 11.1 mmol/L，建议尽快线下复查。\n");
         md.append("- 若出现胸痛、意识异常、严重低血糖、持续呕吐、酮体阳性或足部感染，应及时就医。\n\n");
 
-        md.append("## 九、报告局限性\n\n");
+        md.append("## 十、报告局限性\n\n");
         md.append(DISCLAIMER).append("报告由系统根据用户主动填写的数据、Dify 风险预测结果、生活方案、打卡行为分析和 AI 咨询摘要自动整理，数据缺失或填写不准确会影响报告完整性。\n");
         return md.toString();
+    }
+
+    private void appendPersonalOpening(StringBuilder md, ReportContext context) {
+        md.append("## 一、我的健康概览\n\n");
+        md.append("- 当前结论：").append(context.getSummary()).append("\n");
+        md.append("- 本周重点：优先关注血糖记录、饮食结构和打卡执行稳定性。\n");
+        md.append("- 行动建议：继续按当前生活方案执行；若指标明显异常或身体不适，应线下复查。\n");
+        md.append("- 数据完整度：").append(context.getMissingItems().isEmpty() ? "资料较完整，可作为就医沟通参考。" : "仍缺少" + String.join("、", context.getMissingItems()) + "，建议补充后重新生成。").append("\n\n");
+    }
+
+    private void appendDoctorOpening(StringBuilder md, ReportContext context) {
+        md.append("## 一、医生速览\n\n");
+        md.append("- 综合摘要：").append(context.getSummary()).append("\n");
+        md.append("- 风险等级：").append(riskLabel(context.getRiskAssessment() == null ? null : context.getRiskAssessment().getRiskLevel())).append("\n");
+        md.append("- 关注问题：糖尿病风险评估、近期血糖/血压/BMI变化、生活方案执行情况。\n");
+        md.append("- 主要缺失：").append(context.getMissingItems().isEmpty() ? "暂无明显缺失" : String.join("、", context.getMissingItems())).append("\n");
+        md.append("- 隐私处理：导出文件仅使用系统匿名用户编号，不包含身份证、手机号或住址。\n\n");
     }
 
     private void appendProfile(StringBuilder md, PatientProfileDTO profile) {
@@ -350,6 +374,17 @@ public class HealthReportServiceImpl implements HealthReportService {
         md.append("## 七、AI 医生咨询摘要\n\n");
         md.append("- 咨询会话数：").append(context.getRecentAiSessions().size()).append(" 个近期会话\n");
         md.append("- 最近咨询摘要：").append(value(context.getAiChatSummary())).append("\n\n");
+    }
+
+    private void appendDataSources(StringBuilder md, ReportContext context) {
+        md.append("## 八、数据来源追踪\n\n");
+        md.append("| 报告内容 | 系统数据来源 |\n| --- | --- |\n");
+        md.append("| 基本信息 | patient_profiles 健康档案 |\n");
+        md.append("| 血糖、血压、体重、腰围 | health_metrics 近期健康指标，共 ").append(context.getMetrics().size()).append(" 条 |\n");
+        md.append("| 风险等级和风险因素 | risk_assessments 糖尿病风险预测结果 |\n");
+        md.append("| 饮食、运动、作息建议 | life_plans 个性化生活方案 |\n");
+        md.append("| 执行率和行为问题 | checkin_records / checkin_analysis 打卡与行为分析 |\n");
+        md.append("| 咨询摘要 | ai_chat_sessions / ai_chat_messages AI 医生咨询记录 |\n\n");
     }
 
     private Map<String, Object> buildFhirBundle(HealthReport report, ReportContext context) {
@@ -485,9 +520,12 @@ public class HealthReportServiceImpl implements HealthReportService {
         segments.add(obx(1, "REPORT_TYPE", "报告类型", context.getReportTypeLabel()));
         segments.add(obx(2, "RISK_LEVEL", "风险等级", riskLabel(context.getRiskAssessment() == null ? null : context.getRiskAssessment().getRiskLevel())));
         segments.add(obx(3, "FASTING_GLUCOSE", "空腹血糖", metricValue(context.getLatestMetric(), "fasting")));
-        segments.add(obx(4, "COMPLETION_RATE", "打卡完成率", context.getCompletionRate() == null ? "暂无" : context.getCompletionRate() + "%"));
-        segments.add(obx(5, "SUMMARY", "报告摘要", report.getReportSummary()));
-        segments.add(obx(6, "RECOMMENDATION", "建议", "建议携带本报告咨询内分泌科医生，并结合线下检查确认。"));
+        segments.add(obx(4, "POSTPRANDIAL_GLUCOSE", "餐后血糖", metricValue(context.getLatestMetric(), "postprandial")));
+        segments.add(obx(5, "HBA1C", "糖化血红蛋白", metricValue(context.getLatestMetric(), "hba1c")));
+        segments.add(obx(6, "BLOOD_PRESSURE", "血压", metricValue(context.getLatestMetric(), "bp")));
+        segments.add(obx(7, "COMPLETION_RATE", "打卡完成率", context.getCompletionRate() == null ? "暂无" : context.getCompletionRate() + "%"));
+        segments.add(obx(8, "SUMMARY", "报告摘要", report.getReportSummary()));
+        segments.add(obx(9, "RECOMMENDATION", "建议", "建议携带本报告咨询内分泌科医生，并结合线下检查确认。"));
         return String.join("\r", segments) + "\r";
     }
 
@@ -510,6 +548,7 @@ public class HealthReportServiceImpl implements HealthReportService {
         response.setCompletenessScore(report.getCompletenessScore());
         response.setReportStatus(report.getReportStatus());
         response.setTraceUrl(buildTraceUrl(report.getReportId()));
+        response.setQrCodeDataUrl(buildQrCodeDataUrl(buildTraceUrl(report.getReportId())));
         response.setCreateTime(report.getCreateTime());
         response.setUpdateTime(report.getUpdateTime());
         response.setMissingItems(readContext(report).getMissingItems());
@@ -591,7 +630,24 @@ public class HealthReportServiceImpl implements HealthReportService {
     }
 
     private String buildTraceUrl(Integer reportId) {
-        return "/app/reports/" + reportId;
+        String baseUrl = StringUtils.hasText(reportPublicBaseUrl) ? reportPublicBaseUrl.trim() : "http://localhost:5173";
+        while (baseUrl.endsWith("/")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        }
+        return baseUrl + "/app/reports/" + reportId;
+    }
+
+    private String buildQrCodeDataUrl(String text) {
+        try {
+            QRCodeWriter writer = new QRCodeWriter();
+            BitMatrix matrix = writer.encode(text, BarcodeFormat.QR_CODE, 180, 180);
+            BufferedImage qr = MatrixToImageWriter.toBufferedImage(matrix);
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            ImageIO.write(qr, "png", output);
+            return "data:image/png;base64," + Base64.getEncoder().encodeToString(output.toByteArray());
+        } catch (Exception exception) {
+            return null;
+        }
     }
 
     private Map<String, Object> entry(String fullUrl, Map<String, Object> resource) {
@@ -634,6 +690,15 @@ public class HealthReportServiceImpl implements HealthReportService {
         }
         if ("fasting".equals(key)) {
             return value(metric.getFastingGlucose()) + " mmol/L";
+        }
+        if ("postprandial".equals(key)) {
+            return value(metric.getPostprandialGlucose()) + " mmol/L";
+        }
+        if ("hba1c".equals(key)) {
+            return value(metric.getHba1c()) + "%";
+        }
+        if ("bp".equals(key)) {
+            return value(metric.getSystolicBp()) + "/" + value(metric.getDiastolicBp()) + " mmHg";
         }
         return "暂无";
     }

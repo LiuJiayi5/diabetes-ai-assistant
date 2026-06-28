@@ -39,6 +39,18 @@
           </button>
         </section>
 
+        <section class="trace-panel">
+          <img
+            v-if="report.qr_code_data_url || report.qrCodeDataUrl"
+            :src="report.qr_code_data_url || report.qrCodeDataUrl"
+            alt="报告追溯二维码"
+          />
+          <div>
+            <h2>报告追溯码</h2>
+            <p>{{ report.trace_url || report.traceUrl }}</p>
+          </div>
+        </section>
+
         <section v-if="missingItems.length" class="missing-panel">
           <h2>数据完整度提醒</h2>
           <div>
@@ -65,7 +77,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { ArrowLeft, Braces, Download, FileJson, FileText, LoaderCircle, RefreshCw } from 'lucide-vue-next'
 import MarkdownContent from '@/components/MarkdownContent.vue'
-import { getReportDetail, getReportExportUrl } from '../api'
+import { downloadReportExport, getReportDetail } from '../api'
 import './report.css'
 
 const route = useRoute()
@@ -100,6 +112,25 @@ async function loadDetail() {
 function download(type) {
   const id = report.value?.report_id || report.value?.reportId
   if (!id) return
-  window.open(getReportExportUrl(id, type), '_blank', 'noopener,noreferrer')
+  const filenames = {
+    pdf: `report-${id}.pdf`,
+    markdown: `report-${id}.md`,
+    fhir: `report-${id}.fhir.json`,
+    hl7: `report-${id}.hl7`
+  }
+  downloadReportExport(id, type)
+    .then((blob) => {
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filenames[type] || `report-${id}.${type}`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+    })
+    .catch((error) => {
+      showToast(error?.response?.data?.message || '导出失败')
+    })
 }
 </script>

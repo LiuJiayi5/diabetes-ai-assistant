@@ -18,6 +18,7 @@ public class HealthReportResponse {
     private List<String> missingItems;
     private String reportStatus;
     private String traceUrl;
+    private String qrCodeDataUrl;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

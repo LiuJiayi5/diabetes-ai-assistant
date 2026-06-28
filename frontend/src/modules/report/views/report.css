@@ -58,6 +58,7 @@
 .state-card,
 .detail-summary,
 .export-panel,
+.trace-panel,
 .missing-panel,
 .markdown-panel {
   border-radius: 22px;
@@ -100,6 +101,7 @@
 .report-list,
 .detail-summary,
 .export-panel,
+.trace-panel,
 .missing-panel,
 .markdown-panel {
   margin-top: 14px;
@@ -309,6 +311,35 @@
 .export-panel svg {
   width: 16px;
   height: 16px;
+}
+
+.trace-panel {
+  padding: 14px;
+  display: grid;
+  grid-template-columns: 82px 1fr;
+  align-items: center;
+  gap: 14px;
+}
+
+.trace-panel img {
+  width: 82px;
+  height: 82px;
+  border-radius: 14px;
+  background: #FFFFFF;
+}
+
+.trace-panel h2 {
+  margin: 0 0 6px;
+  color: var(--figma-text-strong);
+  font-size: 15px;
+}
+
+.trace-panel p {
+  margin: 0;
+  color: var(--figma-text-muted);
+  font-size: 11px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .missing-panel {
