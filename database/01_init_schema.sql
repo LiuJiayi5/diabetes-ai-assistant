@@ -8,6 +8,7 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 DROP TABLE IF EXISTS api_call_logs;
+DROP TABLE IF EXISTS health_reports;
 DROP TABLE IF EXISTS checkin_analysis;
 DROP TABLE IF EXISTS checkin_records;
 DROP TABLE IF EXISTS ai_chat_messages;
@@ -169,6 +170,27 @@ CREATE TABLE life_plans (
         FOREIGN KEY (assessment_id) REFERENCES risk_assessments(assessment_id)
         ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='个性化生活方案';
+
+CREATE TABLE health_reports (
+    report_id INT NOT NULL AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    report_type VARCHAR(32) NOT NULL,
+    report_title VARCHAR(120) NOT NULL,
+    report_markdown MEDIUMTEXT NOT NULL,
+    report_summary TEXT DEFAULT NULL,
+    data_snapshot_json MEDIUMTEXT DEFAULT NULL,
+    completeness_score INT NOT NULL DEFAULT 0,
+    report_status VARCHAR(20) NOT NULL DEFAULT 'generated',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (report_id),
+    KEY idx_health_reports_user (user_id),
+    KEY idx_health_reports_type (report_type),
+    KEY idx_health_reports_created (create_time),
+    CONSTRAINT fk_health_reports_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='健康管理报告';
 
 CREATE TABLE articles (
     article_id INT NOT NULL AUTO_INCREMENT,

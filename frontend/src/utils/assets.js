@@ -1,6 +1,7 @@
 import defaultAvatarUrl from '@/assets/default-avatar.svg'
+import { resolveApiBaseUrl } from './apiBase'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
+const API_BASE_URL = resolveApiBaseUrl()
 const ORIGIN_URL = API_BASE_URL.replace(/\/api\/?$/, '')
 
 const DEFAULT_AVATAR_MARKERS = [

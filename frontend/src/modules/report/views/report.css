@@ -1,0 +1,373 @@
+.report-page {
+  min-height: 100%;
+  background: var(--figma-bg-page);
+}
+
+.report-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  min-height: 72px;
+  padding: 14px 18px 10px;
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  gap: 12px;
+  background: rgba(247, 252, 249, 0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(174, 232, 199, 0.28);
+}
+
+.report-topbar p {
+  margin: 0 0 2px;
+  color: var(--figma-text-muted);
+  font-size: 11px;
+}
+
+.report-topbar h1 {
+  margin: 0;
+  color: var(--figma-text-strong);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.icon-button {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: #FFFFFF;
+  color: #4A8A6A;
+  box-shadow: var(--figma-shadow-card);
+}
+
+.icon-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.report-scroll {
+  padding: 18px 18px 28px;
+}
+
+.report-hero,
+.generate-panel,
+.report-card,
+.state-card,
+.detail-summary,
+.export-panel,
+.missing-panel,
+.markdown-panel {
+  border-radius: 22px;
+  background: #FFFFFF;
+  box-shadow: var(--figma-shadow-card);
+}
+
+.report-hero {
+  padding: 20px;
+  background: linear-gradient(135deg, #E8F7EE 0%, #E4F4FB 100%);
+}
+
+.report-hero span,
+.report-card span,
+.detail-summary span {
+  color: #4A8A6A;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.report-hero h2,
+.detail-summary h2 {
+  margin: 8px 0;
+  color: var(--figma-text-strong);
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.report-hero p,
+.report-card p,
+.detail-summary p,
+.panel-title p {
+  margin: 0;
+  color: var(--figma-text-muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.generate-panel,
+.report-list,
+.detail-summary,
+.export-panel,
+.missing-panel,
+.markdown-panel {
+  margin-top: 14px;
+}
+
+.generate-panel {
+  padding: 16px;
+}
+
+.panel-title,
+.section-heading,
+.detail-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.panel-title {
+  justify-content: flex-start;
+}
+
+.panel-title > svg {
+  width: 38px;
+  height: 38px;
+  padding: 9px;
+  border-radius: 14px;
+  background: #E8F7EE;
+  color: #4A8A6A;
+}
+
+.panel-title h2,
+.section-heading h2,
+.missing-panel h2 {
+  margin: 0;
+  color: var(--figma-text-strong);
+  font-size: 15px;
+}
+
+.segmented {
+  margin-top: 16px;
+  padding: 4px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  border-radius: 14px;
+  background: #EEF8F2;
+}
+
+.segmented button {
+  height: 38px;
+  border-radius: 11px;
+  color: #5C7669;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.segmented button.active {
+  background: #FFFFFF;
+  color: #3F8E64;
+  box-shadow: 0 4px 12px rgba(84, 148, 112, 0.12);
+}
+
+.field-row {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--figma-text-strong);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.field-row select {
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(174, 232, 199, 0.72);
+  border-radius: 12px;
+  background: #FFFFFF;
+  color: var(--figma-text-strong);
+}
+
+.primary-button {
+  width: 100%;
+  height: 44px;
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(174, 232, 199, 0.78);
+  background: linear-gradient(135deg, #DDF7E9 0%, #EAF5FA 100%);
+  color: #327F5F;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 8px 18px rgba(79, 183, 131, 0.14);
+}
+
+.primary-button:disabled {
+  opacity: 0.72;
+}
+
+.primary-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.section-heading {
+  padding: 2px 2px 10px;
+}
+
+.section-heading span {
+  color: var(--figma-text-muted);
+  font-size: 12px;
+}
+
+.state-card {
+  min-height: 112px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--figma-text-muted);
+  text-align: center;
+}
+
+.state-card svg {
+  width: 24px;
+  height: 24px;
+  color: #4A8A6A;
+}
+
+.state-card p {
+  margin: 0;
+  font-size: 13px;
+}
+
+.report-card {
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+}
+
+.report-card h3 {
+  margin: 6px 0;
+  color: var(--figma-text-strong);
+  font-size: 15px;
+}
+
+.report-qr-mini,
+.summary-qr {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(174, 232, 199, 0.58);
+  border-radius: 16px;
+  background: linear-gradient(145deg, #FFFFFF 0%, #F2FAF6 100%);
+}
+
+.report-qr-mini {
+  width: 72px;
+  height: 72px;
+}
+
+.report-qr-mini img,
+.summary-qr img {
+  width: 54px;
+  height: 54px;
+  border-radius: 8px;
+}
+
+.report-qr-mini span {
+  color: #4A8A6A;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.summary-qr {
+  width: 82px;
+  min-height: 92px;
+  padding: 8px 6px;
+}
+
+.summary-qr img {
+  width: 64px;
+  height: 64px;
+}
+
+.summary-qr small {
+  margin-top: 4px;
+  color: var(--figma-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.detail-summary {
+  padding: 18px;
+}
+
+.export-panel {
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.export-panel button {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 14px;
+  border: 1px solid rgba(174, 232, 199, 0.46);
+  background: linear-gradient(145deg, #FFFFFF 0%, #F2FAF6 100%);
+  color: #4A8A6A;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.export-panel svg {
+  width: 16px;
+  height: 16px;
+}
+
+.missing-panel {
+  padding: 14px;
+}
+
+.missing-panel div {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.missing-panel span {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #FEF3E2;
+  color: #A56A16;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.markdown-panel {
+  padding: 16px;
+}
+
+.markdown-panel--personal .markdown-content p {
+  text-indent: 2em;
+}
+
+.spin {
+  animation: report-spin 0.9s linear infinite;
+}
+
+@keyframes report-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
