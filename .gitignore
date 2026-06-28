@@ -7,8 +7,6 @@ frontend/新建文件夹/
 
 # Backend
 backend/target/
-backend/uploads/
-uploads/
 
 # Local env
 .env
