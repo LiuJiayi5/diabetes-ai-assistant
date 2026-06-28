@@ -10,6 +10,7 @@ import aiChatRoutes from '@/modules/aichat/routes'
 import lifePlanRoutes from '@/modules/lifeplan/routes'
 import articleRoutes from '@/modules/article/routes'
 import checkinRoutes from '@/modules/checkin/routes'
+import reportRoutes from '@/modules/report/routes'
 import adminRoutes from '@/modules/admin/routes'
 
 export const routes = [
@@ -26,7 +27,8 @@ export const routes = [
       ...riskRoutes,
       ...aiChatRoutes,
       ...lifePlanRoutes,
-      ...checkinRoutes
+      ...checkinRoutes,
+      ...reportRoutes
     ]
   },
   { path: '/admin', component: AdminLayout, children: adminRoutes },

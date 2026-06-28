@@ -1,0 +1,21 @@
+import request from './request'
+
+export function listReports(params = {}) {
+  return request.get('/reports', { params })
+}
+
+export function getReportDetail(reportId) {
+  return request.get(`/reports/${encodeURIComponent(reportId)}`)
+}
+
+export function generateReport(payload) {
+  return request.post('/reports', {
+    report_type: payload.report_type || payload.reportType || 'personal',
+    days: payload.days ?? 30
+  }, { timeout: 120000 })
+}
+
+export function getReportExportUrl(reportId, type) {
+  const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
+  return `${baseURL}/reports/${encodeURIComponent(reportId)}/export/${encodeURIComponent(type)}`
+}
