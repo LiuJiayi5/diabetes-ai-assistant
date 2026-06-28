@@ -10,6 +10,8 @@ import com.diabetes.assistant.modules.aichat.contract.dto.AiChatSessionSummaryDT
 import com.diabetes.assistant.modules.checkin.contract.CheckinQueryApi;
 import com.diabetes.assistant.modules.checkin.contract.dto.CheckinAnalysisDTO;
 import com.diabetes.assistant.modules.checkin.contract.dto.CheckinRecordDTO;
+import com.diabetes.assistant.modules.dify.dto.DifyWorkflowResult;
+import com.diabetes.assistant.modules.dify.service.DifyService;
 import com.diabetes.assistant.modules.healthmetric.contract.HealthMetricQueryApi;
 import com.diabetes.assistant.modules.healthmetric.contract.dto.HealthMetricDTO;
 import com.diabetes.assistant.modules.lifeplan.contract.LifePlanQueryApi;
@@ -25,6 +27,7 @@ import com.diabetes.assistant.modules.risk.contract.RiskAssessmentQueryApi;
 import com.diabetes.assistant.modules.risk.contract.dto.RiskAssessmentDTO;
 import com.diabetes.assistant.modules.user.contract.UserQueryApi;
 import com.diabetes.assistant.modules.user.contract.dto.UserBasicDTO;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.zxing.BarcodeFormat;
@@ -56,6 +59,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,6 +85,7 @@ public class HealthReportServiceImpl implements HealthReportService {
     private final LifePlanQueryApi lifePlanQueryApi;
     private final CheckinQueryApi checkinQueryApi;
     private final AiChatQueryApi aiChatQueryApi;
+    private final DifyService difyService;
     private final ObjectMapper objectMapper;
 
     @Value("${app.report.public-base-url:http://localhost:5173}")
@@ -91,6 +96,7 @@ public class HealthReportServiceImpl implements HealthReportService {
         String reportType = normalizeReportType(request.getReportType());
         int days = request.getDays() == null ? 30 : request.getDays();
         ReportContext context = buildContext(userId, reportType, days);
+        enrichReportIntelligence(context);
         String markdown = buildMarkdown(context);
 
         HealthReport report = new HealthReport();
@@ -235,6 +241,139 @@ public class HealthReportServiceImpl implements HealthReportService {
         return context;
     }
 
+    @SuppressWarnings("unchecked")
+    private void enrichReportIntelligence(ReportContext context) {
+        try {
+            Map<String, Object> inputs = buildComprehensiveReportInputs(context);
+            DifyWorkflowResult result = difyService.callComprehensiveReport(inputs, "report-" + context.getUserId());
+            ReportIntelligence intelligence = parseReportIntelligence(result == null ? null : result.getOutputs());
+            intelligence.setGenerationMode("dify");
+            context.setIntelligence(intelligence);
+        } catch (Exception exception) {
+            ReportIntelligence fallback = buildLocalReportIntelligence(context);
+            fallback.setGenerationMode("local-fallback");
+            context.setIntelligence(fallback);
+        }
+        if (context.getIntelligence() != null && StringUtils.hasText(context.getIntelligence().getSummary())) {
+            context.setSummary(context.getIntelligence().getSummary());
+        }
+    }
+
+    private Map<String, Object> buildComprehensiveReportInputs(ReportContext context) {
+        Map<String, Object> inputs = new LinkedHashMap<>();
+        inputs.put("user_id", String.valueOf(context.getUserId()));
+        inputs.put("report_type", context.getReportType());
+        inputs.put("period_days", context.getPeriodDays());
+        inputs.put("user_profile_json", toJsonOrEmpty(context.getProfile()));
+        inputs.put("latest_metrics_json", toJsonOrEmpty(context.getLatestMetric()));
+        inputs.put("metrics_json", toJsonOrEmpty(context.getMetrics()));
+        inputs.put("risk_assessment_json", toJsonOrEmpty(context.getRiskAssessment()));
+        inputs.put("life_plan_json", toJsonOrEmpty(context.getLifePlan()));
+        inputs.put("checkin_analysis_json", toJsonOrEmpty(context.getCheckinAnalysis()));
+        inputs.put("checkin_records_json", toJsonOrEmpty(context.getCheckinRecords()));
+        inputs.put("ai_chat_summary", value(context.getAiChatSummary()));
+        inputs.put("missing_items", String.join("、", context.getMissingItems()));
+        inputs.put("safety_rules", "仅用于糖尿病健康管理和就医沟通准备，不输出诊断、处方、药物剂量或替代线下就医的结论。");
+        return inputs;
+    }
+
+    private ReportIntelligence parseReportIntelligence(Map<String, Object> outputs) {
+        if (outputs == null || outputs.isEmpty()) {
+            throw new BusinessException(502, "Dify comprehensive report response is empty");
+        }
+        Object success = outputs.get("success");
+        if (success != null && !"true".equalsIgnoreCase(String.valueOf(success))) {
+            throw new BusinessException(502, "Dify comprehensive report returned success=false");
+        }
+        Object raw = firstPresent(outputs, "report_result", "report_json", "result", "text", "answer");
+        if (raw == null) {
+            raw = outputs;
+        }
+        String json = raw instanceof String text ? stripJsonFence(text) : toJsonOrEmpty(raw);
+        try {
+            ReportIntelligence intelligence = objectMapper.readValue(json, ReportIntelligence.class);
+            if (intelligence.getPatientReport() == null || intelligence.getDoctorReport() == null) {
+                throw new BusinessException(502, "Dify comprehensive report is missing required sections");
+            }
+            normalizeIntelligence(intelligence);
+            return intelligence;
+        } catch (Exception exception) {
+            throw new BusinessException(502, "Dify comprehensive report JSON parse failed");
+        }
+    }
+
+    private ReportIntelligence buildLocalReportIntelligence(ReportContext context) {
+        ReportIntelligence intelligence = new ReportIntelligence();
+        PatientReport patient = new PatientReport();
+        DoctorReport doctor = new DoctorReport();
+        NextCycleAdjustment adjustment = new NextCycleAdjustment();
+
+        String risk = riskLabel(context.getRiskAssessment() == null ? null : context.getRiskAssessment().getRiskLevel());
+        String completion = context.getCompletionRate() == null ? "暂无打卡完成率" : "近" + context.getPeriodDays() + "天打卡完成率约 " + context.getCompletionRate() + "%";
+        MetricTrendSummary trend = buildMetricTrend(context);
+
+        patient.setFriendlySummary("这份报告把你的健康档案、近期指标、风险评估、生活方案、打卡执行和 AI 咨询摘要合在一起看。当前重点是：" + risk + "，" + completion + "，" + trend.getPlainSummary());
+        patient.setKeyFindings(compactList(List.of(
+                risk + "，需要结合近期血糖、血压、BMI 和家族史一起理解。",
+                trend.getPlainSummary(),
+                context.getCheckinAnalysis() == null ? "暂未形成稳定的打卡分析，建议先把饮食、运动和血糖记录补起来。" : value(context.getCheckinAnalysis().getSummary()),
+                context.getLifePlan() == null ? "暂无当前生活方案，可先生成一版保守的控糖计划。" : "当前生活方案目标：" + value(context.getLifePlan().getPlanGoal())
+        )));
+        patient.setTodayAction(buildPatientActions(context));
+        patient.setEncouragement("先把能坚持的小动作做好：记录、少量调整、定期复查。只要数据逐渐稳定，下一轮方案就可以更贴近你的真实节奏。");
+
+        doctor.setChiefConcern("糖尿病风险管理与近期生活干预执行情况复盘");
+        doctor.setRiskSummary(context.getRiskAssessment() == null ? "暂无风险预测结果。" : value(context.getRiskAssessment().getSummary()) + "；主要风险因素：" + value(context.getRiskAssessment().getMainRiskFactors()));
+        doctor.setAbnormalIndicators(buildAbnormalIndicators(context.getLatestMetric()));
+        doctor.setBehaviorAdherence(completion + "；" + (context.getCheckinAnalysis() == null ? "暂无最新行为分析。" : value(context.getCheckinAnalysis().getLifeEvaluation())));
+        doctor.setClinicalCommunicationPoints(compactList(List.of(
+                "请结合线下空腹血糖、餐后血糖、HbA1c、血压和体重变化判断风险。",
+                "若用户近期血糖持续异常，建议确认是否需要进一步筛查或复查。",
+                "本系统报告来源于用户自填数据和 AI 工作流结果，只作为就医沟通材料。"
+        )));
+        doctor.setFollowUpSuggestions(compactList(List.of(
+                "携带本报告和近期化验结果咨询内分泌科或全科医生。",
+                "建议补齐 HbA1c、空腹血糖、餐后血糖、血压和体重腰围记录。",
+                "高风险或连续异常时，不建议只依赖线上建议，应进行线下复查。"
+        )));
+
+        adjustment.setDietFocus(buildDietFocus(context));
+        adjustment.setExerciseFocus(buildExerciseFocus(context));
+        adjustment.setMonitoringFocus(buildMonitoringFocus(context));
+
+        intelligence.setPatientReport(patient);
+        intelligence.setDoctorReport(doctor);
+        intelligence.setEvidenceChain(buildEvidenceChain(context));
+        intelligence.setDataGaps(context.getMissingItems().isEmpty() ? List.of("暂无明显核心数据缺口，建议继续保持连续记录。") : context.getMissingItems());
+        intelligence.setSafetyWarnings(buildSafetyWarnings(context));
+        intelligence.setNextCycleAdjustment(adjustment);
+        intelligence.setMetricTrend(trend);
+        intelligence.setSummary(risk + "；" + completion + "；" + trend.getPlainSummary());
+        normalizeIntelligence(intelligence);
+        return intelligence;
+    }
+
+    private void normalizeIntelligence(ReportIntelligence intelligence) {
+        if (intelligence.getPatientReport() == null) {
+            intelligence.setPatientReport(new PatientReport());
+        }
+        if (intelligence.getDoctorReport() == null) {
+            intelligence.setDoctorReport(new DoctorReport());
+        }
+        if (intelligence.getNextCycleAdjustment() == null) {
+            intelligence.setNextCycleAdjustment(new NextCycleAdjustment());
+        }
+        if (intelligence.getMetricTrend() == null) {
+            intelligence.setMetricTrend(new MetricTrendSummary());
+        }
+        intelligence.setEvidenceChain(safeList(intelligence.getEvidenceChain()));
+        intelligence.setDataGaps(safeList(intelligence.getDataGaps()));
+        intelligence.setSafetyWarnings(safeList(intelligence.getSafetyWarnings()));
+        if (!StringUtils.hasText(intelligence.getSummary())) {
+            intelligence.setSummary(value(intelligence.getPatientReport().getFriendlySummary()));
+        }
+    }
+
     private void applyQuality(ReportContext context) {
         List<String> missing = new ArrayList<>();
         if (context.getProfile() == null) {
@@ -267,17 +406,19 @@ public class HealthReportServiceImpl implements HealthReportService {
 
     private String buildMarkdown(ReportContext context) {
         StringBuilder md = new StringBuilder();
+        ReportIntelligence intelligence = context.getIntelligence() == null ? buildLocalReportIntelligence(context) : context.getIntelligence();
         md.append("# ").append(context.getReportTitle()).append("\n\n");
         md.append("> ").append(DISCLAIMER).append("\n\n");
         md.append("- 报告类型：").append(context.getReportTypeLabel()).append("\n");
-        md.append("- 报告版本：v1.0\n");
+        md.append("- 报告版本：v2.0 综合报告链\n");
         md.append("- 报告周期：").append(context.getStartDate()).append(" 至 ").append(context.getEndDate()).append("\n");
+        md.append("- 生成模式：").append("dify".equals(intelligence.getGenerationMode()) ? "Dify 综合报告工作流" : "本地增强规则兜底").append("\n");
         md.append("- 追溯链接：").append(context.getTraceUrl()).append("\n\n");
 
         if (TYPE_DOCTOR.equals(context.getReportType())) {
-            appendDoctorOpening(md, context);
+            appendDoctorOpening(md, context, intelligence);
         } else {
-            appendPersonalOpening(md, context);
+            appendPersonalOpening(md, context, intelligence);
         }
 
         appendProfile(md, context.getProfile());
@@ -286,38 +427,75 @@ public class HealthReportServiceImpl implements HealthReportService {
         appendLifePlan(md, context.getLifePlan());
         appendCheckin(md, context);
         appendAiChat(md, context);
+        appendNextCycleAdjustment(md, intelligence);
+        appendEvidenceChain(md, intelligence);
         appendDataSources(md, context);
 
-        md.append("## 九、下一步建议\n\n");
+        md.append("## 十一、安全提醒\n\n");
+        for (String warning : intelligence.getSafetyWarnings()) {
+            md.append("- ").append(warning).append("\n");
+        }
         md.append("- 携带本报告及近期线下检查结果，与内分泌科或全科医生沟通。\n");
         md.append("- 若近期空腹血糖多次达到或超过 7.0 mmol/L，或餐后血糖达到或超过 11.1 mmol/L，建议尽快线下复查。\n");
         md.append("- 若出现胸痛、意识异常、严重低血糖、持续呕吐、酮体阳性或足部感染，应及时就医。\n\n");
 
-        md.append("## 十、报告局限性\n\n");
+        md.append("## 十二、数据完整度与局限性\n\n");
+        if (intelligence.getDataGaps().isEmpty()) {
+            md.append("- 暂无明显核心数据缺口。\n");
+        } else {
+            for (String gap : intelligence.getDataGaps()) {
+                md.append("- ").append(gap).append("\n");
+            }
+        }
         md.append(DISCLAIMER).append("报告由系统根据用户主动填写的数据、Dify 风险预测结果、生活方案、打卡行为分析和 AI 咨询摘要自动整理，数据缺失或填写不准确会影响报告完整性。\n");
         return md.toString();
     }
 
-    private void appendPersonalOpening(StringBuilder md, ReportContext context) {
+    private void appendPersonalOpening(StringBuilder md, ReportContext context, ReportIntelligence intelligence) {
+        PatientReport patient = intelligence.getPatientReport();
         md.append("## 一、我的控糖小结 🌿\n\n");
-        md.append("　　这份报告把你最近的健康档案、血糖血压、风险评估、生活方案和打卡情况整理在一起，方便你快速了解自己这一阶段的状态。\n\n");
-        md.append("　　当前整体情况是：").append(context.getSummary()).append("如果某几项指标偶尔不理想，也不用被数字吓住，先把记录做稳定，再根据医生建议一点点调整。\n\n");
+        md.append("　　").append(value(patient.getFriendlySummary())).append("\n\n");
+        md.append("　　如果某几项指标偶尔不理想，也不用被数字吓住。先把记录做稳定，再根据医生建议一点点调整，报告会随着你的执行情况越来越贴近真实状态。\n\n");
         md.append("### 本周期执行小仪表盘 📊\n\n");
         md.append("| 项目 | 当前状态 |\n| --- | --- |\n");
         md.append("| 风险提示 | ").append(riskLabel(context.getRiskAssessment() == null ? null : context.getRiskAssessment().getRiskLevel())).append(" |\n");
         md.append("| 打卡完成率 | ").append(context.getCompletionRate() == null ? "暂无" : context.getCompletionRate() + "%").append(" |\n");
         md.append("| 近期记录 | ").append(context.getMetrics().size()).append(" 条健康指标，").append(context.getCheckinRecords().size()).append(" 条打卡 |\n");
         md.append("| 资料提醒 | ").append(context.getMissingItems().isEmpty() ? "资料比较齐，可以继续观察趋势。" : "还缺少" + String.join("、", context.getMissingItems()) + "，补齐后报告会更有参考价值。").append(" |\n\n");
-        md.append("　　下个阶段可以先抓三件小事：稳定记录血糖，优先完成饮食和运动打卡，发现连续异常时及时线下复查。把目标拆小一点，更容易坚持下来。✨\n\n");
+        md.append("### 这次报告最想提醒你的事 ✨\n\n");
+        for (String finding : safeList(patient.getKeyFindings())) {
+            md.append("- ").append(finding).append("\n");
+        }
+        md.append("\n### 今天就能先做的小行动\n\n");
+        for (String action : safeList(patient.getTodayAction())) {
+            md.append("- ").append(action).append("\n");
+        }
+        md.append("\n　　").append(value(patient.getEncouragement())).append("\n\n");
     }
 
-    private void appendDoctorOpening(StringBuilder md, ReportContext context) {
+    private void appendDoctorOpening(StringBuilder md, ReportContext context, ReportIntelligence intelligence) {
+        DoctorReport doctor = intelligence.getDoctorReport();
         md.append("## 一、医生速览\n\n");
+        md.append("- 主诉/关注问题：").append(value(doctor.getChiefConcern())).append("\n");
         md.append("- 综合摘要：").append(context.getSummary()).append("\n");
         md.append("- 风险等级：").append(riskLabel(context.getRiskAssessment() == null ? null : context.getRiskAssessment().getRiskLevel())).append("\n");
-        md.append("- 关注问题：糖尿病风险评估、近期血糖/血压/BMI变化、生活方案执行情况。\n");
+        md.append("- 风险解释：").append(value(doctor.getRiskSummary())).append("\n");
+        md.append("- 行为依从性：").append(value(doctor.getBehaviorAdherence())).append("\n");
         md.append("- 主要缺失：").append(context.getMissingItems().isEmpty() ? "暂无明显缺失" : String.join("、", context.getMissingItems())).append("\n");
         md.append("- 隐私处理：导出文件仅使用系统匿名用户编号，不包含身份证、手机号或住址。\n\n");
+        md.append("### 异常指标速览\n\n");
+        for (String item : safeList(doctor.getAbnormalIndicators())) {
+            md.append("- ").append(item).append("\n");
+        }
+        md.append("\n### 面诊沟通要点\n\n");
+        for (String point : safeList(doctor.getClinicalCommunicationPoints())) {
+            md.append("- ").append(point).append("\n");
+        }
+        md.append("\n### 建议复查与随访\n\n");
+        for (String suggestion : safeList(doctor.getFollowUpSuggestions())) {
+            md.append("- ").append(suggestion).append("\n");
+        }
+        md.append("\n");
     }
 
     private void appendProfile(StringBuilder md, PatientProfileDTO profile) {
@@ -342,6 +520,7 @@ public class HealthReportServiceImpl implements HealthReportService {
             md.append("暂无近期健康指标。\n\n");
             return;
         }
+        MetricTrendSummary trend = context.getIntelligence() == null ? buildMetricTrend(context) : context.getIntelligence().getMetricTrend();
         md.append("| 指标 | 最近值 |\n| --- | --- |\n");
         md.append("| 记录日期 | ").append(value(metric.getRecordedAt())).append(" |\n");
         md.append("| 体重 | ").append(value(metric.getWeightKg())).append(" kg |\n");
@@ -351,6 +530,11 @@ public class HealthReportServiceImpl implements HealthReportService {
         md.append("| 餐后血糖 | ").append(value(metric.getPostprandialGlucose())).append(" mmol/L |\n");
         md.append("| HbA1c | ").append(value(metric.getHba1c())).append(" % |\n\n");
         md.append("- 近期记录数：").append(context.getMetrics().size()).append(" 条\n\n");
+        md.append("### 趋势观察\n\n");
+        md.append("- ").append(value(trend.getPlainSummary())).append("\n");
+        md.append("- 空腹血糖趋势：").append(value(trend.getFastingGlucoseTrend())).append("\n");
+        md.append("- 体重趋势：").append(value(trend.getWeightTrend())).append("\n");
+        md.append("- 血压趋势：").append(value(trend.getBloodPressureTrend())).append("\n\n");
     }
 
     private void appendRisk(StringBuilder md, RiskAssessmentDTO risk) {
@@ -402,7 +586,7 @@ public class HealthReportServiceImpl implements HealthReportService {
     }
 
     private void appendDataSources(StringBuilder md, ReportContext context) {
-        md.append("## 八、数据来源追踪\n\n");
+        md.append("## 十、数据来源追踪\n\n");
         md.append("| 报告内容 | 系统数据来源 |\n| --- | --- |\n");
         md.append("| 基本信息 | patient_profiles 健康档案 |\n");
         md.append("| 血糖、血压、体重、腰围 | health_metrics 近期健康指标，共 ").append(context.getMetrics().size()).append(" 条 |\n");
@@ -410,6 +594,218 @@ public class HealthReportServiceImpl implements HealthReportService {
         md.append("| 饮食、运动、作息建议 | life_plans 个性化生活方案 |\n");
         md.append("| 执行率和行为问题 | checkin_records / checkin_analysis 打卡与行为分析 |\n");
         md.append("| 咨询摘要 | ai_chat_sessions / ai_chat_messages AI 医生咨询记录 |\n\n");
+    }
+
+    private void appendNextCycleAdjustment(StringBuilder md, ReportIntelligence intelligence) {
+        NextCycleAdjustment adjustment = intelligence.getNextCycleAdjustment();
+        md.append("## 八、下一周期干预调整\n\n");
+        md.append("| 调整方向 | 建议 |\n| --- | --- |\n");
+        md.append("| 饮食重点 | ").append(value(adjustment.getDietFocus())).append(" |\n");
+        md.append("| 运动重点 | ").append(value(adjustment.getExerciseFocus())).append(" |\n");
+        md.append("| 监测重点 | ").append(value(adjustment.getMonitoringFocus())).append(" |\n\n");
+    }
+
+    private void appendEvidenceChain(StringBuilder md, ReportIntelligence intelligence) {
+        md.append("## 九、结论证据链\n\n");
+        List<EvidenceItem> evidence = safeList(intelligence.getEvidenceChain());
+        if (evidence.isEmpty()) {
+            md.append("暂无可展示的证据链。\n\n");
+            return;
+        }
+        md.append("| 报告结论 | 来源类型 | 来源说明 | 参考依据 |\n| --- | --- | --- | --- |\n");
+        for (EvidenceItem item : evidence) {
+            md.append("| ")
+                    .append(value(item.getConclusion())).append(" | ")
+                    .append(value(item.getSourceType())).append(" | ")
+                    .append(value(item.getSourceDetail())).append(" | ")
+                    .append(safeList(item.getReferenceSources()).isEmpty() ? "暂无" : String.join("、", safeList(item.getReferenceSources())))
+                    .append(" |\n");
+        }
+        md.append("\n");
+    }
+
+    private MetricTrendSummary buildMetricTrend(ReportContext context) {
+        MetricTrendSummary trend = new MetricTrendSummary();
+        List<HealthMetricDTO> metrics = context.getMetrics().stream()
+                .filter(metric -> metric.getRecordedAt() != null)
+                .sorted(Comparator.comparing(HealthMetricDTO::getRecordedAt))
+                .toList();
+        if (metrics.size() < 2) {
+            trend.setPlainSummary(context.getLatestMetric() == null ? "暂无可分析的近期指标趋势。" : "目前只有少量指标记录，建议继续连续记录后再观察趋势。");
+            trend.setFastingGlucoseTrend("数据不足");
+            trend.setWeightTrend("数据不足");
+            trend.setBloodPressureTrend("数据不足");
+            return trend;
+        }
+        HealthMetricDTO first = metrics.get(0);
+        HealthMetricDTO last = metrics.get(metrics.size() - 1);
+        trend.setFastingGlucoseTrend(compareDecimal(first.getFastingGlucose(), last.getFastingGlucose(), "mmol/L"));
+        trend.setWeightTrend(compareDecimal(first.getWeightKg(), last.getWeightKg(), "kg"));
+        trend.setBloodPressureTrend(compareBloodPressure(first, last));
+        trend.setPlainSummary("近" + context.getPeriodDays() + "天共有 " + metrics.size() + " 条指标记录；空腹血糖" + trend.getFastingGlucoseTrend() + "，体重" + trend.getWeightTrend() + "，血压" + trend.getBloodPressureTrend() + "。");
+        return trend;
+    }
+
+    private List<String> buildPatientActions(ReportContext context) {
+        List<String> actions = new ArrayList<>();
+        actions.add("今天先完成饮食和运动打卡，重点记录主食、甜饮、加餐和运动时长。");
+        if (context.getLatestMetric() == null || context.getLatestMetric().getFastingGlucose() == null) {
+            actions.add("补一次空腹血糖记录；如果有条件，也补充餐后血糖或 HbA1c。");
+        } else if (context.getLatestMetric().getFastingGlucose().compareTo(BigDecimal.valueOf(7.0)) >= 0) {
+            actions.add("近期空腹血糖偏高，建议连续记录并准备线下复查材料。");
+        }
+        if (context.getCompletionRate() == null || context.getCompletionRate().compareTo(BigDecimal.valueOf(60)) < 0) {
+            actions.add("把任务先减小：运动从 10 到 15 分钟开始，优先保证能坚持。");
+        } else {
+            actions.add("继续保持当前执行节奏，下一周期可做轻微优化，不需要频繁推翻原方案。");
+        }
+        return actions;
+    }
+
+    private List<String> buildAbnormalIndicators(HealthMetricDTO metric) {
+        List<String> abnormal = new ArrayList<>();
+        if (metric == null) {
+            return List.of("暂无近期健康指标，无法判断异常指标。");
+        }
+        if (metric.getFastingGlucose() != null && metric.getFastingGlucose().compareTo(BigDecimal.valueOf(7.0)) >= 0) {
+            abnormal.add("空腹血糖 " + metric.getFastingGlucose() + " mmol/L，达到或超过 7.0 mmol/L，建议线下复查确认。");
+        }
+        if (metric.getPostprandialGlucose() != null && metric.getPostprandialGlucose().compareTo(BigDecimal.valueOf(11.1)) >= 0) {
+            abnormal.add("餐后血糖 " + metric.getPostprandialGlucose() + " mmol/L，达到或超过 11.1 mmol/L，建议线下复查确认。");
+        }
+        if (metric.getHba1c() != null && metric.getHba1c().compareTo(BigDecimal.valueOf(6.5)) >= 0) {
+            abnormal.add("HbA1c " + metric.getHba1c() + "%，建议结合医生意见进一步评估。");
+        }
+        if (metric.getSystolicBp() != null && metric.getSystolicBp() >= 140 || metric.getDiastolicBp() != null && metric.getDiastolicBp() >= 90) {
+            abnormal.add("血压 " + value(metric.getSystolicBp()) + "/" + value(metric.getDiastolicBp()) + " mmHg 偏高，运动强度建议保守。");
+        }
+        if (abnormal.isEmpty()) {
+            abnormal.add("本次最新指标未识别到明显高危阈值，但仍需结合连续趋势和线下检查判断。");
+        }
+        return abnormal;
+    }
+
+    private List<EvidenceItem> buildEvidenceChain(ReportContext context) {
+        List<EvidenceItem> evidence = new ArrayList<>();
+        evidence.add(evidence("风险等级与风险因素来自最近一次风险预测结果。", "risk_assessments", context.getRiskAssessment() == null ? "暂无风险预测记录" : value(context.getRiskAssessment().getSummary()), List.of("Dify 风险预测工作流", "糖尿病风险评估结构化输出")));
+        evidence.add(evidence("血糖、血压、体重和腰围判断来自近期健康指标。", "health_metrics", "本周期共 " + context.getMetrics().size() + " 条指标记录", List.of("用户健康指标记录")));
+        evidence.add(evidence("生活干预建议来自当前生活方案和打卡执行反馈。", "life_plans + checkin_analysis", context.getCheckinAnalysis() == null ? "暂无打卡分析" : value(context.getCheckinAnalysis().getSummary()), List.of("个性化生活方案工作流", "打卡行为分析工作流")));
+        if (StringUtils.hasText(context.getAiChatSummary()) && !context.getAiChatSummary().startsWith("No ")) {
+            evidence.add(evidence("就医沟通关注点参考了 AI 医生咨询摘要。", "ai_chat_sessions", context.getAiChatSummary(), List.of("AI 医生咨询摘要")));
+        }
+        return evidence;
+    }
+
+    private EvidenceItem evidence(String conclusion, String sourceType, String sourceDetail, List<String> references) {
+        EvidenceItem item = new EvidenceItem();
+        item.setConclusion(conclusion);
+        item.setSourceType(sourceType);
+        item.setSourceDetail(sourceDetail);
+        item.setReferenceSources(references);
+        return item;
+    }
+
+    private List<String> buildSafetyWarnings(ReportContext context) {
+        List<String> warnings = new ArrayList<>();
+        warnings.add(DISCLAIMER);
+        HealthMetricDTO metric = context.getLatestMetric();
+        if (metric != null && metric.getFastingGlucose() != null && metric.getFastingGlucose().compareTo(BigDecimal.valueOf(7.0)) >= 0) {
+            warnings.add("空腹血糖偏高时，应结合线下复查和医生意见判断，不建议只根据 AI 报告自行处理。");
+        }
+        if (metric != null && (metric.getSystolicBp() != null && metric.getSystolicBp() >= 140 || metric.getDiastolicBp() != null && metric.getDiastolicBp() >= 90)) {
+            warnings.add("血压偏高时，运动建议应保守，避免突然增加高强度运动。");
+        }
+        warnings.add("报告不包含药物剂量、处方调整或确诊结论。");
+        return warnings;
+    }
+
+    private String buildDietFocus(ReportContext context) {
+        CheckinAnalysisDTO analysis = context.getCheckinAnalysis();
+        if (analysis != null && StringUtils.hasText(analysis.getMainProblems()) && analysis.getMainProblems().contains("饮食")) {
+            return "优先处理饮食打卡中反复出现的问题，减少甜饮、夜宵和高油高糖加餐，给出可替代食物。";
+        }
+        return "继续保持三餐规律和主食定量，下一周期重点观察餐后血糖与晚餐结构。";
+    }
+
+    private String buildExerciseFocus(ReportContext context) {
+        if (context.getCompletionRate() == null || context.getCompletionRate().compareTo(BigDecimal.valueOf(60)) < 0) {
+            return "完成率偏低时先下调运动强度和时长，从饭后散步 10 到 15 分钟开始。";
+        }
+        return "保持中低强度有氧运动，若血压或血糖异常则避免突然增加强度。";
+    }
+
+    private String buildMonitoringFocus(ReportContext context) {
+        if (context.getMissingItems().isEmpty()) {
+            return "继续记录空腹血糖、餐后血糖、体重腰围和血压，重点看连续趋势。";
+        }
+        return "优先补齐" + String.join("、", context.getMissingItems()) + "，否则下一周期报告的解释能力会受限。";
+    }
+
+    private String compareDecimal(BigDecimal first, BigDecimal last, String unit) {
+        if (first == null || last == null) {
+            return "数据不足";
+        }
+        BigDecimal diff = last.subtract(first).setScale(1, RoundingMode.HALF_UP);
+        if (diff.compareTo(BigDecimal.ZERO) > 0) {
+            return "较期初上升 " + diff + " " + unit;
+        }
+        if (diff.compareTo(BigDecimal.ZERO) < 0) {
+            return "较期初下降 " + diff.abs() + " " + unit;
+        }
+        return "较期初基本持平";
+    }
+
+    private String compareBloodPressure(HealthMetricDTO first, HealthMetricDTO last) {
+        if (first.getSystolicBp() == null || last.getSystolicBp() == null) {
+            return "数据不足";
+        }
+        int diff = last.getSystolicBp() - first.getSystolicBp();
+        if (diff > 0) {
+            return "收缩压较期初上升 " + diff + " mmHg";
+        }
+        if (diff < 0) {
+            return "收缩压较期初下降 " + Math.abs(diff) + " mmHg";
+        }
+        return "收缩压较期初基本持平";
+    }
+
+    private List<String> compactList(List<String> values) {
+        return values.stream().filter(StringUtils::hasText).toList();
+    }
+
+    private <T> List<T> safeList(List<T> values) {
+        return values == null ? List.of() : values;
+    }
+
+    private Object firstPresent(Map<String, Object> values, String... keys) {
+        for (String key : keys) {
+            if (values.containsKey(key) && values.get(key) != null) {
+                return values.get(key);
+            }
+        }
+        return null;
+    }
+
+    private String stripJsonFence(String text) {
+        String stripped = value(text).trim();
+        stripped = stripped.replaceAll("(?is)^```json\\s*", "").replaceAll("(?is)^```\\s*", "").replaceAll("(?is)```$", "").trim();
+        int start = stripped.indexOf('{');
+        int end = stripped.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            return stripped.substring(start, end + 1);
+        }
+        return stripped;
+    }
+
+    private String toJsonOrEmpty(Object value) {
+        if (value == null) {
+            return "{}";
+        }
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException exception) {
+            return "{}";
+        }
     }
 
     private Map<String, Object> buildFhirBundle(HealthReport report, ReportContext context) {
@@ -972,6 +1368,88 @@ public class HealthReportServiceImpl implements HealthReportService {
         private List<String> missingItems = List.of();
         private String summary;
         private String traceUrl;
+        private ReportIntelligence intelligence;
+    }
+
+    @Data
+    public static class ReportIntelligence {
+        @JsonProperty("patient_report")
+        private PatientReport patientReport;
+        @JsonProperty("doctor_report")
+        private DoctorReport doctorReport;
+        @JsonProperty("evidence_chain")
+        private List<EvidenceItem> evidenceChain = List.of();
+        @JsonProperty("data_gaps")
+        private List<String> dataGaps = List.of();
+        @JsonProperty("safety_warnings")
+        private List<String> safetyWarnings = List.of();
+        @JsonProperty("next_cycle_adjustment")
+        private NextCycleAdjustment nextCycleAdjustment;
+        @JsonProperty("metric_trend")
+        private MetricTrendSummary metricTrend;
+        private String summary;
+        @JsonProperty("generation_mode")
+        private String generationMode;
+    }
+
+    @Data
+    public static class PatientReport {
+        @JsonProperty("friendly_summary")
+        private String friendlySummary;
+        @JsonProperty("key_findings")
+        private List<String> keyFindings = List.of();
+        @JsonProperty("today_action")
+        private List<String> todayAction = List.of();
+        private String encouragement;
+    }
+
+    @Data
+    public static class DoctorReport {
+        @JsonProperty("chief_concern")
+        private String chiefConcern;
+        @JsonProperty("risk_summary")
+        private String riskSummary;
+        @JsonProperty("abnormal_indicators")
+        private List<String> abnormalIndicators = List.of();
+        @JsonProperty("behavior_adherence")
+        private String behaviorAdherence;
+        @JsonProperty("clinical_communication_points")
+        private List<String> clinicalCommunicationPoints = List.of();
+        @JsonProperty("follow_up_suggestions")
+        private List<String> followUpSuggestions = List.of();
+    }
+
+    @Data
+    public static class EvidenceItem {
+        private String conclusion;
+        @JsonProperty("source_type")
+        private String sourceType;
+        @JsonProperty("source_detail")
+        private String sourceDetail;
+        @JsonProperty("reference_sources")
+        private List<String> referenceSources = List.of();
+    }
+
+    @Data
+    public static class NextCycleAdjustment {
+        @JsonProperty("diet_focus")
+        private String dietFocus;
+        @JsonProperty("exercise_focus")
+        private String exerciseFocus;
+        @JsonProperty("monitoring_focus")
+        private String monitoringFocus;
+    }
+
+    @Data
+    public static class MetricTrendSummary {
+        @JsonProperty("plain_summary")
+        private String plainSummary;
+        @JsonProperty("fasting_glucose_trend")
+        private String fastingGlucoseTrend;
+        @JsonProperty("weight_trend")
+        private String weightTrend;
+        @JsonProperty("blood_pressure_trend")
+        private String bloodPressureTrend;
     }
 
     private class PdfWriter {
@@ -1030,12 +1508,33 @@ public class HealthReportServiceImpl implements HealthReportService {
 
         private void writeLine(String text, float size, float spacingMultiplier) throws IOException {
             ensureSpace(LINE_HEIGHT * spacingMultiplier);
+            String safeText = sanitizePdfText(text);
+            if (!StringUtils.hasText(safeText)) {
+                y -= LINE_HEIGHT * spacingMultiplier;
+                return;
+            }
             stream.beginText();
             stream.setFont(font, size);
             stream.newLineAtOffset(MARGIN, y);
-            stream.showText(text);
+            stream.showText(safeText);
             stream.endText();
             y -= LINE_HEIGHT * spacingMultiplier;
+        }
+
+        private String sanitizePdfText(String text) {
+            if (text == null) {
+                return "";
+            }
+            return text.codePoints()
+                    .filter(codePoint -> Character.UnicodeBlock.of(codePoint) != Character.UnicodeBlock.EMOTICONS)
+                    .filter(codePoint -> Character.UnicodeBlock.of(codePoint) != Character.UnicodeBlock.MISCELLANEOUS_SYMBOLS_AND_PICTOGRAPHS)
+                    .filter(codePoint -> Character.UnicodeBlock.of(codePoint) != Character.UnicodeBlock.TRANSPORT_AND_MAP_SYMBOLS)
+                    .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+                    .toString()
+                    .replace("✨", "")
+                    .replace("🌿", "")
+                    .replace("📊", "")
+                    .trim();
         }
 
         private void ensureSpace(float needed) throws IOException {

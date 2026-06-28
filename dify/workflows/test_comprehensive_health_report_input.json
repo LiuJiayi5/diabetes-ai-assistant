@@ -1,0 +1,15 @@
+{
+  "user_id": "3",
+  "report_type": "personal",
+  "period_days": 30,
+  "user_profile_json": "{\"age\":52,\"gender\":\"男\",\"heightCm\":171,\"baseWeightKg\":78.5,\"baseWaistCm\":93,\"familyHistory\":\"父亲有2型糖尿病史\",\"chronicHistory\":\"血压偏高\"}",
+  "latest_metrics_json": "{\"recordedAt\":\"2026-06-28\",\"weightKg\":77.8,\"waistCm\":92.0,\"systolicBp\":142,\"diastolicBp\":88,\"fastingGlucose\":7.2,\"postprandialGlucose\":10.6,\"hba1c\":6.4,\"dietStatus\":\"晚餐主食偏多\",\"exerciseStatus\":\"饭后散步不足\"}",
+  "metrics_json": "[{\"recordedAt\":\"2026-06-01\",\"weightKg\":79.0,\"systolicBp\":138,\"diastolicBp\":86,\"fastingGlucose\":7.6},{\"recordedAt\":\"2026-06-28\",\"weightKg\":77.8,\"systolicBp\":142,\"diastolicBp\":88,\"fastingGlucose\":7.2}]",
+  "risk_assessment_json": "{\"riskLevel\":\"medium\",\"riskScore\":68,\"diabetesTypeTendency\":\"2型糖尿病风险倾向\",\"mainRiskFactors\":\"家族史、腰围偏高、空腹血糖偏高、运动不足\",\"indicatorAnalysis\":\"空腹血糖仍偏高，体重略有下降，血压需关注。\",\"healthAdvice\":\"建议加强饮食结构管理、规律运动和连续监测。\",\"medicalWarning\":\"若血糖持续异常，请线下复查。\",\"summary\":\"中风险，建议进行持续生活方式干预并线下复查。\"}",
+  "life_plan_json": "{\"planTitle\":\"30天控糖生活方案\",\"planGoal\":\"稳定血糖、减轻体重、提高运动规律性\",\"summary\":\"控制晚餐主食量，增加饭后散步，保持血糖和血压监测。\"}",
+  "checkin_analysis_json": "{\"completionRate\":58.3,\"dietSummary\":\"早餐较稳定，晚餐主食和加餐偶有超量。\",\"exerciseSummary\":\"运动频率不足，饭后散步完成不稳定。\",\"lifeEvaluation\":\"执行率偏低，建议下调任务难度。\",\"mainProblems\":\"饮食记录不完整，运动打卡连续性不足。\",\"improvementSuggestions\":\"先把运动任务缩短到每日10到15分钟，提高完成率。\",\"nextFocus\":\"晚餐主食控制和饭后轻运动。\",\"summary\":\"打卡完成率偏低，需要把任务拆小并聚焦晚餐和运动。\"}",
+  "checkin_records_json": "[{\"checkinDate\":\"2026-06-26\",\"taskType\":\"diet\",\"status\":\"completed\"},{\"checkinDate\":\"2026-06-27\",\"taskType\":\"exercise\",\"status\":\"missed\"}]",
+  "ai_chat_summary": "用户近期咨询过空腹血糖偏高、晚餐主食控制和饭后散步是否有效，系统建议连续记录并线下复查。",
+  "missing_items": "近期 HbA1c 复查记录不足",
+  "safety_rules": "仅用于糖尿病健康管理和就医沟通准备，不输出诊断、处方、药物剂量或替代线下就医的结论。"
+}

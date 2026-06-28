@@ -45,6 +45,10 @@ public class DifyService {
         return toJson(response);
     }
 
+    public DifyWorkflowResult callComprehensiveReport(Map<String, Object> inputs, String user) {
+        return difyClient.runWorkflow(difyProperties.getComprehensiveReportApiKey(), inputs, user);
+    }
+
     private String outputAsText(Map<String, Object> outputs, String preferredKey) {
         if (outputs == null || outputs.isEmpty()) {
             return "{}";
