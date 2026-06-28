@@ -358,6 +358,40 @@
   padding: 16px;
 }
 
+.markdown-panel .markdown-content {
+  font-size: 13px;
+  line-height: 1.52;
+}
+
+.markdown-panel .markdown-content p,
+.markdown-panel .markdown-content ul,
+.markdown-panel .markdown-content ol,
+.markdown-panel .markdown-content blockquote,
+.markdown-panel .markdown-content table {
+  margin-bottom: 4px;
+}
+
+.markdown-panel .markdown-content h1,
+.markdown-panel .markdown-content h2,
+.markdown-panel .markdown-content h3,
+.markdown-panel .markdown-content h4 {
+  margin: 7px 0 4px;
+  line-height: 1.24;
+}
+
+.markdown-panel .markdown-content table {
+  margin-top: 6px;
+}
+
+.markdown-panel .markdown-content th,
+.markdown-panel .markdown-content td {
+  padding: 5px 7px;
+}
+
+.markdown-panel .markdown-content li + li {
+  margin-top: 2px;
+}
+
 .markdown-panel--personal .markdown-content p {
   text-indent: 2em;
 }

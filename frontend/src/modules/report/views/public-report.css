@@ -59,7 +59,15 @@
 .public-report-markdown .markdown-content {
   color: #24323D;
   font-size: 15px;
-  line-height: 1.9;
+  line-height: 1.62;
+}
+
+.public-report-markdown .markdown-content p,
+.public-report-markdown .markdown-content ul,
+.public-report-markdown .markdown-content ol,
+.public-report-markdown .markdown-content blockquote,
+.public-report-markdown .markdown-content table {
+  margin-bottom: 5px;
 }
 
 .public-report-markdown--personal .markdown-content p {
@@ -72,28 +80,35 @@
 }
 
 .public-report-markdown .markdown-content h2 {
-  margin-top: 22px;
-  padding-top: 10px;
+  margin-top: 12px;
+  margin-bottom: 5px;
+  padding-top: 7px;
   border-top: 1px solid rgba(174, 232, 199, 0.5);
   font-size: 18px;
 }
 
 .public-report-markdown .markdown-content h3 {
-  margin-top: 16px;
+  margin-top: 9px;
+  margin-bottom: 4px;
   font-size: 16px;
 }
 
 .public-report-markdown .markdown-content blockquote {
-  margin: 10px 0 14px;
-  padding: 10px 12px;
+  margin: 6px 0 8px;
+  padding: 8px 10px;
   border-left: 4px solid #6FCF97;
   border-radius: 0 10px 10px 0;
   background: #F0FAF5;
 }
 
 .public-report-markdown .markdown-content table {
-  margin: 12px 0;
+  margin: 7px 0;
   font-size: 13px;
+}
+
+.public-report-markdown .markdown-content th,
+.public-report-markdown .markdown-content td {
+  padding: 6px 8px;
 }
 
 .public-report-markdown .markdown-content th {
