@@ -3,6 +3,7 @@ package com.diabetes.assistant.modules.healthmetric.service;
 import com.diabetes.assistant.common.response.PageResult;
 import com.diabetes.assistant.modules.healthmetric.contract.dto.HealthMetricDTO;
 import com.diabetes.assistant.modules.healthmetric.dto.AdminMetricListItem;
+import com.diabetes.assistant.modules.healthmetric.dto.MetricTrendResponse;
 import com.diabetes.assistant.modules.healthmetric.dto.SaveMetricRequest;
 import com.diabetes.assistant.modules.healthmetric.dto.SaveMetricResponse;
 
@@ -23,4 +24,8 @@ public interface HealthMetricService {
                                                      String abnormalOnly, Integer page, Integer pageSize);
 
     PageResult<AdminMetricListItem> adminListAbnormalMetrics(Integer userId, Integer page, Integer pageSize);
+
+    MetricTrendResponse getMetricTrends(Integer userId);
+
+    MetricTrendResponse adminGetMetricTrends(Integer userId);
 }

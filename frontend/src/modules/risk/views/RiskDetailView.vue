@@ -77,6 +77,16 @@
         </article>
       </section>
 
+      <section v-if="detail.reference_sources?.length" class="report-card reference-card">
+        <div class="section-title">
+          <BookOpen :size="17" />
+          <h3>知识库参考依据</h3>
+        </div>
+        <ul class="reference-list">
+          <li v-for="(source, index) in detail.reference_sources" :key="index">{{ source }}</li>
+        </ul>
+      </section>
+
       <section v-if="detail.request_summary" class="report-card request-card">
         <div class="section-title">
           <ClipboardList :size="17" />
@@ -107,6 +117,7 @@ import { showToast } from 'vant'
 import {
   Activity,
   AlertTriangle,
+  BookOpen,
   ChartNoAxesColumnIncreasing,
   ClipboardList,
   FileText,
@@ -355,6 +366,18 @@ async function loadDetail() {
 
 .empty-report {
   background: rgba(255, 255, 255, 0.72);
+}
+
+.reference-card {
+  background: linear-gradient(145deg, #FFFFFF 0%, #F4FBF7 100%);
+}
+
+.reference-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--figma-text-secondary);
+  font-size: 13px;
+  line-height: 1.8;
 }
 
 .pre-line {
