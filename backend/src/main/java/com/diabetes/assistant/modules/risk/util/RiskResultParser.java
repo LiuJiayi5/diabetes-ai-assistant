@@ -304,12 +304,18 @@ public final class RiskResultParser {
         private String healthAdvice;
         private String medicalWarning;
         private String summary;
+        private List<String> referenceSources;
         private String originalText;
         private String formatWarning;
 
         @SuppressWarnings("unchecked")
         public void setMainRiskFactors(Object mainRiskFactors) {
             this.mainRiskFactors = toStringList(mainRiskFactors);
+        }
+
+        @SuppressWarnings("unchecked")
+        public void setReferenceSources(Object referenceSources) {
+            this.referenceSources = toStringList(referenceSources);
         }
 
         private List<String> toStringList(Object value) {

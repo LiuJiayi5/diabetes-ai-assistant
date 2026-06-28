@@ -19,3 +19,7 @@ export function getRiskHistory(params) {
 export function getRiskDetail(assessmentId) {
   return request.get(`/risk/${assessmentId}`)
 }
+
+export function getRiskTrends() {
+  return request.get('/risk/trends')
+}

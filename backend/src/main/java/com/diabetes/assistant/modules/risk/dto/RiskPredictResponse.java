@@ -17,6 +17,7 @@ public class RiskPredictResponse {
     private String healthAdvice;
     private String medicalWarning;
     private String summary;
+    private List<String> referenceSources;
     private String callStatus;
     private LocalDateTime createTime;
 }

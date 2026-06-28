@@ -9,6 +9,7 @@ import java.util.List;
 public class RiskDetailResponse {
 
     private Integer assessmentId;
+    private Integer userId;
     private String riskLevel;
     private Integer riskScore;
     private String diabetesTypeTendency;
@@ -20,5 +21,6 @@ public class RiskDetailResponse {
     private String requestSummary;
     private String callStatus;
     private String errorMessage;
+    private List<String> referenceSources;
     private LocalDateTime createTime;
 }

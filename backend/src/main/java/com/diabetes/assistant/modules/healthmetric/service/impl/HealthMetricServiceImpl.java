@@ -8,6 +8,7 @@ import com.diabetes.assistant.common.utils.PageUtils;
 import com.diabetes.assistant.modules.healthmetric.contract.HealthMetricQueryApi;
 import com.diabetes.assistant.modules.healthmetric.contract.dto.HealthMetricDTO;
 import com.diabetes.assistant.modules.healthmetric.dto.AdminMetricListItem;
+import com.diabetes.assistant.modules.healthmetric.dto.MetricTrendResponse;
 import com.diabetes.assistant.modules.healthmetric.dto.SaveMetricRequest;
 import com.diabetes.assistant.modules.healthmetric.dto.SaveMetricResponse;
 import com.diabetes.assistant.modules.healthmetric.entity.HealthMetric;
@@ -24,6 +25,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -109,6 +111,59 @@ public class HealthMetricServiceImpl implements HealthMetricService, HealthMetri
     public String getLatestMetricSummaryByUserId(Integer userId) {
         HealthMetric metric = findLatestByUserId(userId);
         return metric == null ? null : MetricAbnormalUtils.buildSummary(metric);
+    }
+
+    @Override
+    public MetricTrendResponse getMetricTrends(Integer userId) {
+        return buildMetricTrends(userId);
+    }
+
+    @Override
+    public MetricTrendResponse adminGetMetricTrends(Integer userId) {
+        if (userId == null) {
+            throw new BusinessException(400, "user_id 不能为空");
+        }
+        return buildMetricTrends(userId);
+    }
+
+    private MetricTrendResponse buildMetricTrends(Integer userId) {
+        LambdaQueryWrapper<HealthMetric> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(HealthMetric::getUserId, userId)
+                .orderByAsc(HealthMetric::getRecordedAt);
+        List<HealthMetric> metrics = healthMetricMapper.selectList(wrapper);
+
+        MetricTrendResponse response = new MetricTrendResponse();
+        response.setSeries(List.of(
+                buildSeries("fasting_glucose", "空腹血糖", "mmol/L", metrics, HealthMetric::getFastingGlucose),
+                buildSeries("weight_kg", "体重", "kg", metrics, HealthMetric::getWeightKg),
+                buildSeries("waist_cm", "腰围", "cm", metrics, HealthMetric::getWaistCm)
+        ));
+        return response;
+    }
+
+    private MetricTrendResponse.MetricTrendSeries buildSeries(
+            String key,
+            String label,
+            String unit,
+            List<HealthMetric> metrics,
+            java.util.function.Function<HealthMetric, BigDecimal> extractor) {
+        List<MetricTrendResponse.MetricTrendPoint> points = new ArrayList<>();
+        for (HealthMetric metric : metrics) {
+            BigDecimal value = extractor.apply(metric);
+            if (value == null) {
+                continue;
+            }
+            MetricTrendResponse.MetricTrendPoint point = new MetricTrendResponse.MetricTrendPoint();
+            point.setRecordedAt(metric.getRecordedAt());
+            point.setValue(value);
+            points.add(point);
+        }
+        MetricTrendResponse.MetricTrendSeries series = new MetricTrendResponse.MetricTrendSeries();
+        series.setKey(key);
+        series.setLabel(label);
+        series.setUnit(unit);
+        series.setPoints(points);
+        return series;
     }
 
     private PageResult<AdminMetricListItem> queryAdminMetrics(Integer userId, LocalDate startDate, LocalDate endDate,

@@ -5,6 +5,7 @@ import com.diabetes.assistant.common.response.PageResult;
 import com.diabetes.assistant.common.utils.CurrentUserUtil;
 import com.diabetes.assistant.modules.healthmetric.contract.dto.HealthMetricDTO;
 import com.diabetes.assistant.modules.healthmetric.dto.AdminMetricListItem;
+import com.diabetes.assistant.modules.healthmetric.dto.MetricTrendResponse;
 import com.diabetes.assistant.modules.healthmetric.dto.SaveMetricRequest;
 import com.diabetes.assistant.modules.healthmetric.dto.SaveMetricResponse;
 import com.diabetes.assistant.modules.healthmetric.service.HealthMetricService;
@@ -59,6 +60,20 @@ public class HealthMetricController {
             HttpServletRequest request) {
         Integer userId = currentUserUtil.getCurrentUserId(request);
         return ApiResponse.success(healthMetricService.getHistory(userId, page, pageSize, startDate, endDate));
+    }
+
+    @GetMapping("/trends")
+    public ApiResponse<MetricTrendResponse> getMetricTrends(HttpServletRequest request) {
+        Integer userId = currentUserUtil.getCurrentUserId(request);
+        return ApiResponse.success(healthMetricService.getMetricTrends(userId));
+    }
+
+    @GetMapping("/admin/trends")
+    public ApiResponse<MetricTrendResponse> adminGetMetricTrends(
+            @RequestParam(name = "user_id") Integer userId,
+            HttpServletRequest request) {
+        currentUserUtil.requireAdmin(request);
+        return ApiResponse.success(healthMetricService.adminGetMetricTrends(userId));
     }
 
     @GetMapping("/admin")

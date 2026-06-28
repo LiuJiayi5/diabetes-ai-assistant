@@ -28,6 +28,21 @@ export function adminGetRiskAssessmentDetail(assessmentId) {
   return request.get(`/risk/admin/${encodeURIComponent(assessmentId)}`, { sessionScope: 'admin' }).then(unwrap)
 }
 
+export function adminGetRiskSimilarCases(assessmentId, params) {
+  return request.get(`/risk/admin/${encodeURIComponent(assessmentId)}/similar-cases`, {
+    params,
+    sessionScope: 'admin'
+  }).then(unwrap)
+}
+
+export function adminGetRiskTrends(params) {
+  return request.get('/risk/admin/trends', { params, sessionScope: 'admin' }).then(unwrap)
+}
+
+export function adminGetMetricTrends(params) {
+  return request.get('/health-metric/admin/trends', { params, sessionScope: 'admin' }).then(unwrap)
+}
+
 export function adminUpdateUserStatus(userId, status) {
   return request.put(`/admin/users/${encodeURIComponent(userId)}/status`, { status }).then(unwrap)
 }
