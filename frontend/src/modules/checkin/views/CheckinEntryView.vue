@@ -68,7 +68,7 @@
             <component :is="taskIcon(task.task_type)" :size="19" :stroke-width="2" />
           </div>
           <div>
-            <h3>{{ task.task_name || taskTypeText(task.task_type) }}</h3>
+            <h3>{{ taskTitle(task) }}</h3>
             <p>{{ taskTypeText(task.task_type) }} · {{ statusText(task.status) }}</p>
           </div>
           <span class="status-pill" :class="`status-pill--${task.status}`">{{ statusText(task.status) }}</span>
@@ -237,6 +237,10 @@ function taskTypeText(type) {
     exercise: '运动打卡'
   }
   return map[type] || '生活打卡'
+}
+
+function taskTitle(task) {
+  return taskTypeText(task?.task_type)
 }
 
 function statusText(status) {

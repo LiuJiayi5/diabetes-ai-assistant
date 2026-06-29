@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { getTokenForRequest, getTokenForScope, getTokenRole, removeToken, resolveSessionScope } from '@/utils/token'
+import { resolveApiBaseUrl } from '@/utils/apiBase'
 
 const ADMIN_LOGIN_PATH = '/admin/login'
 const PATIENT_LOGIN_PATH = '/login'
@@ -32,7 +33,7 @@ function clearInvalidSession(error) {
 }
 
 const request = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
+  baseURL: resolveApiBaseUrl(),
   timeout: REQUEST_TIMEOUT_MS
 })
 

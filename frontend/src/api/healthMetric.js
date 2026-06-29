@@ -15,3 +15,7 @@ export function getMetricHistory(params) {
 export function saveMetric(payload) {
   return request.post('/health-metric', payload)
 }
+
+export function getMetricTrends() {
+  return request.get('/health-metric/trends')
+}

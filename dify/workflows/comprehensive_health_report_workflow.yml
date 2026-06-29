@@ -1,0 +1,838 @@
+app:
+  description: 糖尿病健康管理综合报告工作流，聚合健康档案、指标、风险评估、生活方案、打卡分析和 AI 咨询摘要，输出患者版与医生版共用的结构化报告 JSON。
+  icon: 🧾
+  icon_background: '#EAF8F1'
+  icon_type: emoji
+  mode: workflow
+  name: comprehensive_health_report_workflow
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/deepseek:0.0.17@f7a5c1d222d17ee419b17a80d6e4923838fe93788dc724a3af73fbc6990b3a32
+    version: null
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      enabled: false
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+  graph:
+    edges:
+    - data:
+        isInLoop: false
+        sourceType: start
+        targetType: code
+      id: start-source-validate_report_input-target
+      source: start
+      sourceHandle: source
+      target: validate_report_input
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: code
+        targetType: if-else
+      id: validate_report_input-source-check_can_generate-target
+      source: validate_report_input
+      sourceHandle: source
+      target: check_can_generate
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: if-else
+        targetType: llm
+      id: check_can_generate-true-generate_comprehensive_report-target
+      source: check_can_generate
+      sourceHandle: 'true'
+      target: generate_comprehensive_report
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: if-else
+        targetType: code
+      id: check_can_generate-false-input_error-target
+      source: check_can_generate
+      sourceHandle: 'false'
+      target: input_error
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: generate_comprehensive_report-source-validate_report_result-target
+      source: generate_comprehensive_report
+      sourceHandle: source
+      target: validate_report_result
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: validate_report_result-source-success_end-target
+      source: validate_report_result
+      sourceHandle: source
+      target: success_end
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: input_error-source-failure_end-target
+      source: input_error
+      sourceHandle: source
+      target: failure_end
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        selected: false
+        title: 用户输入
+        type: start
+        variables:
+        - default: ''
+          label: 用户ID
+          required: true
+          type: text-input
+          variable: user_id
+        - default: personal
+          label: 报告类型
+          required: false
+          type: text-input
+          variable: report_type
+        - default: 30
+          label: 报告周期天数
+          required: false
+          type: number
+          variable: period_days
+        - default: '{}'
+          label: 健康档案JSON
+          required: false
+          type: paragraph
+          variable: user_profile_json
+        - default: '{}'
+          label: 最新指标JSON
+          required: false
+          type: paragraph
+          variable: latest_metrics_json
+        - default: '[]'
+          label: 指标列表JSON
+          required: false
+          type: paragraph
+          variable: metrics_json
+        - default: '{}'
+          label: 风险评估JSON
+          required: false
+          type: paragraph
+          variable: risk_assessment_json
+        - default: '{}'
+          label: 生活方案JSON
+          required: false
+          type: paragraph
+          variable: life_plan_json
+        - default: '{}'
+          label: 打卡分析JSON
+          required: false
+          type: paragraph
+          variable: checkin_analysis_json
+        - default: '[]'
+          label: 打卡记录JSON
+          required: false
+          type: paragraph
+          variable: checkin_records_json
+        - default: ''
+          label: AI咨询摘要
+          required: false
+          type: paragraph
+          variable: ai_chat_summary
+        - default: ''
+          label: 缺失数据项
+          required: false
+          type: paragraph
+          variable: missing_items
+        - default: 仅用于糖尿病健康管理和就医沟通准备，不输出诊断、处方、药物剂量或替代线下就医的结论。
+          label: 安全边界
+          required: false
+          type: paragraph
+          variable: safety_rules
+      height: 220
+      id: start
+      position:
+        x: 80
+        y: 260
+      positionAbsolute:
+        x: 80
+        y: 260
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          import json
+
+          def _parse(raw, default, name, errors):
+              if raw is None or str(raw).strip() == "":
+                  return default
+              try:
+                  value = json.loads(raw)
+                  return value
+              except Exception:
+                  errors.append(name + " 不是合法 JSON")
+                  return default
+
+          def _num(value, default=0):
+              try:
+                  return float(value)
+              except Exception:
+                  return default
+
+          def _brief(value, limit=1200):
+              text = json.dumps(value, ensure_ascii=False)
+              return text[:limit]
+
+          def main(user_id: str,
+                   report_type: str = "personal",
+                   period_days: int = 30,
+                   user_profile_json: str = "{}",
+                   latest_metrics_json: str = "{}",
+                   metrics_json: str = "[]",
+                   risk_assessment_json: str = "{}",
+                   life_plan_json: str = "{}",
+                   checkin_analysis_json: str = "{}",
+                   checkin_records_json: str = "[]",
+                   ai_chat_summary: str = "",
+                   missing_items: str = "",
+                   safety_rules: str = "") -> dict:
+              errors = []
+              profile = _parse(user_profile_json, {}, "user_profile_json", errors)
+              latest = _parse(latest_metrics_json, {}, "latest_metrics_json", errors)
+              metrics = _parse(metrics_json, [], "metrics_json", errors)
+              risk = _parse(risk_assessment_json, {}, "risk_assessment_json", errors)
+              life_plan = _parse(life_plan_json, {}, "life_plan_json", errors)
+              checkin_analysis = _parse(checkin_analysis_json, {}, "checkin_analysis_json", errors)
+              checkins = _parse(checkin_records_json, [], "checkin_records_json", errors)
+
+              if not isinstance(metrics, list):
+                  errors.append("metrics_json 必须是数组")
+                  metrics = []
+              if not isinstance(checkins, list):
+                  errors.append("checkin_records_json 必须是数组")
+                  checkins = []
+
+              missing_fields = []
+              if not user_id:
+                  missing_fields.append("user_id")
+              if not profile:
+                  missing_fields.append("user_profile_json")
+              if not latest:
+                  missing_fields.append("latest_metrics_json")
+              if not risk:
+                  missing_fields.append("risk_assessment_json")
+
+              try:
+                  period_days = int(period_days or 30)
+              except Exception:
+                  period_days = 30
+              period_days = max(7, min(period_days, 90))
+
+              fasting = _num(latest.get("fastingGlucose") or latest.get("fasting_glucose"))
+              post = _num(latest.get("postprandialGlucose") or latest.get("postprandial_glucose"))
+              hba1c = _num(latest.get("hba1c"))
+              sbp = _num(latest.get("systolicBp") or latest.get("systolic_bp"))
+              dbp = _num(latest.get("diastolicBp") or latest.get("diastolic_bp"))
+
+              safety_flags = []
+              if fasting >= 7.0:
+                  safety_flags.append("空腹血糖偏高，建议线下复查")
+              if post >= 11.1:
+                  safety_flags.append("餐后血糖明显偏高，建议线下复查")
+              if hba1c >= 6.5:
+                  safety_flags.append("HbA1c 偏高，建议结合医生意见评估")
+              if sbp >= 140 or dbp >= 90:
+                  safety_flags.append("血压偏高，运动建议需保守")
+
+              normalized_context = {
+                  "user_id": user_id,
+                  "report_type": report_type or "personal",
+                  "period_days": period_days,
+                  "profile": profile,
+                  "latest_metrics": latest,
+                  "metrics_count": len(metrics),
+                  "risk_assessment": risk,
+                  "life_plan": life_plan,
+                  "checkin_analysis": checkin_analysis,
+                  "checkin_count": len(checkins),
+                  "ai_chat_summary": ai_chat_summary,
+                  "missing_items": missing_items,
+                  "safety_rules": safety_rules,
+                  "safety_flags": safety_flags
+              }
+
+              can_generate = len(errors) == 0 and len(missing_fields) == 0
+              error_message = ""
+              if errors:
+                  error_message = "；".join(errors)
+              elif missing_fields:
+                  error_message = "综合报告缺少必要上下文：" + "、".join(missing_fields)
+
+              return {
+                  "can_generate": can_generate,
+                  "user_id": user_id,
+                  "report_type": report_type or "personal",
+                  "period_days": period_days,
+                  "normalized_context": json.dumps(normalized_context, ensure_ascii=False),
+                  "input_summary": "用户" + str(user_id) + "，报告周期" + str(period_days) + "天，指标" + str(len(metrics)) + "条，打卡" + str(len(checkins)) + "条，安全提示" + str(len(safety_flags)) + "项。",
+                  "safety_flags": safety_flags,
+                  "missing_fields": missing_fields,
+                  "error_message": error_message
+              }
+        code_language: python3
+        outputs:
+          can_generate:
+            type: boolean
+          error_message:
+            type: string
+          input_summary:
+            type: string
+          missing_fields:
+            type: array[string]
+          normalized_context:
+            type: string
+          period_days:
+            type: number
+          report_type:
+            type: string
+          safety_flags:
+            type: array[string]
+          user_id:
+            type: string
+        selected: false
+        title: 校验报告上下文
+        type: code
+        variables:
+        - value_selector:
+          - start
+          - user_id
+          variable: user_id
+        - value_selector:
+          - start
+          - report_type
+          variable: report_type
+        - value_selector:
+          - start
+          - period_days
+          variable: period_days
+        - value_selector:
+          - start
+          - user_profile_json
+          variable: user_profile_json
+        - value_selector:
+          - start
+          - latest_metrics_json
+          variable: latest_metrics_json
+        - value_selector:
+          - start
+          - metrics_json
+          variable: metrics_json
+        - value_selector:
+          - start
+          - risk_assessment_json
+          variable: risk_assessment_json
+        - value_selector:
+          - start
+          - life_plan_json
+          variable: life_plan_json
+        - value_selector:
+          - start
+          - checkin_analysis_json
+          variable: checkin_analysis_json
+        - value_selector:
+          - start
+          - checkin_records_json
+          variable: checkin_records_json
+        - value_selector:
+          - start
+          - ai_chat_summary
+          variable: ai_chat_summary
+        - value_selector:
+          - start
+          - missing_items
+          variable: missing_items
+        - value_selector:
+          - start
+          - safety_rules
+          variable: safety_rules
+      height: 88
+      id: validate_report_input
+      position:
+        x: 390
+        y: 260
+      positionAbsolute:
+        x: 390
+        y: 260
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: is
+            id: can-generate-is-true
+            value: true
+            varType: boolean
+            variable_selector:
+            - validate_report_input
+            - can_generate
+          id: 'true'
+          logical_operator: and
+        desc: 上下文足够时生成综合报告，否则返回输入错误。
+        selected: false
+        title: 是否生成报告
+        type: if-else
+      height: 126
+      id: check_can_generate
+      position:
+        x: 700
+        y: 260
+      positionAbsolute:
+        x: 700
+        y: 260
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        desc: 生成患者版、医生版、证据链和下一周期干预调整。
+        model:
+          completion_params:
+            temperature: 0.25
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: system-prompt
+          role: system
+          text: |
+            你是“糖尿病预防智能助手”的综合健康管理报告生成器。
+            你要把用户健康档案、健康指标、风险预测结果、生活方案、打卡分析和 AI 咨询摘要组织成一份结构化综合报告。
+
+            安全边界：
+            1. 只能做健康管理、风险沟通、就医沟通准备和生活方式建议。
+            2. 不能输出确诊结论、处方、药物剂量、治疗方案替代意见。
+            3. 遇到血糖、血压或 HbA1c 明显异常时，要建议线下复查或咨询医生。
+            4. 患者版要亲和、好懂、能行动，可以使用少量温和表情。
+            5. 医生版要严谨、简洁、便于面诊速览。
+            6. 必须输出合法 JSON，不要 Markdown，不要代码块，不要 JSON 之外的解释。
+            7. 字段名必须严格使用用户提示词给出的结构，不能改名。
+        - id: user-prompt
+          role: user
+          text: |
+            请根据以下综合上下文生成报告智能结论：
+
+            输入摘要：
+            {{#validate_report_input.input_summary#}}
+
+            标准化上下文：
+            {{#validate_report_input.normalized_context#}}
+
+            安全提示：
+            {{#validate_report_input.safety_flags#}}
+
+            输出必须严格符合以下 JSON 结构：
+            {
+              "patient_report": {
+                "friendly_summary": "用患者能看懂的话总结当前阶段，首句不要吓人，要有行动感",
+                "key_findings": ["发现1", "发现2", "发现3"],
+                "today_action": ["今天可执行的小行动1", "今天可执行的小行动2", "今天可执行的小行动3"],
+                "encouragement": "一句温和鼓励，提醒持续记录和线下复查"
+              },
+              "doctor_report": {
+                "chief_concern": "主诉/关注问题式摘要",
+                "risk_summary": "风险评估和主要风险因素，不能写确诊",
+                "abnormal_indicators": ["异常或需关注指标1", "异常或需关注指标2"],
+                "behavior_adherence": "生活方案执行和打卡依从性说明",
+                "clinical_communication_points": ["面诊沟通点1", "面诊沟通点2", "面诊沟通点3"],
+                "follow_up_suggestions": ["建议复查/随访1", "建议复查/随访2"]
+              },
+              "metric_trend": {
+                "plain_summary": "近期指标趋势通俗摘要",
+                "fasting_glucose_trend": "空腹血糖趋势",
+                "weight_trend": "体重趋势",
+                "blood_pressure_trend": "血压趋势"
+              },
+              "evidence_chain": [
+                {
+                  "conclusion": "报告结论",
+                  "source_type": "数据来源类型，例如 health_metrics/risk_assessments/life_plans/checkin_analysis/ai_chat_sessions",
+                  "source_detail": "来源说明",
+                  "reference_sources": ["参考依据1", "参考依据2"]
+                }
+              ],
+              "data_gaps": ["缺失或影响判断的数据项"],
+              "safety_warnings": ["安全提醒1", "安全提醒2"],
+              "next_cycle_adjustment": {
+                "diet_focus": "下一周期饮食调整重点",
+                "exercise_focus": "下一周期运动调整重点",
+                "monitoring_focus": "下一周期监测调整重点"
+              },
+              "summary": "一句话综合摘要"
+            }
+        selected: false
+        title: 生成综合报告
+        type: llm
+        vision:
+          enabled: false
+      height: 132
+      id: generate_comprehensive_report
+      position:
+        x: 1010
+        y: 150
+      positionAbsolute:
+        x: 1010
+        y: 150
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          import json
+          import re
+
+          REQUIRED_TOP = [
+              "patient_report",
+              "doctor_report",
+              "metric_trend",
+              "evidence_chain",
+              "data_gaps",
+              "safety_warnings",
+              "next_cycle_adjustment",
+              "summary",
+          ]
+
+          def _strip(text):
+              text = str(text or "").strip()
+              text = re.sub(r"^```(?:json)?", "", text, flags=re.IGNORECASE).strip()
+              text = re.sub(r"```$", "", text).strip()
+              start = text.find("{")
+              end = text.rfind("}")
+              if start >= 0 and end > start:
+                  return text[start:end + 1]
+              return text
+
+          def _list(value):
+              if isinstance(value, list):
+                  return value
+              if value in [None, ""]:
+                  return []
+              return [str(value)]
+
+          def _text(value):
+              return str(value or "").strip()
+
+          def main(llm_output: str, user_id: str, input_summary: str = "") -> dict:
+              try:
+                  report = json.loads(_strip(llm_output))
+              except Exception:
+                  return {
+                      "success": False,
+                      "user_id": user_id,
+                      "error_message": "AI 输出不是合法 JSON，请重新生成",
+                      "input_summary": input_summary,
+                      "missing_fields": ["report_result"],
+                      "report_result": "{}",
+                      "summary": ""
+                  }
+
+              missing = [key for key in REQUIRED_TOP if key not in report or report.get(key) in [None, "", [], {}]]
+              for key in ["key_findings", "today_action"]:
+                  report.setdefault("patient_report", {}).setdefault(key, [])
+                  report["patient_report"][key] = _list(report["patient_report"][key])
+              for key in ["abnormal_indicators", "clinical_communication_points", "follow_up_suggestions"]:
+                  report.setdefault("doctor_report", {}).setdefault(key, [])
+                  report["doctor_report"][key] = _list(report["doctor_report"][key])
+              report["evidence_chain"] = _list(report.get("evidence_chain"))
+              report["data_gaps"] = _list(report.get("data_gaps"))
+              report["safety_warnings"] = _list(report.get("safety_warnings"))
+
+              if not _text(report.get("summary")):
+                  missing.append("summary")
+              if missing:
+                  return {
+                      "success": False,
+                      "user_id": user_id,
+                      "error_message": "AI 输出 JSON 字段结构不完整，缺少或为空: " + ", ".join(sorted(set(missing))),
+                      "input_summary": input_summary,
+                      "missing_fields": sorted(set(missing)),
+                      "report_result": "{}",
+                      "summary": ""
+                  }
+
+              return {
+                  "success": True,
+                  "user_id": user_id,
+                  "error_message": "",
+                  "input_summary": input_summary,
+                  "missing_fields": [],
+                  "report_result": json.dumps(report, ensure_ascii=False),
+                  "summary": report.get("summary", "")
+              }
+        code_language: python3
+        outputs:
+          error_message:
+            type: string
+          input_summary:
+            type: string
+          missing_fields:
+            type: array[string]
+          report_result:
+            type: string
+          success:
+            type: boolean
+          summary:
+            type: string
+          user_id:
+            type: string
+        selected: false
+        title: 校验报告结果
+        type: code
+        variables:
+        - value_selector:
+          - generate_comprehensive_report
+          - text
+          variable: llm_output
+        - value_selector:
+          - validate_report_input
+          - user_id
+          variable: user_id
+        - value_selector:
+          - validate_report_input
+          - input_summary
+          variable: input_summary
+      height: 88
+      id: validate_report_result
+      position:
+        x: 1320
+        y: 150
+      positionAbsolute:
+        x: 1320
+        y: 150
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          def main(user_id: str, error_message: str = "", missing_fields = None, input_summary: str = "") -> dict:
+              if missing_fields is None:
+                  missing_fields = []
+              if not error_message:
+                  error_message = "综合报告上下文不足，无法生成报告"
+              return {
+                  "success": False,
+                  "user_id": user_id,
+                  "error_message": error_message,
+                  "input_summary": input_summary,
+                  "missing_fields": missing_fields,
+                  "report_result": "{}",
+                  "summary": ""
+              }
+        code_language: python3
+        outputs:
+          error_message:
+            type: string
+          input_summary:
+            type: string
+          missing_fields:
+            type: array[string]
+          report_result:
+            type: string
+          success:
+            type: boolean
+          summary:
+            type: string
+          user_id:
+            type: string
+        selected: false
+        title: 输入错误
+        type: code
+        variables:
+        - value_selector:
+          - validate_report_input
+          - user_id
+          variable: user_id
+        - value_selector:
+          - validate_report_input
+          - error_message
+          variable: error_message
+        - value_selector:
+          - validate_report_input
+          - missing_fields
+          variable: missing_fields
+        - value_selector:
+          - validate_report_input
+          - input_summary
+          variable: input_summary
+      height: 88
+      id: input_error
+      position:
+        x: 1010
+        y: 430
+      positionAbsolute:
+        x: 1010
+        y: 430
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: 成功输出，后端优先读取 report_result。
+        outputs:
+        - value_selector:
+          - validate_report_result
+          - success
+          value_type: boolean
+          variable: success
+        - value_selector:
+          - validate_report_result
+          - user_id
+          value_type: string
+          variable: user_id
+        - value_selector:
+          - validate_report_result
+          - error_message
+          value_type: string
+          variable: error_message
+        - value_selector:
+          - validate_report_result
+          - input_summary
+          value_type: string
+          variable: input_summary
+        - value_selector:
+          - validate_report_result
+          - missing_fields
+          value_type: array[string]
+          variable: missing_fields
+        - value_selector:
+          - validate_report_result
+          - report_result
+          value_type: string
+          variable: report_result
+        - value_selector:
+          - validate_report_result
+          - summary
+          value_type: string
+          variable: summary
+        selected: false
+        title: 成功输出
+        type: end
+      height: 142
+      id: success_end
+      position:
+        x: 1630
+        y: 150
+      positionAbsolute:
+        x: 1630
+        y: 150
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: 失败输出。
+        outputs:
+        - value_selector:
+          - input_error
+          - success
+          value_type: boolean
+          variable: success
+        - value_selector:
+          - input_error
+          - user_id
+          value_type: string
+          variable: user_id
+        - value_selector:
+          - input_error
+          - error_message
+          value_type: string
+          variable: error_message
+        - value_selector:
+          - input_error
+          - input_summary
+          value_type: string
+          variable: input_summary
+        - value_selector:
+          - input_error
+          - missing_fields
+          value_type: array[string]
+          variable: missing_fields
+        - value_selector:
+          - input_error
+          - report_result
+          value_type: string
+          variable: report_result
+        - value_selector:
+          - input_error
+          - summary
+          value_type: string
+          variable: summary
+        selected: false
+        title: 失败输出
+        type: end
+      height: 142
+      id: failure_end
+      position:
+        x: 1320
+        y: 430
+      positionAbsolute:
+        x: 1320
+        y: 430
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: 0
+      y: 0
+      zoom: 0.8

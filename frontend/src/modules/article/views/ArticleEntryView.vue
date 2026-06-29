@@ -111,7 +111,6 @@ import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { Bookmark, BookOpen, LoaderCircle, Search } from 'lucide-vue-next'
 import { FEATURED_CATEGORIES, sampleArticlesByCategory, searchArticles, useArticlesStore } from '@/stores/articles'
-import { pushWithBack } from '@/utils/navigation'
 import ArticleCard from '../components/ArticleCard.vue'
 import '../styles/articles.css'
 
@@ -163,6 +162,6 @@ function openCategory(category) {
 }
 
 function openArticle(article) {
-  pushWithBack(router, `/app/articles/${article.article_id}`, '/app/articles')
+  router.push(`/app/articles/${article.article_id}`)
 }
 </script>

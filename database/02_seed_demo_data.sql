@@ -4,6 +4,8 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 TRUNCATE TABLE api_call_logs;
+TRUNCATE TABLE intervention_reviews;
+TRUNCATE TABLE health_reports;
 TRUNCATE TABLE checkin_analysis;
 TRUNCATE TABLE checkin_records;
 TRUNCATE TABLE ai_chat_messages;
@@ -53,10 +55,13 @@ INSERT INTO risk_assessments (assessment_id, user_id, metric_id, request_summary
 (4, 5, 11, '52岁男性，腰围和血压偏高，近期外食饮酒较多，打卡中断。', '{"risk_level":"high","risk_score":86}', 'high', 86, '2型糖尿病高风险', '["血糖偏高", "血压偏高", "腰围偏高", "运动不足", "饮酒和夜宵"]', '空腹和餐后血糖均处于明显偏高状态，糖化血红蛋白提示近阶段整体控制不理想。', '先恢复每日记录，减少酒精和夜宵，优先安排线下复查并获得医生评估。', '该用户已停用账号用于管理端异常/停用展示；如恢复使用，应先完成线下复查。', '高风险且依从性下降，需要管理端重点随访。', 'success', NULL, '2026-06-18 09:00:00');
 
 INSERT INTO life_plans (plan_id, user_id, profile_id, metric_id, assessment_id, plan_title, plan_goal, input_summary, plan_json, checkin_tasks_json, summary, status, call_status, error_message, create_time, update_time) VALUES
-(1, 2, 1, 3, 1, '李明的餐后血糖平稳计划', '四周内把餐后血糖稳定在8.0mmol/L附近，体重下降1公斤。', '中等风险，家族史和腰围偏高，已有运动改善基础。', '{"diet":"早餐加入蛋白质和蔬菜，午餐外卖优先少油少盐，晚餐主食控制在半碗到一碗。","exercise":"每周5天饭后步行20-30分钟，周末加入一次轻抗阻。","sleep":"保持23点前入睡，减少夜间加餐。"}', '[{"type":"diet","name":"三餐记录并控制含糖饮料"},{"type":"exercise","name":"饭后步行20分钟"}]', '先巩固已经形成的饭后步行习惯，再逐步优化早餐和外卖选择。', 'active', 'success', NULL, '2026-06-26 10:00:00', '2026-06-26 10:00:00'),
+(1, 2, 1, 3, 1, '李明的餐后血糖平稳计划', '四周内把餐后血糖稳定在8.0mmol/L附近，体重下降1公斤。', '中等风险，家族史和腰围偏高，已有运动改善基础。', '{"diet":"早餐加入蛋白质和蔬菜，午餐外卖优先少油少盐，晚餐主食控制在半碗到一碗。","exercise":"每周5天饭后步行20-30分钟，周末加入一次轻抗阻。","sleep":"保持23点前入睡，减少夜间加餐。"}', '[{"type":"diet","name":"三餐记录并控制含糖饮料"},{"type":"exercise","name":"饭后步行20分钟"}]', '先巩固已经形成的饭后步行习惯，再逐步优化早餐和外卖选择。', 'history', 'success', NULL, '2026-06-26 10:00:00', '2026-06-27 09:30:00'),
 (2, 3, 2, 6, 2, '赵晴的稳定随访计划', '保持血糖稳定，减少压力和晚间零食带来的波动。', '低风险但有妊娠期血糖异常史，当前饮食运动规律。', '{"diet":"继续粗细搭配，水果放在两餐之间。","exercise":"保持瑜伽和通勤步行，每周补充2次力量练习。","sleep":"固定睡眠时间，压力大时做5分钟呼吸放松。"}', '[{"type":"diet","name":"记录晚间零食和水果时间"},{"type":"exercise","name":"完成20分钟拉伸或步行"}]', '当前状态较好，重点是避免因为工作压力打乱节奏。', 'active', 'success', NULL, '2026-06-26 10:20:00', '2026-06-26 10:20:00'),
 (3, 4, 3, 9, 3, '何燕的血压血糖综合管理计划', '两周内维持每日慢走，减少高盐晚餐，准备线下复查。', '高风险，高血压病史，血糖和腰围均需继续管理。', '{"diet":"晚餐少盐少油，主食以半碗杂粮饭为主，保证蔬菜。","exercise":"饭后慢走15-20分钟，避免突然高强度运动。","monitor":"每周记录3次血压和血糖，复查时给医生查看。"}', '[{"type":"diet","name":"晚餐少盐餐盘记录"},{"type":"exercise","name":"饭后慢走15分钟"}]', '以安全和可持续为先，把慢走、少盐和复查准备做好。', 'active', 'success', NULL, '2026-06-27 10:00:00', '2026-06-27 10:00:00'),
 (4, 5, 4, 11, 4, '周博的恢复记录计划', '恢复连续打卡，减少酒精夜宵，完成线下复查。', '高风险且依从性下降，适合管理端随访展示。', '{"diet":"暂停夜宵和含糖饮料，外食优先清淡。","exercise":"从每天10分钟步行恢复，不追求强度。","monitor":"尽快复查血糖、血压和血脂。"}', '[{"type":"diet","name":"避免夜宵和酒精"},{"type":"exercise","name":"恢复10分钟步行"}]', '该计划用于展示停用/随访用户的历史状态。', 'paused', 'success', NULL, '2026-06-18 10:00:00', '2026-06-22 15:00:00');
+
+INSERT INTO life_plans (plan_id, user_id, profile_id, metric_id, assessment_id, plan_title, plan_goal, input_summary, plan_json, checkin_tasks_json, summary, status, call_status, error_message, source_type, source_review_id, create_time, update_time) VALUES
+(5, 2, 1, 3, 1, '李明的第2周期自动优化计划', '在保留饭后步行习惯的基础上，把晚餐主食和外卖场景控制得更稳定。', '系统结合李明近6天打卡、餐后血糖趋势和生活方案执行情况自动复盘，判断不需要推翻原方案，只做局部优化。', '{"days":[{"day":1,"diet":"早餐保留鸡蛋和蔬菜，午餐外卖选择少油套餐，晚餐主食半碗。","exercise":"晚餐后步行20分钟，雨天改为室内踏步。"},{"day":2,"diet":"午餐先吃蔬菜和蛋白质，再吃主食，避免含糖饮料。","exercise":"饭后步行25分钟，睡前做5分钟拉伸。"},{"day":3,"diet":"晚餐提前到19点前，主食不超过半碗，增加绿叶菜。","exercise":"饭后轻快步行20分钟，若疲劳则分两段完成。"},{"day":4,"diet":"准备一套固定外卖清单，优先蒸煮炖菜。","exercise":"晚饭后室外步行20-30分钟。"},{"day":5,"diet":"控制零食，把水果放在下午加餐。","exercise":"饭后步行20分钟并记录感受。"},{"day":6,"diet":"复盘本周外卖次数，减少高油高盐菜。","exercise":"加入一次轻抗阻或爬楼替代。"},{"day":7,"diet":"总结一周最容易坚持的三餐搭配。","exercise":"完成一次轻松长步行并准备下周期目标。"}],"diet":"晚餐主食更明确，外卖场景给出可执行替代。","exercise":"保留饭后步行，增加雨天室内替代，避免因天气中断。","monitor":"继续记录空腹和餐后血糖，关注晚餐后波动。"}', '[{"type":"diet","name":"按当日方案记录晚餐主食和外卖选择"},{"type":"exercise","name":"完成当日饭后步行或室内替代"}]', '自动复盘后生成的局部优化方案：保留有效习惯，重点修正雨天运动中断和外卖选择不稳定。', 'active', 'success', NULL, 'auto_intervention', 1, '2026-06-27 09:30:00', '2026-06-27 09:30:00');
 
 INSERT INTO checkin_records (checkin_id, user_id, plan_id, task_type, task_name, status, note, checkin_date, completed_time, create_time, update_time) VALUES
 (1, 2, 1, 'diet', '三餐记录并控制含糖饮料', 'completed', '早餐加了鸡蛋，午餐未喝奶茶。', '2026-06-21', '2026-06-21 20:10:00', '2026-06-21 08:00:00', '2026-06-21 20:10:00'),
@@ -90,6 +95,14 @@ INSERT INTO checkin_records (checkin_id, user_id, plan_id, task_type, task_name,
 (29, 5, 4, 'diet', '避免夜宵和酒精', 'pending', '夜宵较晚。', '2026-06-18', NULL, '2026-06-18 08:00:00', '2026-06-18 23:00:00'),
 (30, 5, 4, 'exercise', '恢复10分钟步行', 'pending', '未完成。', '2026-06-18', NULL, '2026-06-18 08:00:00', '2026-06-18 23:00:00');
 
+INSERT INTO checkin_records (checkin_id, user_id, plan_id, task_type, task_name, status, note, checkin_date, completed_time, create_time, update_time) VALUES
+(31, 2, 5, 'diet', '按当日方案记录晚餐主食和外卖选择', 'completed', '晚餐主食半碗，外卖选择清蒸鱼和青菜。', '2026-06-27', '2026-06-27 20:05:00', '2026-06-27 08:00:00', '2026-06-27 20:05:00'),
+(32, 2, 5, 'exercise', '完成当日饭后步行或室内替代', 'completed', '晚饭后步行22分钟。', '2026-06-27', '2026-06-27 20:35:00', '2026-06-27 08:00:00', '2026-06-27 20:35:00'),
+(33, 2, 5, 'diet', '按当日方案记录晚餐主食和外卖选择', 'completed', '午餐先吃蔬菜和鸡胸肉，未喝含糖饮料。', '2026-06-28', '2026-06-28 20:00:00', '2026-06-28 08:00:00', '2026-06-28 20:00:00'),
+(34, 2, 5, 'exercise', '完成当日饭后步行或室内替代', 'pending', '下雨后只拉伸了8分钟，未达到计划。', '2026-06-28', NULL, '2026-06-28 08:00:00', '2026-06-28 21:10:00'),
+(35, 2, 5, 'diet', '按当日方案记录晚餐主食和外卖选择', 'pending', NULL, '2026-06-29', NULL, '2026-06-29 08:00:00', '2026-06-29 08:00:00'),
+(36, 2, 5, 'exercise', '完成当日饭后步行或室内替代', 'pending', NULL, '2026-06-29', NULL, '2026-06-29 08:00:00', '2026-06-29 08:00:00');
+
 INSERT INTO checkin_analysis (analysis_id, user_id, plan_id, start_date, end_date, total_days, diet_completion_count, exercise_completion_count, completion_rate, habit_score, diet_summary, exercise_summary, life_evaluation, main_problems, improvement_suggestions, next_focus, summary, input_summary, call_status, error_message, create_time) VALUES
 (1, 2, 1, '2026-06-21', '2026-06-26', 6, 6, 5, 91.67, 88, '饮食记录完整，含糖饮料控制好，外卖选择开始更清淡。', '饭后步行完成率高，雨天可准备室内替代方案。', '整体执行稳定，血糖趋势已有改善。', '["雨天运动替代不足", "外卖场景仍需继续优化"]', '["准备室内拉伸或踏步方案", "固定两套少油外卖选择"]', '继续关注餐后血糖和晚餐主食量。', '李明近6天执行情况较好，适合进入巩固阶段。', '6天共12项任务，完成11项。', 'success', NULL, '2026-06-26 21:00:00'),
 (2, 3, 2, '2026-06-23', '2026-06-26', 4, 4, 3, 87.50, 84, '晚间零食控制较好，水果时间安排合理。', '运动基本规律，加班日出现一次缺口。', '状态稳定，压力管理是关键。', '["加班影响运动", "睡眠时间偶有后移"]', '["加班日改用10分钟拉伸", "睡前减少屏幕时间"]', '保持规律节奏，不必过度加码。', '赵晴整体表现稳定，适合继续维持。', '4天共8项任务，完成7项。', 'success', NULL, '2026-06-26 21:10:00'),
@@ -115,6 +128,16 @@ INSERT INTO ai_chat_messages (message_id, session_id, user_id, user_message, ai_
 (5, 4, 4, '我准备复查，应该把哪些数据给医生看？', '我是林清禾。建议整理最近两周空腹血糖、餐后2小时血糖、血压、体重、腰围和打卡完成情况，同时带上当前用药信息。你有高血压史，复查时可以重点讨论血压和血糖目标范围。', '高风险用户复查准备。', 'success', NULL, '2026-06-27 08:40:00'),
 (6, 5, 5, '应酬多的时候怎么少吃点？', '我是周明远。建议先吃蔬菜和蛋白质，主食半份，酒精尽量减少并避免夜宵。你目前指标偏高，建议尽快恢复记录并安排线下复查。', '停用用户历史咨询记录。', 'success', NULL, '2026-06-18 22:20:00');
 
+INSERT INTO intervention_reviews (review_id, user_id, plan_id, source_review_id, trigger_type, trigger_reason, period_start_date, period_end_date, review_days, plan_day, adherence_score, intervention_level, should_update_plan, update_scope, affected_days, main_problem_tags, preserved_items, changed_items, adjustment_strategy, patient_notice, explanation, safety_warning, adjusted_plan_patch, generated_plan_id, input_summary, raw_response, call_status, error_message, create_time) VALUES
+(1, 2, 1, NULL, 'checkin_pair_completed', '饮食和运动打卡均已提交，系统自动复盘执行情况。', '2026-06-21', '2026-06-26', 6, 7, 82, 'minor_adjustment', 1, 'partial_plan', '[1,2,3,4,5,6,7]', '["雨天运动中断", "外卖场景不稳定", "晚餐主食需要更明确"]', '["饭后步行习惯", "早餐蛋白质搭配", "含糖饮料控制"]', '["晚餐主食量", "雨天运动替代", "外卖选择清单"]', '保留李明已经能坚持的饭后步行和早餐结构，只把容易掉链子的雨天运动、外卖选择和晚餐主食做成更明确的执行清单。', '系统已根据最近打卡和血糖趋势自动优化你的生活方案，新方案已生效，可在方案定制页查看。', '近6天完成率较高，但运动有一次因天气中断，外卖场景仍可能影响餐后血糖，因此适合局部优化，不需要完全重做方案。', '如出现低血糖、胸闷、头晕或运动不适，应停止运动并及时咨询线下医生。', '{"diet":"晚餐主食固定为半碗到一碗之间，优先半碗；外卖固定少油少盐清单。","exercise":"雨天改为室内踏步或拉伸20分钟，保持连续性。","monitor":"继续关注餐后2小时血糖。"}', 5, '聚合李明健康档案、最新指标、风险评估、原生活方案、近6天打卡和打卡分析后触发。', '{"adherence_score":82,"intervention_level":"minor_adjustment","should_update_plan":true,"update_scope":"partial_plan","generated_plan_id":5}', 'success', NULL, '2026-06-27 09:28:00'),
+(2, 3, 2, NULL, 'metric_recorded', '新增健康数据后系统自动复盘，判断当前方案是否需要调整。', '2026-06-23', '2026-06-26', 4, 5, 90, 'maintain', 0, 'none', '[]', '["整体稳定", "加班日轻微波动"]', '["规律饮食", "瑜伽和通勤步行", "晚间零食控制"]', '[]', '当前指标和执行情况稳定，继续执行原计划即可，不生成新方案。', '本次自动复盘显示状态稳定，暂不需要调整方案。', '赵晴近期空腹血糖、餐后血糖、体重和打卡完成率均较稳定，仅需保持加班日的轻量运动替代。', '保持定期随访；如妊娠计划或体重明显变化，应重新评估目标。', NULL, NULL, '聚合赵晴最新健康数据、低风险评估、当前方案和4天打卡记录后触发。', '{"adherence_score":90,"intervention_level":"maintain","should_update_plan":false,"update_scope":"none"}', 'success', NULL, '2026-06-26 21:35:00'),
+(3, 4, 3, NULL, 'risk_assessment_completed', '高风险评估完成后系统自动复盘。', '2026-06-24', '2026-06-26', 3, 4, 68, 'safety_adjustment', 0, 'safety_notice', '[4,5,6,7]', '["高风险", "膝盖不适", "复查准备不足"]', '["晚餐少盐", "血压血糖记录"]', '["运动安全提醒", "复查材料整理"]', '暂不自动生成新方案，先提醒用户以安全运动和线下复查为优先。', '系统发现你近期属于高风险且有膝盖不适，建议先按安全提醒执行，并准备线下复查资料。', '何燕血糖和血压仍需关注，且打卡备注中出现膝盖不适，系统选择安全提醒而不是直接加大运动强度。', '如膝盖疼痛加重、血压明显升高或血糖持续异常，应及时线下就医。', NULL, NULL, '聚合何燕高风险评估、慢病史、打卡备注和当前方案后触发。', '{"adherence_score":68,"intervention_level":"safety_adjustment","should_update_plan":false,"update_scope":"safety_notice"}', 'success', NULL, '2026-06-27 09:20:00');
+
+INSERT INTO health_reports (report_id, user_id, report_type, report_title, report_markdown, report_summary, data_snapshot_json, completeness_score, report_status, create_time, update_time) VALUES
+(1, 2, 'patient', '李明的控糖周报', '# 我的控糖小结\n\n本周空腹血糖和餐后血糖整体向好，打卡完成率较高。系统已根据雨天运动中断和外卖选择波动，自动生成第2周期优化方案。\n\n## 今天能做的小行动\n\n- 晚餐主食优先控制在半碗\n- 饭后步行20分钟，雨天改为室内踏步\n- 外卖优先选择少油少盐套餐\n\n## 下一周期重点\n\n继续记录餐后血糖，观察晚餐主食和步行时长对波动的影响。', '完成率高，血糖趋势改善，已自动进入第2周期局部优化方案。', '{"risk_level":"medium","latest_plan_id":5,"latest_review_id":1,"data_sources":["profile","metrics","risk","life_plan","checkin","intervention_review"]}', 92, 'generated', '2026-06-27 10:10:00', '2026-06-27 10:10:00'),
+(2, 2, 'doctor', '李明线下面诊摘要', '# 面诊速览\n\n46岁男性，家族史阳性，腰围偏高，近期空腹血糖6.2mmol/L、餐后血糖8.6mmol/L，风险评估为中等。\n\n## 行为依从性\n\n近6天打卡完成11/12项，饮食记录完整，饭后步行习惯较稳定。主要问题为雨天运动替代不足和外卖场景波动。\n\n## 沟通重点\n\n建议复核餐后血糖趋势、腰围变化和血压控制情况；如后续指标持续下降，可维持当前生活方式干预。', '中等风险，依从性较好，建议关注餐后血糖、腰围和血压趋势。', '{"risk_level":"medium","latest_metric_id":3,"latest_assessment_id":1,"latest_plan_id":5,"data_sources":["profile","metrics","risk","life_plan","checkin"]}', 90, 'generated', '2026-06-27 10:12:00', '2026-06-27 10:12:00'),
+(3, 4, 'doctor', '何燕复查沟通摘要', '# 复查沟通摘要\n\n59岁女性，有高血压病史，近期风险评估偏高。空腹血糖和餐后血糖较前改善但仍需关注，打卡中出现膝盖不适。\n\n## 医生关注点\n\n- 血压和血糖目标范围\n- 膝盖不适下的安全运动方式\n- 是否需要进一步检查糖化血红蛋白和并发症风险\n\n## 安全提醒\n\n不建议突然增加运动强度，应先以慢走或坐姿活动为主，并结合线下医生建议。', '高风险且有膝盖不适，建议以复查、安全运动和指标监测为主。', '{"risk_level":"high","latest_metric_id":9,"latest_assessment_id":3,"latest_plan_id":3,"latest_review_id":3,"data_sources":["profile","metrics","risk","life_plan","checkin","intervention_review"]}', 86, 'generated', '2026-06-27 10:20:00', '2026-06-27 10:20:00');
+
 INSERT INTO api_call_logs (log_id, user_id, service_type, request_summary, response_summary, call_status, error_message, create_time) VALUES
 (1, 2, 'risk_prediction', '李明最新健康数据风险预测', '中等风险，建议持续餐后步行和饮食优化。', 'success', NULL, '2026-06-26 09:00:05'),
 (2, 3, 'risk_prediction', '赵晴最新健康数据风险预测', '低风险，建议规律随访。', 'success', NULL, '2026-06-26 09:20:05'),
@@ -124,5 +147,11 @@ INSERT INTO api_call_logs (log_id, user_id, service_type, request_summary, respo
 (6, 2, 'checkin_analysis', '李明6天打卡分析', '完成率91.67%，执行稳定。', 'success', NULL, '2026-06-26 21:00:05'),
 (7, 4, 'checkin_analysis', '何燕3天打卡分析', '完成率83.33%，建议注意膝盖和复查。', 'success', NULL, '2026-06-27 08:30:05'),
 (8, 2, 'ai_doctor', '餐后血糖波动咨询', '林清禾专家身份回复。', 'success', NULL, '2026-06-26 21:30:05'),
-(9, 3, 'ai_doctor', '加班日运动替代方案', '许安宁专家身份回复。', 'success', NULL, '2026-06-26 21:25:05');
+(9, 3, 'ai_doctor', '加班日运动替代方案', '许安宁专家身份回复。', 'success', NULL, '2026-06-26 21:25:05'),
+(10, 2, 'intervention_review', '李明打卡完成后自动复盘', '建议局部优化方案，并生成第2周期自动优化计划。', 'success', NULL, '2026-06-27 09:28:05'),
+(11, 3, 'intervention_review', '赵晴健康数据更新后自动复盘', '指标稳定，建议维持当前生活方案。', 'success', NULL, '2026-06-26 21:35:05'),
+(12, 4, 'intervention_review', '何燕高风险评估后自动复盘', '触发安全提醒，暂不直接生成新方案。', 'success', NULL, '2026-06-27 09:20:05'),
+(13, 2, 'comprehensive_health_report', '李明生成个人控糖周报', '生成个人版Markdown报告。', 'success', NULL, '2026-06-27 10:10:05'),
+(14, 2, 'comprehensive_health_report', '李明生成医生面诊摘要', '生成医生版面诊摘要报告。', 'success', NULL, '2026-06-27 10:12:05'),
+(15, 4, 'comprehensive_health_report', '何燕生成复查沟通摘要', '生成医生版复查沟通报告。', 'success', NULL, '2026-06-27 10:20:05');
 

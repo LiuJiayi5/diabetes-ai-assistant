@@ -87,6 +87,32 @@
       </button>
     </section>
 
+    <section v-if="hasTrendData" class="trend-section">
+      <div class="trend-section__head">
+        <h3>趋势可视化</h3>
+        <p>跟踪风险分数与关键健康指标变化</p>
+      </div>
+      <div class="trend-card">
+        <TrendLineChart
+          title="风险分数趋势"
+          unit="分"
+          color="#16A34A"
+          :points="riskTrendPoints"
+          value-key="risk_score"
+          time-key="recorded_at"
+        />
+      </div>
+      <div v-for="series in metricTrendSeries" :key="series.key" class="trend-card">
+        <TrendLineChart
+          v-if="series.points?.length"
+          :title="`${series.label}趋势`"
+          :unit="series.unit"
+          :color="seriesColor(series.key)"
+          :points="series.points"
+        />
+      </div>
+    </section>
+
     <p class="figma-disclaimer">AI 建议仅供参考，不能替代线下诊疗。</p>
 
     <div v-if="metricPopup" class="metric-sheet-layer" @click.self="metricPopup = false">
@@ -136,9 +162,10 @@ import {
 } from 'lucide-vue-next'
 import PageHeader from '@/components/mobile/PageHeader.vue'
 import RiskLevelTag from '@/components/mobile/RiskLevelTag.vue'
+import TrendLineChart from '@/components/charts/TrendLineChart.vue'
 import { getMyProfile } from '@/api/profile'
-import { getLatestMetric, saveMetric } from '@/api/healthMetric'
-import { getRiskEntry, predictRisk } from '@/api/riskAssessment'
+import { getLatestMetric, getMetricTrends, saveMetric } from '@/api/healthMetric'
+import { getRiskEntry, getRiskTrends, predictRisk } from '@/api/riskAssessment'
 import { assertSuccess } from '@/utils/response'
 import { buildMetricSummary, formatRiskLevel, todayString } from '@/utils/health'
 
@@ -150,6 +177,8 @@ const hasProfile = ref(false)
 const metricPopup = ref(false)
 const savingMetric = ref(false)
 const predicting = ref(false)
+const riskTrendPoints = ref([])
+const metricTrendSeries = ref([])
 
 const metricForm = reactive({
   recorded_at: todayString(),
@@ -178,20 +207,43 @@ const pressureChipText = computed(() => {
   return '血压 待录入'
 })
 
+const hasTrendData = computed(() =>
+  riskTrendPoints.value.length > 0 || metricTrendSeries.value.some((series) => series.points?.length > 1)
+)
+
+function seriesColor(key) {
+  return {
+    fasting_glucose: '#0284C7',
+    weight_kg: '#D97706',
+    waist_cm: '#7C3AED'
+  }[key] || '#16A34A'
+}
+
 onMounted(loadPage)
 
 async function loadPage() {
   try {
-    const [entryData, metricData, profileData] = await Promise.all([
+    const [entryData, metricData, profileData, riskTrendData, metricTrendData] = await Promise.all([
       getRiskEntry(),
       getLatestMetric(),
-      getMyProfile()
+      getMyProfile(),
+      getRiskTrends(),
+      getMetricTrends()
     ])
     entry.value = assertSuccess(entryData)
     latestMetric.value = assertSuccess(metricData)
     const profile = assertSuccess(profileData)
     hasProfile.value = Boolean(profile)
     latestAssessment.value = entry.value?.latest_assessment || null
+
+    const riskTrend = assertSuccess(riskTrendData)
+    riskTrendPoints.value = (riskTrend?.points || []).map((item) => ({
+      risk_score: item.risk_score ?? item.riskScore,
+      recorded_at: item.recorded_at || item.recordedAt
+    }))
+
+    const metricTrend = assertSuccess(metricTrendData)
+    metricTrendSeries.value = metricTrend?.series || []
   } catch (error) {
     showToast(error.message || '加载失败')
   }
@@ -523,6 +575,38 @@ async function handlePredict() {
   opacity: 0.72;
 }
 
+.trend-section {
+  margin-bottom: 12px;
+  padding: 16px;
+  border-radius: var(--figma-radius-card);
+  background: #FFFFFF;
+  box-shadow: var(--figma-shadow-card);
+}
+
+.trend-section__head h3 {
+  margin: 0;
+  color: var(--figma-text-strong);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.trend-section__head p {
+  margin: 6px 0 14px;
+  color: var(--figma-text-secondary);
+  font-size: 12px;
+}
+
+.trend-card {
+  margin-bottom: 12px;
+  padding: 8px 4px 0;
+  border-radius: 18px;
+  background: #F8FCFA;
+}
+
+.trend-card:last-child {
+  margin-bottom: 0;
+}
+
 .secondary-action {
   min-height: 44px;
   border: 1px solid rgba(174, 232, 199, 0.62);
@@ -624,22 +708,6 @@ async function handlePredict() {
 
 .spin {
   animation: spin 0.9s linear infinite;
-}
-
-@media (max-width: 520px) {
-  .metric-sheet-layer {
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100dvh;
-    border-radius: 0;
-    transform: none;
-  }
-
-  .metric-sheet {
-    height: calc(100dvh - 34px);
-    max-height: calc(100dvh - 34px);
-  }
 }
 
 @keyframes spin {

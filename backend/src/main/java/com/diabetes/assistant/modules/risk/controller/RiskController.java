@@ -8,6 +8,8 @@ import com.diabetes.assistant.modules.risk.dto.RiskDetailResponse;
 import com.diabetes.assistant.modules.risk.dto.RiskEntryResponse;
 import com.diabetes.assistant.modules.risk.dto.RiskHistoryItem;
 import com.diabetes.assistant.modules.risk.dto.RiskPredictResponse;
+import com.diabetes.assistant.modules.risk.dto.RiskTrendResponse;
+import com.diabetes.assistant.modules.risk.dto.SimilarCaseItem;
 import com.diabetes.assistant.modules.risk.service.RiskService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/risk")
@@ -74,6 +77,29 @@ public class RiskController {
         currentUserUtil.requireAdmin(request);
         return ApiResponse.success(riskService.adminListAssessments(
                 userId, riskLevel, startDate, endDate, page, pageSize));
+    }
+
+    @GetMapping("/trends")
+    public ApiResponse<RiskTrendResponse> getRiskTrend(HttpServletRequest request) {
+        Integer userId = currentUserUtil.getCurrentUserId(request);
+        return ApiResponse.success(riskService.getRiskTrend(userId));
+    }
+
+    @GetMapping("/admin/trends")
+    public ApiResponse<RiskTrendResponse> adminGetRiskTrend(
+            @RequestParam(name = "user_id") Integer userId,
+            HttpServletRequest request) {
+        currentUserUtil.requireAdmin(request);
+        return ApiResponse.success(riskService.adminGetRiskTrend(userId));
+    }
+
+    @GetMapping("/admin/{assessment_id}/similar-cases")
+    public ApiResponse<List<SimilarCaseItem>> adminGetSimilarCases(
+            @PathVariable("assessment_id") Integer assessmentId,
+            @RequestParam(required = false) Integer limit,
+            HttpServletRequest request) {
+        currentUserUtil.requireAdmin(request);
+        return ApiResponse.success(riskService.adminGetSimilarCases(assessmentId, limit));
     }
 
     @GetMapping("/admin/{assessment_id}")

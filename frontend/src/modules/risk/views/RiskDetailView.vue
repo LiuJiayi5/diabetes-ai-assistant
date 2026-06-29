@@ -22,7 +22,7 @@
         </div>
       </section>
 
-      <section class="report-card">
+      <section class="risk-report-card">
         <div class="section-title">
           <FileText :size="17" />
           <h3>报告摘要</h3>
@@ -33,7 +33,7 @@
         </p>
       </section>
 
-      <section v-if="detail.main_risk_factors?.length" class="report-card">
+      <section v-if="detail.main_risk_factors?.length" class="risk-report-card">
         <div class="section-title">
           <AlertTriangle :size="17" />
           <h3>主要风险因素</h3>
@@ -77,7 +77,17 @@
         </article>
       </section>
 
-      <section v-if="detail.request_summary" class="report-card request-card">
+      <section v-if="detail.reference_sources?.length" class="risk-report-card reference-card">
+        <div class="section-title">
+          <BookOpen :size="17" />
+          <h3>知识库参考依据</h3>
+        </div>
+        <ul class="reference-list">
+          <li v-for="(source, index) in detail.reference_sources" :key="index">{{ source }}</li>
+        </ul>
+      </section>
+
+      <section v-if="detail.request_summary" class="risk-report-card request-card">
         <div class="section-title">
           <ClipboardList :size="17" />
           <h3>本次输入摘要</h3>
@@ -85,7 +95,7 @@
         <p class="block-text">{{ detail.request_summary }}</p>
       </section>
 
-      <section v-if="isSparseReport" class="report-card empty-report">
+      <section v-if="isSparseReport" class="risk-report-card empty-report">
         <div class="section-title">
           <Sparkles :size="17" />
           <h3>详细分析待生成</h3>
@@ -107,6 +117,7 @@ import { showToast } from 'vant'
 import {
   Activity,
   AlertTriangle,
+  BookOpen,
   ChartNoAxesColumnIncreasing,
   ClipboardList,
   FileText,
@@ -159,7 +170,7 @@ async function loadDetail() {
 }
 
 .detail-hero,
-.report-card,
+.risk-report-card,
 .mini-card {
   box-shadow: var(--figma-shadow-card);
 }
@@ -249,13 +260,13 @@ async function loadDetail() {
   font-weight: 600;
 }
 
-.report-card,
+.risk-report-card,
 .mini-card {
   border-radius: var(--figma-radius-card);
   background: #FFFFFF;
 }
 
-.report-card {
+.risk-report-card {
   margin-bottom: 12px;
   padding: 16px;
 }
@@ -355,6 +366,18 @@ async function loadDetail() {
 
 .empty-report {
   background: rgba(255, 255, 255, 0.72);
+}
+
+.reference-card {
+  background: linear-gradient(145deg, #FFFFFF 0%, #F4FBF7 100%);
+}
+
+.reference-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--figma-text-secondary);
+  font-size: 13px;
+  line-height: 1.8;
 }
 
 .pre-line {

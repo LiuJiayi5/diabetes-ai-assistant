@@ -49,13 +49,18 @@ diabetes-ai-assistant/
 DB_URL=jdbc:mysql://localhost:3306/diabetes_assistant?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
 DB_USERNAME=root
 DB_PASSWORD=123456
-SMTP_QQ_USERNAME=2385448139@qq.com
-SMTP_QQ_AUTH_CODE=你的 QQ 邮箱授权码
+SMTP_HOST=your_smtp_host
+SMTP_PORT=465
+SMTP_PROTOCOL=smtps
+SMTP_USERNAME=your_sender_email@example.com
+SMTP_AUTH_CODE=your_smtp_auth_code
 DIFY_BASE_URL=http://localhost/v1
 DIFY_RISK_PREDICT_API_KEY=风险预测工作流 Key
 DIFY_LIFE_PLAN_API_KEY=生活方案工作流 Key
 DIFY_CHECKIN_ANALYSIS_API_KEY=打卡分析工作流 Key
 DIFY_AI_DOCTOR_API_KEY=AI 医生 Agent Key
+DIFY_INTERVENTION_REVIEW_API_KEY=周期复盘/自动干预工作流 Key
+DIFY_COMPREHENSIVE_REPORT_API_KEY=综合健康报告工作流 Key
 JWT_SECRET=diabetes_assistant_dev_secret
 ```
 

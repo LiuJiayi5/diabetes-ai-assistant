@@ -83,7 +83,6 @@ import { showToast } from 'vant'
 import { ArrowLeft, Bookmark, BookOpen, Eye, LoaderCircle } from 'lucide-vue-next'
 import { useArticlesStore } from '@/stores/articles'
 import { resolveAssetUrl } from '@/utils/assets'
-import { backPathFromRoute } from '@/utils/navigation'
 import '../styles/articles.css'
 
 const route = useRoute()
@@ -119,7 +118,11 @@ watch(coverUrl, () => {
 })
 
 function goBack() {
-  router.push(backPathFromRoute(route, '/app/articles'))
+  if (window.history.length > 1) {
+    router.back()
+    return
+  }
+  router.push('/app/articles')
 }
 
 function toggleFavorite() {

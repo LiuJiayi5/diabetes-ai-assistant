@@ -10,10 +10,12 @@ import aiChatRoutes from '@/modules/aichat/routes'
 import lifePlanRoutes from '@/modules/lifeplan/routes'
 import articleRoutes from '@/modules/article/routes'
 import checkinRoutes from '@/modules/checkin/routes'
+import reportRoutes from '@/modules/report/routes'
 import adminRoutes from '@/modules/admin/routes'
 
 export const routes = [
   { path: '/', redirect: '/welcome' },
+  { path: '/report-view/:reportId', name: 'PublicReportView', component: () => import('@/modules/report/views/PublicReportView.vue'), meta: { title: '健康报告' } },
   { path: '/', component: BlankLayout, children: authRoutes },
   {
     path: '/app',
@@ -26,7 +28,8 @@ export const routes = [
       ...riskRoutes,
       ...aiChatRoutes,
       ...lifePlanRoutes,
-      ...checkinRoutes
+      ...checkinRoutes,
+      ...reportRoutes
     ]
   },
   { path: '/admin', component: AdminLayout, children: adminRoutes },

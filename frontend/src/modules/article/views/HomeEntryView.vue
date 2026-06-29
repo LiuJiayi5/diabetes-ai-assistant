@@ -25,10 +25,10 @@
         </button>
         <button type="button" class="home-content-carousel__slide" @click="openHomeBanner(activeHomeBanner)">
           <img
-            v-if="activeHomeBannerImage && !failedHomeBannerImages.has(activeHomeBannerImage)"
+            v-if="activeHomeBannerImage && !homeBannerImageFailed"
             :src="activeHomeBannerImage"
             alt=""
-            @error="markHomeBannerImageFailed(activeHomeBannerImage)"
+            @error="homeBannerImageFailed = true"
           />
           <span v-else class="home-content-carousel__fallback" aria-hidden="true">
             <Leaf />
@@ -178,13 +178,12 @@ import { useRouter } from 'vue-router'
 import { getAiExperts } from '@/api/aiChat'
 import { useArticlesStore } from '@/stores/articles'
 import { resolveAssetUrl, resolveAvatarUrl } from '@/utils/assets'
-import { pushWithBack } from '@/utils/navigation'
 
 const router = useRouter()
 const articlesStore = useArticlesStore()
 const experts = ref([])
 const activeHomeBannerIndex = ref(0)
-const failedHomeBannerImages = ref(new Set())
+const homeBannerImageFailed = ref(false)
 let homeCarouselTimer = null
 
 const fallbackDoctors = [
@@ -258,7 +257,7 @@ const articles = [
 ]
 
 function openArticle(article) {
-  pushWithBack(router, `/app/articles/${article.articleId}`, '/app/home')
+  router.push(`/app/articles/${article.articleId}`)
 }
 
 function openDoctor(doctor) {
@@ -281,7 +280,7 @@ async function loadExperts() {
 function openHomeBanner(banner) {
   if (!banner) return
   if (banner.link_type === 'article' && banner.link_value) {
-    pushWithBack(router, `/app/articles/${banner.link_value}`, '/app/home')
+    router.push(`/app/articles/${banner.link_value}`)
     return
   }
   if (banner.link_type === 'life_plan') {
@@ -322,13 +321,6 @@ function prevHomeBanner() {
   activeHomeBannerIndex.value = (activeHomeBannerIndex.value - 1 + displayHomeBanners.value.length) % displayHomeBanners.value.length
 }
 
-function markHomeBannerImageFailed(url) {
-  if (!url) return
-  const next = new Set(failedHomeBannerImages.value)
-  next.add(url)
-  failedHomeBannerImages.value = next
-}
-
 onMounted(async () => {
   await Promise.all([
     loadExperts(),
@@ -341,8 +333,11 @@ onBeforeUnmount(stopHomeCarousel)
 
 watch(displayHomeBanners, () => {
   activeHomeBannerIndex.value = 0
-  failedHomeBannerImages.value = new Set()
   startHomeCarousel()
+})
+
+watch(activeHomeBannerImage, () => {
+  homeBannerImageFailed.value = false
 })
 </script>
 

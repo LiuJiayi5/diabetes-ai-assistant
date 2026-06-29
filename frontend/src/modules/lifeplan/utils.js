@@ -73,7 +73,11 @@ export function normalizeWeeklySchedule(source, context = {}) {
 }
 
 export function groupScheduleByDay(schedule = []) {
-  return normalizeWeeklySchedule(schedule).reduce((groups, day) => {
+  const normalized = Array.isArray(schedule)
+    && schedule.every((day) => day && typeof day === 'object' && Array.isArray(day.dietCards) && Array.isArray(day.exerciseCards))
+    ? schedule
+    : normalizeWeeklySchedule(schedule)
+  return normalized.reduce((groups, day) => {
     groups[day.title] = [
       ...day.dietCards.map((item) => ({ time: item.time, content: item.content })),
       ...day.exerciseCards.map((item) => ({ time: item.time, content: item.content })),
@@ -102,6 +106,21 @@ function extractScheduleDays(source) {
 
 function normalizeScheduleArray(items) {
   if (!items.length) return []
+  const objectItems = items.filter((item) => item && typeof item === 'object')
+  const dayNumbers = objectItems
+    .map((item) => readDayNumber(item))
+    .filter((day) => day > 0)
+  if (dayNumbers.length && new Set(dayNumbers).size < objectItems.length) {
+    const buckets = new Map()
+    objectItems.forEach((item, index) => {
+      const day = readDayNumber(item) || Math.floor(index / 3) + 1
+      const title = normalizeDayTitle(day, day - 1)
+      const list = buckets.get(title) || []
+      list.push(item)
+      buckets.set(title, list)
+    })
+    return Array.from(buckets.entries()).map(([title, list]) => ({ title, day: readDayNumber(list[0]) || undefined, items: list }))
+  }
   if (items.every((item) => item && typeof item === 'object' && hasDayFields(item))) return items
 
   const buckets = new Map()
@@ -114,6 +133,13 @@ function normalizeScheduleArray(items) {
   })
 
   return Array.from(buckets.entries()).map(([title, list]) => ({ title, items: list }))
+}
+
+function readDayNumber(item) {
+  const raw = item?.day ?? item?.day_index ?? item?.dayIndex
+  if (raw == null || raw === '') return 0
+  const match = String(raw).match(/\d+/)
+  return match ? Number(match[0]) : 0
 }
 
 function normalizeTextSchedule(value) {
@@ -132,6 +158,10 @@ function normalizeTextSchedule(value) {
 function normalizeDay(value, index = 0, context = {}) {
   const source = value && typeof value === 'object' ? value : { reminder: value }
   const items = Array.isArray(source.items) ? source.items : Array.isArray(source.tasks) ? source.tasks : []
+  const timedItems = normalizeTimedItems(items)
+  if (timedItems.length) {
+    return normalizeTimedDay(source, timedItems, index, context)
+  }
   const meals = source.meals || source.meal_plan || source.diet_plan || source.dietPlan || source.diet || {}
   const sports = source.exercise_plan || source.exercisePlan || source.exercise || source.sport || source.training || {}
   const generalDiet = cleanText(source.diet_advice || source.diet || source.meal || pickItem(items, /饮食|meal|diet/i), '')
@@ -166,6 +196,106 @@ function normalizeDay(value, index = 0, context = {}) {
     exercise: exerciseCards.map((item) => item.content).join('；'),
     reminder
   }
+}
+
+function normalizeTimedDay(source, items, index = 0, context = {}) {
+  const dayOffset = index % 7
+  const dietCards = items
+    .filter((item) => isDietItem(item))
+    .map((item, itemIndex) => createTimedCard(item, dietCardKey(item, itemIndex), dietCardTitle(item), item.time || '今日饮食'))
+  const exerciseCards = items
+    .filter((item) => isExerciseItem(item))
+    .map((item, itemIndex) => createTimedCard(item, exerciseCardKey(item, itemIndex), exerciseCardTitle(item), item.time || '今日运动'))
+  const otherReminders = items
+    .filter((item) => !isDietItem(item) && !isExerciseItem(item))
+    .map((item) => item.content || item.reminder)
+    .filter(Boolean)
+  const itemReminders = unique(items.map((item) => item.reminder).filter(Boolean))
+  const reminder = cleanText(
+    source.reminder || source.tip || source.health_tip || source.work_rest || source.sleep,
+    cleanText(context.workRestPlan, reminderFallback(dayOffset))
+  )
+
+  return {
+    title: normalizeDayTitle(source.day || source.date || source.title || source.day_index || source.dayIndex, index),
+    dietCards: dietCards.length ? dietCards : [
+      createCard('breakfast', '早餐建议', '07:00', breakfastFallback(dayOffset)),
+      createCard('lunch', '午餐建议', '12:00', lunchFallback(dayOffset)),
+      createCard('dinner', '晚餐建议', '18:00', dinnerFallback(dayOffset))
+    ],
+    exerciseCards: exerciseCards.length ? exerciseCards : [
+      createCard('light', '晨间/餐后轻运动', '餐后 20 分钟', lightExerciseFallback(dayOffset))
+    ],
+    reminders: unique([reminder, ...itemReminders, ...otherReminders, '如血糖明显异常、身体不适或需要调整用药，请及时咨询线下医生。']).filter(Boolean),
+    diet: dietCards.map((item) => item.content).join('；'),
+    exercise: exerciseCards.map((item) => item.content).join('；'),
+    reminder
+  }
+}
+
+function normalizeTimedItems(items) {
+  if (!Array.isArray(items) || !items.length) return []
+  const result = items
+    .map((item) => item && typeof item === 'object' ? item : null)
+    .filter(Boolean)
+    .filter((item) => item.time || item.task || item.content)
+  return result.length >= 2 ? result : []
+}
+
+function createTimedCard(item, key, title, fallbackTime) {
+  return createCard(key, title, item.time || fallbackTime, item.content || item.description || item.task_name || item.task || item.reminder)
+}
+
+function dietCardKey(item, index) {
+  const text = itemMarker(item)
+  if (/早餐|breakfast|morning/i.test(text)) return 'breakfast'
+  if (/午餐|lunch|noon/i.test(text)) return 'lunch'
+  if (/晚餐|dinner|evening/i.test(text)) return 'dinner'
+  if (/加餐|snack|水果|fruit/i.test(text)) return 'snack'
+  return `diet-${index}`
+}
+
+function dietCardTitle(item) {
+  const text = itemMarker(item)
+  if (/早餐|breakfast|morning/i.test(text)) return '早餐建议'
+  if (/午餐|lunch|noon/i.test(text)) return '午餐建议'
+  if (/晚餐|dinner|evening/i.test(text)) return '晚餐建议'
+  if (/加餐|snack|水果|fruit/i.test(text)) return '加餐建议'
+  return cleanText(item.task || item.title || item.name, '饮食建议')
+}
+
+function exerciseCardKey(item, index) {
+  const text = itemMarker(item)
+  if (/有氧|aerobic|快走|骑行|walk/i.test(text)) return 'aerobic'
+  if (/抗阻|拉伸|力量|resistance|stretch/i.test(text)) return 'resistance'
+  if (/注意|notice|tip/i.test(text)) return 'notice'
+  return `exercise-${index}`
+}
+
+function exerciseCardTitle(item) {
+  const text = itemMarker(item)
+  if (/有氧|aerobic|快走|骑行|walk/i.test(text)) return '有氧运动'
+  if (/抗阻|拉伸|力量|resistance|stretch/i.test(text)) return '抗阻或拉伸训练'
+  if (/注意|notice|tip/i.test(text)) return '运动注意事项'
+  return cleanText(item.task || item.title || item.name, '运动建议')
+}
+
+function isDietItem(item) {
+  const text = itemMarker(item)
+  return /早餐|午餐|晚餐|加餐|饮食|主食|meal|diet|breakfast|lunch|dinner|snack/i.test(text)
+}
+
+function isExerciseItem(item) {
+  const text = itemMarker(item)
+  return /运动|锻炼|快走|步行|有氧|抗阻|拉伸|exercise|sport|walk|aerobic|resistance|stretch/i.test(text)
+}
+
+function itemMarker(item) {
+  return `${item?.task || ''}${item?.type || ''}${item?.task_type || ''}${item?.name || ''}${item?.title || ''}${item?.time || ''}${item?.content || ''}`
+}
+
+function unique(items) {
+  return [...new Set(items.filter(Boolean))]
 }
 
 function ensureSevenDays(days, context) {

@@ -189,12 +189,12 @@ public class InterventionReviewServiceImpl implements InterventionReviewService 
     private int totalPlanDays(String scheduleJson) {
         Object value = parseAny(scheduleJson);
         if (value instanceof List<?> list && !list.isEmpty()) {
-            return list.size();
+            return countScheduleDays(list);
         }
         if (value instanceof Map<?, ?> map) {
             Object nested = firstPresent(map, "daily_schedule", "weekly_schedule", "days", "plan_days");
             if (nested instanceof List<?> list && !list.isEmpty()) {
-                return list.size();
+                return countScheduleDays(list);
             }
         }
         return 7;
@@ -435,11 +435,8 @@ public class InterventionReviewServiceImpl implements InterventionReviewService 
             Map<String, Object> safeDay = new LinkedHashMap<>(originalDays.getOrDefault(day, Map.of()));
             safeDay.put("day", day);
             safeDay.put("reminder", "今日运动目标调整为伤病恢复优先：暂停步行、跑跳、下肢拉伸和原地踏步；如医生允许，可做坐姿上肢轻活动或呼吸放松 5-10 分钟。");
-            safeDay.put("exercise_plan", Map.of(
-                    "light", "暂停步行、跑跳、下肢拉伸和原地踏步；如医生允许，可做坐姿上肢轻活动或呼吸放松 5-10 分钟。",
-                    "aerobic", "暂不安排有氧运动，待医生确认可以恢复活动后再逐步增加。",
-                    "resistance", "暂不安排下肢抗阻训练；仅在医生或康复师允许时做坐姿上肢轻活动。",
-                    "notice", "骨折或行动受限期间先遵医嘱康复，任何疼痛加重都应立即停止活动。"));
+            safeDay.put("exercise_plan", safeExercisePlan());
+            safeDay.computeIfPresent("items", (key, value) -> rewriteUnsafeExerciseItems(value));
             safeDays.add(safeDay);
         }
         Map<String, Object> patch = new LinkedHashMap<>(originalPatch);
@@ -448,6 +445,39 @@ public class InterventionReviewServiceImpl implements InterventionReviewService 
                 "骨折或明显疼痛期间不要自行进行下肢运动，恢复活动前请先确认医生或康复师建议。"));
         patch.put("summary", "后续方案已根据近期伤病备注调整为恢复期安全版本：饮食和血糖管理继续执行，运动部分暂停下肢负荷活动。");
         return patch;
+    }
+
+    private Map<String, Object> safeExercisePlan() {
+        return Map.of(
+                "light", "暂停步行、跑跳、下肢拉伸和原地踏步；如医生允许，可做坐姿上肢轻活动或呼吸放松 5-10 分钟。",
+                "aerobic", "暂不安排有氧运动，待医生确认可以恢复活动后再逐步增加。",
+                "resistance", "暂不安排下肢抗阻训练；仅在医生或康复师允许时做坐姿上肢轻活动。",
+                "notice", "骨折或行动受限期间先遵医嘱康复，任何疼痛加重都应立即停止活动。");
+    }
+
+    private Object rewriteUnsafeExerciseItems(Object value) {
+        if (!(value instanceof List<?> list)) {
+            return value;
+        }
+        List<Object> result = new ArrayList<>();
+        for (Object item : list) {
+            Map<String, Object> itemMap = parseObject(item);
+            if (itemMap.isEmpty()) {
+                result.add(item);
+                continue;
+            }
+            String marker = (asString(itemMap.get("task")) + " " + asString(itemMap.get("type")) + " " + asString(itemMap.get("name"))).toLowerCase();
+            if (marker.contains("运动") || marker.contains("exercise") || marker.contains("sport") || marker.contains("walk") || marker.contains("跑") || marker.contains("步行")) {
+                Map<String, Object> safeItem = new LinkedHashMap<>(itemMap);
+                safeItem.put("content", "暂停步行、跑跳、下肢拉伸和原地踏步；如医生允许，可做坐姿上肢轻活动或呼吸放松 5-10 分钟。");
+                safeItem.put("exercise_plan", safeExercisePlan());
+                safeItem.put("reminder", "伤病恢复优先，任何疼痛加重都应立即停止活动。");
+                result.add(safeItem);
+            } else {
+                result.add(itemMap);
+            }
+        }
+        return result;
     }
 
     private Map<String, Object> extractReviewResult(Map<String, Object> outputs) {
@@ -631,15 +661,64 @@ public class InterventionReviewServiceImpl implements InterventionReviewService 
 
     private List<Object> normalizeScheduleList(Object value) {
         if (value instanceof List<?> list) {
-            return new ArrayList<>(list);
+            return groupFlatScheduleItems(list);
         }
         if (value instanceof Map<?, ?> map) {
             Object nested = firstPresent(map, "daily_schedule", "weekly_schedule", "days", "plan_days");
             if (nested instanceof List<?> list) {
-                return new ArrayList<>(list);
+                return groupFlatScheduleItems(list);
             }
         }
         return List.of();
+    }
+
+    private int countScheduleDays(List<?> list) {
+        int maxDay = 0;
+        for (Object item : list) {
+            Integer day = toInteger(parseObject(item).get("day"));
+            if (day != null) {
+                maxDay = Math.max(maxDay, day);
+            }
+        }
+        return maxDay > 0 ? maxDay : list.size();
+    }
+
+    private List<Object> groupFlatScheduleItems(List<?> list) {
+        if (list == null || list.isEmpty()) {
+            return List.of();
+        }
+        Map<Integer, List<Map<String, Object>>> grouped = new LinkedHashMap<>();
+        int dayValueCount = 0;
+        for (Object item : list) {
+            Map<String, Object> itemMap = parseObject(item);
+            Integer day = toInteger(itemMap.get("day"));
+            if (day != null) {
+                dayValueCount++;
+                grouped.computeIfAbsent(day, ignored -> new ArrayList<>()).add(itemMap);
+            }
+        }
+        boolean flatTimedItems = dayValueCount > 0
+                && grouped.size() < dayValueCount
+                && list.stream().map(this::parseObject).anyMatch(item -> item.containsKey("time") || item.containsKey("task") || item.containsKey("content"));
+        if (!flatTimedItems) {
+            return new ArrayList<>(list);
+        }
+        List<Object> result = new ArrayList<>();
+        for (Map.Entry<Integer, List<Map<String, Object>>> entry : grouped.entrySet()) {
+            Map<String, Object> day = new LinkedHashMap<>();
+            day.put("day", entry.getKey());
+            day.put("items", entry.getValue());
+            List<String> reminders = entry.getValue().stream()
+                    .map(item -> asString(item.get("reminder")))
+                    .filter(StringUtils::hasText)
+                    .distinct()
+                    .toList();
+            if (!reminders.isEmpty()) {
+                day.put("reminder", String.join("；", reminders));
+            }
+            result.add(day);
+        }
+        return result;
     }
 
     private String buildAdjustedPlanSummary(LifePlan current, InterventionReview review) {

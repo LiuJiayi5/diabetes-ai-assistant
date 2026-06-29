@@ -68,7 +68,7 @@ public class CheckinServiceImpl implements CheckinService {
         }
 
         PlanExecutionInfo executionInfo = buildPlanExecutionInfo(currentPlan, targetDate);
-        List<TaskDefinition> taskDefinitions = parseTaskDefinitions(currentPlan.getCheckinTasksJson());
+        List<TaskDefinition> taskDefinitions = buildTaskDefinitions(currentPlan.getCheckinTasksJson(), executionInfo.todaySchedule());
         List<CheckinRecord> existingRecords = selectDailyTaskRecords(listRecordsForDate(userId, targetDate));
         if (!existingRecords.isEmpty()) {
             syncRecordsToCurrentPlan(existingRecords, currentPlan.getPlanId(), taskDefinitions);
@@ -335,6 +335,16 @@ public class CheckinServiceImpl implements CheckinService {
                 .orderByAsc(CheckinRecord::getTaskType));
     }
 
+    private List<TaskDefinition> buildTaskDefinitions(String checkinTasksJson, Map<String, Object> todaySchedule) {
+        List<TaskDefinition> definitions = parseTaskDefinitions(checkinTasksJson);
+        List<TaskDefinition> enriched = new ArrayList<>();
+        for (TaskDefinition definition : definitions) {
+            String advice = extractTaskAdvice(definition.taskType(), todaySchedule);
+            enriched.add(new TaskDefinition(definition.taskType(), buildTaskName(definition.taskType(), advice, definition.taskName())));
+        }
+        return enriched;
+    }
+
     private List<TaskDefinition> parseTaskDefinitions(String checkinTasksJson) {
         List<TaskDefinition> defaults = List.of(
                 new TaskDefinition(TASK_TYPE_DIET, "饮食打卡"),
@@ -405,7 +415,7 @@ public class CheckinServiceImpl implements CheckinService {
 
     private PlanExecutionInfo buildPlanExecutionInfo(LifePlanDTO plan, LocalDate targetDate) {
         List<JsonNode> scheduleDays = extractScheduleDays(plan.getDailyScheduleJson());
-        int totalDays = scheduleDays.isEmpty() ? 7 : scheduleDays.size();
+        int totalDays = totalPlanDays(scheduleDays);
         LocalDate startDate = plan.getCreateTime() == null ? targetDate : plan.getCreateTime().toLocalDate();
         int day = (int) ChronoUnit.DAYS.between(startDate, targetDate) + 1;
         boolean expired = day > totalDays;
@@ -437,6 +447,20 @@ public class CheckinServiceImpl implements CheckinService {
         } catch (JsonProcessingException exception) {
             return List.of();
         }
+    }
+
+    private int totalPlanDays(List<JsonNode> scheduleDays) {
+        if (scheduleDays == null || scheduleDays.isEmpty()) {
+            return 7;
+        }
+        int maxDay = 0;
+        for (JsonNode node : scheduleDays) {
+            maxDay = Math.max(maxDay, readDayNumber(node));
+        }
+        if (maxDay > 0) {
+            return maxDay;
+        }
+        return Math.min(Math.max(scheduleDays.size(), 1), 30);
     }
 
     private JsonNode unwrapScheduleNode(JsonNode node) {
@@ -539,6 +563,28 @@ public class CheckinServiceImpl implements CheckinService {
             return StringUtils.hasText(text) ? text : firstText(todaySchedule, "reminder", "goal", "content");
         }
         return null;
+    }
+
+    private String buildTaskName(String taskType, String advice, String fallback) {
+        String compact = compactAdvice(advice);
+        if (TASK_TYPE_DIET.equals(taskType)) {
+            return StringUtils.hasText(compact) ? "饮食打卡：" + compact : fallback;
+        }
+        if (TASK_TYPE_EXERCISE.equals(taskType)) {
+            return StringUtils.hasText(compact) ? "运动打卡：" + compact : fallback;
+        }
+        return fallback;
+    }
+
+    private String compactAdvice(String advice) {
+        if (!StringUtils.hasText(advice)) {
+            return "";
+        }
+        String compact = advice.replaceAll("\\s+", " ").trim();
+        if (compact.length() <= 34) {
+            return compact;
+        }
+        return compact.substring(0, 34) + "...";
     }
 
     private String extractTodayFocus(Map<String, Object> todaySchedule, int day) {
