@@ -90,7 +90,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import {
@@ -113,6 +113,14 @@ import { decodeTokenPayload, getToken } from '@/utils/token'
 const router = useRouter()
 const authStore = useAuthStore()
 const showLogoutDialog = ref(false)
+
+watch(showLogoutDialog, (visible) => {
+  setPatientScrollLocked(visible)
+}, { flush: 'post' })
+
+onBeforeUnmount(() => {
+  setPatientScrollLocked(false)
+})
 
 const currentUser = computed(() => authStore.user || {
   username: '未命名用户',
@@ -181,6 +189,12 @@ function confirmLogout() {
   showLogoutDialog.value = false
   showToast('已退出登录')
   router.push('/login')
+}
+function setPatientScrollLocked(locked) {
+  const scroller = document.querySelector('.patient-layout__body')
+  if (scroller) {
+    scroller.classList.toggle('patient-layout__body--modal-locked', locked)
+  }
 }
 </script>
 
@@ -471,15 +485,23 @@ function confirmLogout() {
 }
 
 .logout-overlay {
-  position: absolute;
-  inset: 0;
+  position: fixed;
+  top: 50%;
+  left: 50%;
   z-index: 2000;
+  width: min(100%, var(--figma-device-width));
+  height: min(calc(100vh - 16px), var(--figma-device-height));
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
+  border-radius: var(--figma-device-radius);
   background: rgba(36, 50, 61, 0.28);
   backdrop-filter: blur(6px);
+  transform: translate(-50%, -50%);
+  overflow: hidden;
+  overscroll-behavior: contain;
+  touch-action: none;
 }
 
 .logout-dialog {
@@ -527,6 +549,20 @@ function confirmLogout() {
 .dialog-button--danger {
   background: var(--figma-danger-button);
   color: #FFFFFF;
+}
+
+:global(.patient-layout__body--modal-locked) {
+  overflow: hidden !important;
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+
+@media (max-width: 520px) {
+  .logout-overlay {
+    width: 100%;
+    height: 100vh;
+    border-radius: 0;
+  }
 }
 
 </style>
