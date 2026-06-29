@@ -1,0 +1,767 @@
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/parentchild_chunker:0.0.7@ee9c253e7942436b4de0318200af97d98d094262f3c1a56edbe29dcb01fbc158
+    version: null
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: yevanchen/markitdown:0.0.4@776b3e2e930e2ffd28a75bb20fecbe7a020849cf754f86e604acacf1258877f6
+    version: null
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/tongyi:0.2.1@0924de1d15a8a35b0cc64ff396c68d5edddcfbc495a1e52ea57e8648434eff4b
+    version: null
+kind: rag_pipeline
+rag_pipeline:
+  description: 'Route uploaded documents by file type: Markdown files go directly
+    to text extraction, while Office/HTML/TXT/XML/CSV files are converted through
+    MarkItDown before parent-child chunking.'
+  icon: 📙
+  icon_background: '#FFF4ED'
+  icon_type: emoji
+  icon_url: null
+  name: Smart Diabetes KB Import Pipeline
+version: 0.1.0
+workflow:
+  conversation_variables: []
+  environment_variables:
+  - description: ''
+    id: 20933693-a8e1-47f0-84df-d4c671454d8b
+    name: FILES_URL
+    selector:
+    - env
+    - FILES_URL
+    value: http://localhost
+    value_type: string
+  features: {}
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: datasource
+        targetType: if-else
+      id: 1750400203722-source-route_markdown_document-target
+      selected: false
+      source: '1750400203722'
+      sourceHandle: source
+      target: route_markdown_document
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: document-extractor
+      id: route_markdown_document-markdown_direct-extract_markdown_text-target
+      selected: false
+      source: route_markdown_document
+      sourceHandle: markdown_direct
+      target: extract_markdown_text
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: tool
+      id: route_markdown_document-false-1751359716720-target
+      selected: false
+      source: route_markdown_document
+      sourceHandle: 'false'
+      target: '1751359716720'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: document-extractor
+        targetType: variable-aggregator
+      id: extract_markdown_text-source-select_chunk_input_text-target
+      selected: false
+      source: extract_markdown_text
+      sourceHandle: source
+      target: select_chunk_input_text
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: tool
+        targetType: variable-aggregator
+      id: 1751359716720-source-select_chunk_input_text-target
+      selected: false
+      source: '1751359716720'
+      sourceHandle: source
+      target: select_chunk_input_text
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: variable-aggregator
+        targetType: tool
+      id: select_chunk_input_text-source-1751336942081-target
+      selected: false
+      source: select_chunk_input_text
+      sourceHandle: source
+      target: '1751336942081'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: tool
+        targetType: knowledge-index
+      id: 1751336942081-source-1750400198569-target
+      selected: false
+      source: '1751336942081'
+      sourceHandle: source
+      target: '1750400198569'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        chunk_structure: hierarchical_model
+        embedding_model: text-embedding-v4
+        embedding_model_provider: langgenius/tongyi/tongyi
+        index_chunk_variable_selector:
+        - '1751336942081'
+        - result
+        indexing_technique: high_quality
+        keyword_number: 10
+        retrieval_model:
+          reranking_enable: true
+          reranking_mode: reranking_model
+          reranking_model:
+            reranking_model_name: qwen3-rerank
+            reranking_provider_name: langgenius/tongyi/tongyi
+          score_threshold: 0
+          score_threshold_enabled: false
+          search_method: hybrid_search
+          top_k: 3
+          weights:
+            keyword_setting:
+              keyword_weight: 0.3
+            vector_setting:
+              embedding_model_name: text-embedding-v4
+              embedding_provider_name: langgenius/tongyi/tongyi
+              vector_weight: 0.7
+        selected: false
+        summary_index_setting:
+          enable: null
+          model_name: null
+          model_provider_name: null
+          summary_prompt: null
+        title: Knowledge Base
+        type: knowledge-index
+      height: 165
+      id: '1750400198569'
+      position:
+        x: 880
+        y: 282
+      positionAbsolute:
+        x: 880
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        datasource_configurations: {}
+        datasource_label: File
+        datasource_name: upload-file
+        datasource_parameters: {}
+        desc: Upload Markdown directly, or upload Office/HTML/TXT/XML/CSV files for
+          conversion before indexing.
+        fileExtensions:
+        - html
+        - xlsx
+        - xls
+        - doc
+        - docx
+        - csv
+        - pptx
+        - xml
+        - ppt
+        - txt
+        - md
+        - markdown
+        - mdx
+        plugin_id: langgenius/file
+        provider_name: file
+        provider_type: local_file
+        selected: false
+        title: File
+        type: datasource
+      height: 111
+      id: '1750400203722'
+      position:
+        x: -620
+        y: 282
+      positionAbsolute:
+        x: -620
+        y: 282
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        desc: Chunk the routed Markdown/plain text with parent-child structure for
+          diabetes KB retrieval.
+        is_team_authorization: true
+        output_schema:
+          properties:
+            result:
+              description: Parent child chunks result
+              items:
+                type: object
+              type: array
+          type: object
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: ''
+            ja_JP: ''
+            pt_BR: ''
+            zh_Hans: ''
+          label:
+            en_US: Input Content
+            ja_JP: Input Content
+            pt_BR: Conteúdo de Entrada
+            zh_Hans: 输入文本
+          llm_description: The text you want to chunk.
+          max: null
+          min: null
+          name: input_text
+          options: []
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: paragraph
+          form: llm
+          human_description:
+            en_US: Split text into paragraphs based on separator and maximum chunk
+              length, using split text as parent block or entire document as parent
+              block and directly retrieve.
+            ja_JP: Split text into paragraphs based on separator and maximum chunk
+              length, using split text as parent block or entire document as parent
+              block and directly retrieve.
+            pt_BR: Dividir texto em parágrafos com base no separador e no comprimento
+              máximo do bloco, usando o texto dividido como bloco pai ou documento
+              completo como bloco pai e diretamente recuperá-lo.
+            zh_Hans: 根据分隔符和最大块长度将文本拆分为段落，使用拆分文本作为检索的父块或整个文档用作父块并直接检索。
+          label:
+            en_US: Parent Mode
+            ja_JP: Parent Mode
+            pt_BR: Modo Pai
+            zh_Hans: 父块模式
+          llm_description: Split text into paragraphs based on separator and maximum
+            chunk length, using split text as parent block or entire document as parent
+            block and directly retrieve.
+          max: null
+          min: null
+          name: parent_mode
+          options:
+          - label:
+              en_US: Paragraph
+              ja_JP: Paragraph
+              pt_BR: Parágrafo
+              zh_Hans: 段落
+            value: paragraph
+          - label:
+              en_US: Full Document
+              ja_JP: Full Document
+              pt_BR: Documento Completo
+              zh_Hans: 全文
+            value: full_doc
+          placeholder: null
+          precision: null
+          required: true
+          scope: null
+          template: null
+          type: select
+        - auto_generate: null
+          default: '
+
+
+            '
+          form: llm
+          human_description:
+            en_US: Separator used for chunking
+            ja_JP: Separator used for chunking
+            pt_BR: Separador usado para divisão
+            zh_Hans: 用于分块的分隔符
+          label:
+            en_US: Parent Delimiter
+            ja_JP: Parent Delimiter
+            pt_BR: Separador de Pai
+            zh_Hans: 父块分隔符
+          llm_description: The separator used to split chunks
+          max: null
+          min: null
+          name: separator
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: 1024
+          form: llm
+          human_description:
+            en_US: Maximum length for chunking
+            ja_JP: Maximum length for chunking
+            pt_BR: Comprimento máximo para divisão
+            zh_Hans: 用于分块的最大长度
+          label:
+            en_US: Maximum Parent Chunk Length
+            ja_JP: Maximum Parent Chunk Length
+            pt_BR: Comprimento Máximo do Bloco Pai
+            zh_Hans: 最大父块长度
+          llm_description: Maximum length allowed per chunk
+          max: null
+          min: null
+          name: max_length
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: '. '
+          form: llm
+          human_description:
+            en_US: Separator used for subchunking
+            ja_JP: Separator used for subchunking
+            pt_BR: Separador usado para subdivisão
+            zh_Hans: 用于子分块的分隔符
+          label:
+            en_US: Child Delimiter
+            ja_JP: Child Delimiter
+            pt_BR: Separador de Subdivisão
+            zh_Hans: 子分块分隔符
+          llm_description: The separator used to split subchunks
+          max: null
+          min: null
+          name: subchunk_separator
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: string
+        - auto_generate: null
+          default: 512
+          form: llm
+          human_description:
+            en_US: Maximum length for subchunking
+            ja_JP: Maximum length for subchunking
+            pt_BR: Comprimento máximo para subdivisão
+            zh_Hans: 用于子分块的最大长度
+          label:
+            en_US: Maximum Child Chunk Length
+            ja_JP: Maximum Child Chunk Length
+            pt_BR: Comprimento Máximo de Subdivisão
+            zh_Hans: 子分块最大长度
+          llm_description: Maximum length allowed per subchunk
+          max: null
+          min: null
+          name: subchunk_max_length
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: number
+        - auto_generate: null
+          default: 0
+          form: llm
+          human_description:
+            en_US: Whether to remove consecutive spaces, newlines and tabs
+            ja_JP: Whether to remove consecutive spaces, newlines and tabs
+            pt_BR: Se deve remover espaços extras no texto
+            zh_Hans: 是否移除文本中的连续空格、换行符和制表符
+          label:
+            en_US: Replace consecutive spaces, newlines and tabs
+            ja_JP: Replace consecutive spaces, newlines and tabs
+            pt_BR: Substituir espaços consecutivos, novas linhas e guias
+            zh_Hans: 替换连续空格、换行符和制表符
+          llm_description: Whether to remove consecutive spaces, newlines and tabs
+          max: null
+          min: null
+          name: remove_extra_spaces
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: boolean
+        - auto_generate: null
+          default: 0
+          form: llm
+          human_description:
+            en_US: Whether to remove URLs and emails in the text
+            ja_JP: Whether to remove URLs and emails in the text
+            pt_BR: Se deve remover URLs e e-mails no texto
+            zh_Hans: 是否移除文本中的URL和电子邮件地址
+          label:
+            en_US: Delete all URLs and email addresses
+            ja_JP: Delete all URLs and email addresses
+            pt_BR: Remover todas as URLs e e-mails
+            zh_Hans: 删除所有URL和电子邮件地址
+          llm_description: Whether to remove URLs and emails in the text
+          max: null
+          min: null
+          name: remove_urls_emails
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: boolean
+        params:
+          input_text: ''
+          max_length: ''
+          parent_mode: ''
+          remove_extra_spaces: ''
+          remove_urls_emails: ''
+          separator: ''
+          subchunk_max_length: ''
+          subchunk_separator: ''
+        provider_id: langgenius/parentchild_chunker/parentchild_chunker
+        provider_name: langgenius/parentchild_chunker/parentchild_chunker
+        provider_type: builtin
+        selected: false
+        title: Parent-child Chunker
+        tool_configurations: {}
+        tool_description: Process documents into parent-child chunk structures
+        tool_label: Parent-child Chunker
+        tool_name: parentchild_chunker
+        tool_node_version: '2'
+        tool_parameters:
+          input_text:
+            type: mixed
+            value: '{{#select_chunk_input_text.output#}}'
+          max_length:
+            type: variable
+            value:
+            - rag
+            - shared
+            - Maximum_Parent_Length
+          parent_mode:
+            type: variable
+            value:
+            - rag
+            - shared
+            - Parent_Mode
+          separator:
+            type: mixed
+            value: '{{#rag.shared.Parent_Delimiter#}}'
+          subchunk_max_length:
+            type: variable
+            value:
+            - rag
+            - shared
+            - Maximum_Child_Length
+          subchunk_separator:
+            type: mixed
+            value: '{{#rag.shared.Child_Delimiter#}}'
+        type: tool
+      height: 111
+      id: '1751336942081'
+      position:
+        x: 570
+        y: 282
+      positionAbsolute:
+        x: 570
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        desc: Only used for non-Markdown documents. Converts Office/HTML/TXT/XML/CSV
+          content into Markdown text.
+        is_team_authorization: true
+        output_schema: null
+        paramSchemas:
+        - auto_generate: null
+          default: null
+          form: llm
+          human_description:
+            en_US: Upload files for processing
+            ja_JP: Upload files for processing
+            pt_BR: Carregar arquivos para processamento
+            zh_Hans: 上传文件进行处理
+          label:
+            en_US: Files
+            ja_JP: Files
+            pt_BR: Arquivos
+            zh_Hans: 文件
+          llm_description: ''
+          max: null
+          min: null
+          name: files
+          options: []
+          placeholder: null
+          precision: null
+          required: false
+          scope: null
+          template: null
+          type: files
+        params:
+          files: ''
+        provider_id: yevanchen/markitdown/markitdown
+        provider_name: yevanchen/markitdown/markitdown
+        provider_type: builtin
+        selected: false
+        title: Convert non-Markdown
+        tool_configurations: {}
+        tool_description: Python tool for converting files and office documents to
+          Markdown.
+        tool_label: markitdown
+        tool_name: markitdown
+        tool_node_version: '2'
+        tool_parameters:
+          files:
+            type: variable
+            value:
+            - '1750400203722'
+            - file
+        type: tool
+      height: 127
+      id: '1751359716720'
+      position:
+        x: -38.78048780487802
+        y: 450.3930169615718
+      positionAbsolute:
+        x: -38.78048780487802
+        y: 450.3930169615718
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        cases:
+        - case_id: markdown_direct
+          conditions:
+          - comparison_operator: is
+            id: markdown-extension-md
+            value: .md
+            varType: file
+            variable_selector:
+            - '1750400203722'
+            - file
+            - extension
+          - comparison_operator: is
+            id: markdown-extension-markdown
+            value: .markdown
+            varType: file
+            variable_selector:
+            - '1750400203722'
+            - file
+            - extension
+          - comparison_operator: is
+            id: markdown-extension-mdx
+            value: .mdx
+            varType: file
+            variable_selector:
+            - '1750400203722'
+            - file
+            - extension
+          id: markdown_direct
+          logical_operator: or
+        desc: If the uploaded file is already Markdown, skip MarkItDown. Otherwise
+          convert it to Markdown first.
+        selected: false
+        title: Is Markdown file?
+        type: if-else
+      height: 275
+      id: route_markdown_document
+      position:
+        x: -330
+        y: 244
+      positionAbsolute:
+        x: -330
+        y: 244
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        desc: Extract text from uploaded Markdown without running the MarkItDown conversion
+          tool.
+        is_array_file: false
+        selected: false
+        title: Read Markdown text
+        type: document-extractor
+        variable_selector:
+        - '1750400203722'
+        - file
+      height: 163
+      id: extract_markdown_text
+      position:
+        x: -46.097560975609724
+        y: 175.24390243902434
+      positionAbsolute:
+        x: -46.097560975609724
+        y: 175.24390243902434
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    - data:
+        advanced_settings:
+          group_enabled: false
+          groups:
+          - groupId: smart-kb-import-text-group
+            group_name: MarkdownText
+            output_type: string
+            variables:
+            - - extract_markdown_text
+              - text
+            - - '1751359716720'
+              - text
+        desc: Aggregate the text from either the direct Markdown path or the conversion
+          path for downstream chunking.
+        output_type: string
+        selected: false
+        title: Chunk input text
+        type: variable-aggregator
+        variables:
+        - - extract_markdown_text
+          - text
+        - - '1751359716720'
+          - text
+      height: 209
+      id: select_chunk_input_text
+      position:
+        x: 260
+        y: 282
+      positionAbsolute:
+        x: 260
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+    viewport:
+      x: 588.3518530795285
+      y: 108.32037106575751
+      zoom: 0.692195438295426
+  rag_pipeline_variables:
+  - allowed_file_extensions: []
+    allowed_file_types: null
+    allowed_file_upload_methods: []
+    belong_to_node_id: shared
+    default_value: paragraph
+    description: ''
+    label: Parent Mode
+    max_length: 48
+    options:
+    - paragraph
+    - full_doc
+    placeholder: null
+    required: true
+    tooltips: 'Parent Mode provides two options: paragraph mode splits text into paragraphs
+      as parent chunks for retrieval, while full_doc mode uses the entire document
+      as a single parent chunk (text beyond 10,000 tokens will be truncated).'
+    type: select
+    unit: null
+    variable: Parent_Mode
+  - allowed_file_extensions: []
+    allowed_file_types: null
+    allowed_file_upload_methods: []
+    belong_to_node_id: shared
+    default_value: \n\n
+    description: ''
+    label: Parent Delimiter
+    max_length: 48
+    options: []
+    placeholder: null
+    required: false
+    tooltips: A delimiter is the character used to separate text. \n\n is recommended
+      for splitting the original document into large parent chunks. You can also use
+      special delimiters defined by yourself.
+    type: text-input
+    unit: null
+    variable: Parent_Delimiter
+  - allowed_file_extensions: []
+    allowed_file_types: null
+    allowed_file_upload_methods: []
+    belong_to_node_id: shared
+    default_value: 1024
+    description: ''
+    label: Maximum Parent Length
+    max_length: 48
+    options: []
+    placeholder: null
+    required: false
+    tooltips: null
+    type: number
+    unit: tokens
+    variable: Maximum_Parent_Length
+  - allowed_file_extensions: []
+    allowed_file_types: null
+    allowed_file_upload_methods: []
+    belong_to_node_id: shared
+    default_value: \n
+    description: ''
+    label: Child Delimiter
+    max_length: 48
+    options: []
+    placeholder: null
+    required: true
+    tooltips: A delimiter is the character used to separate text. \n is recommended
+      for splitting parent chunks into small child chunks. You can also use special
+      delimiters defined by yourself.
+    type: text-input
+    unit: null
+    variable: Child_Delimiter
+  - allowed_file_extensions: []
+    allowed_file_types: null
+    allowed_file_upload_methods: []
+    belong_to_node_id: shared
+    default_value: 256
+    description: ''
+    label: Maximum Child Length
+    max_length: 48
+    options: []
+    placeholder: null
+    required: true
+    tooltips: null
+    type: number
+    unit: tokens
+    variable: Maximum_Child_Length

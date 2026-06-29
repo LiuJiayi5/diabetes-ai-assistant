@@ -10,6 +10,7 @@ import com.diabetes.assistant.modules.dify.service.DifyService;
 import com.diabetes.assistant.modules.healthmetric.contract.HealthMetricQueryApi;
 import com.diabetes.assistant.modules.healthmetric.contract.dto.HealthMetricDTO;
 import com.diabetes.assistant.modules.healthmetric.util.MetricAbnormalUtils;
+import com.diabetes.assistant.modules.interventionreview.service.InterventionReviewTriggerService;
 import com.diabetes.assistant.modules.profile.contract.PatientProfileQueryApi;
 import com.diabetes.assistant.modules.profile.contract.dto.PatientProfileDTO;
 import com.diabetes.assistant.modules.risk.contract.RiskAssessmentQueryApi;
@@ -35,6 +36,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +51,7 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
     private final DifyService difyService;
     private final DifyProperties difyProperties;
     private final UserQueryApi userQueryApi;
+    private final InterventionReviewTriggerService interventionReviewTriggerService;
 
     @Override
     public RiskEntryResponse getEntry(Integer userId) {
@@ -83,7 +86,7 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
 
         Map<String, Object> inputs = buildDifyInputs(profile, metric);
         String requestSummary = buildRequestSummary(profile, metric, inputs);
-        String rawResponse;
+        String rawResponse = null;
         ParsedRiskResult parsed;
         String callStatus;
         String errorMessage = null;
@@ -97,17 +100,18 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
                     rawResponse = buildDevMockResponse();
                 }
             }
-            parsed = RiskResultParser.parse(rawResponse);
+            parsed = completeParsedResult(RiskResultParser.parse(rawResponse), profile, metric);
             callStatus = "success";
         } catch (Exception exception) {
             callStatus = "failed";
-            errorMessage = exception.getMessage();
-            rawResponse = null;
+            errorMessage = buildErrorMessage(exception);
             parsed = null;
 
             RiskAssessment failed = new RiskAssessment();
             failed.setUserId(userId);
+            failed.setMetricId(metric.getMetricId());
             failed.setRequestSummary(requestSummary);
+            failed.setResponseResult(rawResponse);
             failed.setCallStatus(callStatus);
             failed.setErrorMessage(errorMessage);
             riskAssessmentMapper.insert(failed);
@@ -118,14 +122,19 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
 
         RiskAssessment assessment = new RiskAssessment();
         assessment.setUserId(userId);
+        assessment.setMetricId(metric.getMetricId());
         assessment.setRequestSummary(requestSummary);
         assessment.setResponseResult(rawResponse);
-        assessment.setRiskLevel(parsed.getRiskLevel());
-        assessment.setRiskScore(parsed.getRiskScore());
+        applyParsedResult(assessment, parsed);
         assessment.setCallStatus(callStatus);
         riskAssessmentMapper.insert(assessment);
+        triggerInterventionReview(userId, "risk_assessment_save", "Risk assessment result was updated");
 
         return toPredictResponse(assessment, parsed);
+    }
+
+    private void triggerInterventionReview(Integer userId, String triggerType, String triggerReason) {
+        interventionReviewTriggerService.triggerAsync(userId, triggerType, triggerReason);
     }
 
     @Override
@@ -210,6 +219,9 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
         if (assessment == null) {
             return null;
         }
+        if (StringUtils.hasText(assessment.getSummary())) {
+            return assessment.getSummary();
+        }
         try {
             ParsedRiskResult parsed = RiskResultParser.parse(assessment.getResponseResult());
             return parsed.getSummary();
@@ -231,28 +243,42 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
 
     private Map<String, Object> buildDifyInputs(PatientProfileDTO profile, HealthMetricDTO metric) {
         Map<String, Object> inputs = new HashMap<>();
-        inputs.put("user_id", profile.getUserId());
-        inputs.put("age", profile.getAge());
-        inputs.put("gender", profile.getGender());
-        inputs.put("height_cm", profile.getHeightCm());
-        inputs.put("weight_kg", metric.getWeightKg());
+        inputs.put("user_id", stringify(profile.getUserId()));
+        inputs.put("age", stringify(profile.getAge()));
+        inputs.put("gender", stringify(profile.getGender()));
+        inputs.put("height_cm", stringify(profile.getHeightCm()));
+        inputs.put("weight_kg", stringify(metric.getWeightKg()));
         BigDecimal bmi = MetricAbnormalUtils.calculateBmi(profile.getHeightCm(), metric.getWeightKg());
         if (bmi != null) {
-            inputs.put("bmi", bmi);
+            inputs.put("bmi", stringify(bmi));
         }
-        inputs.put("waist_cm", metric.getWaistCm() != null ? metric.getWaistCm() : profile.getBaseWaistCm());
-        inputs.put("systolic_bp", metric.getSystolicBp());
-        inputs.put("diastolic_bp", metric.getDiastolicBp());
-        inputs.put("fasting_glucose", metric.getFastingGlucose());
-        inputs.put("postprandial_glucose", metric.getPostprandialGlucose());
-        inputs.put("hba1c", metric.getHba1c());
-        inputs.put("family_history", profile.getFamilyHistory());
-        inputs.put("chronic_history", profile.getChronicHistory());
-        inputs.put("diet_status", metric.getDietStatus());
-        inputs.put("exercise_status", metric.getExerciseStatus());
-        inputs.put("profile_summary", profile.getProfileSummary());
-        inputs.put("latest_metric", metric.getMetricSummary());
+        inputs.put("waist_cm", stringify(metric.getWaistCm() != null ? metric.getWaistCm() : profile.getBaseWaistCm()));
+        inputs.put("systolic_bp", stringify(metric.getSystolicBp()));
+        inputs.put("diastolic_bp", stringify(metric.getDiastolicBp()));
+        inputs.put("fasting_glucose", stringify(metric.getFastingGlucose()));
+        inputs.put("postprandial_glucose", stringify(metric.getPostprandialGlucose()));
+        inputs.put("hba1c", stringify(metric.getHba1c()));
+        inputs.put("family_history", stringify(profile.getFamilyHistory()));
+        inputs.put("chronic_history", stringify(profile.getChronicHistory()));
+        inputs.put("diet_status", stringify(metric.getDietStatus()));
+        inputs.put("exercise_status", stringify(metric.getExerciseStatus()));
+        inputs.put("profile_summary", stringify(profile.getProfileSummary()));
+        inputs.put("latest_metric", stringify(metric.getMetricSummary()));
+        inputs.put("health_context", buildRequestSummary(profile, metric, inputs));
         return inputs;
+    }
+
+    private String buildErrorMessage(Exception exception) {
+        String message = exception.getMessage();
+        Throwable cause = exception.getCause();
+        if (cause != null && StringUtils.hasText(cause.getMessage())) {
+            message = (StringUtils.hasText(message) ? message + ": " : "") + cause.getMessage();
+        }
+        return StringUtils.hasText(message) ? message : exception.getClass().getSimpleName();
+    }
+
+    private String stringify(Object value) {
+        return value == null ? "" : String.valueOf(value);
     }
 
     private String buildRequestSummary(PatientProfileDTO profile, HealthMetricDTO metric,
@@ -279,6 +305,114 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
                   "summary": "目前处于中等风险，需要加强生活方式管理。"
                 }
                 """;
+    }
+
+    private ParsedRiskResult completeParsedResult(ParsedRiskResult parsed, PatientProfileDTO profile, HealthMetricDTO metric) {
+        if (parsed == null) {
+            parsed = new ParsedRiskResult();
+        }
+
+        BigDecimal bmi = MetricAbnormalUtils.calculateBmi(profile.getHeightCm(), metric.getWeightKg());
+        List<String> factors = new ArrayList<>(parsed.getMainRiskFactors() == null ? List.of() : parsed.getMainRiskFactors());
+        int score = parsed.getRiskScore() == null ? 20 : parsed.getRiskScore();
+
+        if (metric.getFastingGlucose() != null && metric.getFastingGlucose().compareTo(new BigDecimal("7.0")) >= 0) {
+            score += 26;
+            addFactor(factors, "空腹血糖达到糖尿病风险复查阈值");
+        } else if (metric.getFastingGlucose() != null && metric.getFastingGlucose().compareTo(new BigDecimal("6.1")) >= 0) {
+            score += 18;
+            addFactor(factors, "空腹血糖偏高");
+        }
+
+        if (metric.getPostprandialGlucose() != null && metric.getPostprandialGlucose().compareTo(new BigDecimal("11.1")) >= 0) {
+            score += 24;
+            addFactor(factors, "餐后血糖达到糖尿病风险复查阈值");
+        } else if (metric.getPostprandialGlucose() != null && metric.getPostprandialGlucose().compareTo(new BigDecimal("7.8")) >= 0) {
+            score += 14;
+            addFactor(factors, "餐后血糖偏高");
+        }
+
+        if (metric.getHba1c() != null && metric.getHba1c().compareTo(new BigDecimal("6.5")) >= 0) {
+            score += 24;
+            addFactor(factors, "糖化血红蛋白达到复查阈值");
+        } else if (metric.getHba1c() != null && metric.getHba1c().compareTo(new BigDecimal("5.7")) >= 0) {
+            score += 14;
+            addFactor(factors, "糖化血红蛋白偏高");
+        }
+
+        if (bmi != null && bmi.compareTo(new BigDecimal("28")) >= 0) {
+            score += 14;
+            addFactor(factors, "BMI达到肥胖范围");
+        } else if (bmi != null && bmi.compareTo(new BigDecimal("24")) >= 0) {
+            score += 8;
+            addFactor(factors, "BMI偏高");
+        }
+
+        if (metric.getSystolicBp() != null && metric.getSystolicBp() >= 140
+                || metric.getDiastolicBp() != null && metric.getDiastolicBp() >= 90) {
+            score += 10;
+            addFactor(factors, "血压偏高");
+        }
+
+        if (StringUtils.hasText(profile.getFamilyHistory()) && profile.getFamilyHistory().contains("糖尿病")) {
+            score += 10;
+            addFactor(factors, "存在糖尿病家族史");
+        }
+
+        score = Math.max(0, Math.min(score, 100));
+        if (!StringUtils.hasText(parsed.getRiskLevel())) {
+            parsed.setRiskLevel(score >= 75 ? "high" : score >= 45 ? "medium" : "low");
+        }
+        if (parsed.getRiskScore() == null) {
+            parsed.setRiskScore(score);
+        }
+        if (!StringUtils.hasText(parsed.getDiabetesTypeTendency())) {
+            parsed.setDiabetesTypeTendency("2型糖尿病风险倾向，需结合线下复查确认");
+        }
+        if (factors.isEmpty()) {
+            addFactor(factors, "当前风险因素不突出，建议继续保持监测");
+        }
+        parsed.setMainRiskFactors(factors);
+        if (!StringUtils.hasText(parsed.getIndicatorAnalysis())) {
+            parsed.setIndicatorAnalysis(buildIndicatorAnalysis(profile, metric, bmi));
+        }
+        if (!StringUtils.hasText(parsed.getHealthAdvice())) {
+            parsed.setHealthAdvice("建议控制精制碳水和含糖饮品摄入，增加餐后轻中强度活动，保持规律睡眠，并连续记录空腹血糖、餐后血糖和体重变化。");
+        }
+        if (!StringUtils.hasText(parsed.getMedicalWarning())) {
+            parsed.setMedicalWarning("若空腹血糖多次达到或超过7.0 mmol/L、餐后血糖达到或超过11.1 mmol/L，或伴随明显口渴、多尿、体重下降等症状，请尽快到内分泌科复查。");
+        }
+        if (!StringUtils.hasText(parsed.getSummary())) {
+            parsed.setSummary(buildRiskSummary(parsed.getRiskLevel(), parsed.getRiskScore(), factors));
+        }
+        return parsed;
+    }
+
+    private void addFactor(List<String> factors, String factor) {
+        if (!factors.contains(factor)) {
+            factors.add(factor);
+        }
+    }
+
+    private String buildIndicatorAnalysis(PatientProfileDTO profile, HealthMetricDTO metric, BigDecimal bmi) {
+        return "本次评估结合年龄" + stringify(profile.getAge())
+                + "岁、性别" + stringify(profile.getGender())
+                + "、BMI " + stringify(bmi)
+                + "、空腹血糖" + stringify(metric.getFastingGlucose()) + " mmol/L"
+                + "、餐后血糖" + stringify(metric.getPostprandialGlucose()) + " mmol/L"
+                + "、糖化血红蛋白" + stringify(metric.getHba1c()) + "%"
+                + "和血压" + stringify(metric.getSystolicBp()) + "/" + stringify(metric.getDiastolicBp())
+                + "综合判断，结果仅用于健康管理参考，不能替代线下诊断。";
+    }
+
+    private String buildRiskSummary(String riskLevel, Integer riskScore, List<String> factors) {
+        String label = switch (riskLevel == null ? "" : riskLevel) {
+            case "high" -> "高风险";
+            case "low" -> "低风险";
+            default -> "中等风险";
+        };
+        return "本次评估为" + label + "，综合评分" + stringify(riskScore)
+                + "。主要关注：" + String.join("、", factors.stream().limit(3).toList()) + "。";
     }
 
     private RiskAssessment findLatestByUserId(Integer userId) {
@@ -343,6 +477,12 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
         response.setAssessmentId(assessment.getAssessmentId());
         response.setRiskLevel(assessment.getRiskLevel());
         response.setRiskScore(assessment.getRiskScore());
+        response.setDiabetesTypeTendency(assessment.getDiabetesTypeTendency());
+        response.setMainRiskFactors(splitStoredList(assessment.getMainRiskFactors()));
+        response.setIndicatorAnalysis(assessment.getIndicatorAnalysis());
+        response.setHealthAdvice(assessment.getHealthAdvice());
+        response.setMedicalWarning(assessment.getMedicalWarning());
+        response.setSummary(assessment.getSummary());
         response.setRequestSummary(assessment.getRequestSummary());
         response.setCallStatus(assessment.getCallStatus());
         response.setErrorMessage(assessment.getErrorMessage());
@@ -351,14 +491,20 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
         if (StringUtils.hasText(assessment.getResponseResult())) {
             try {
                 ParsedRiskResult parsed = RiskResultParser.parse(assessment.getResponseResult());
+                response.setRiskLevel(parsed.getRiskLevel());
+                response.setRiskScore(parsed.getRiskScore());
                 response.setDiabetesTypeTendency(parsed.getDiabetesTypeTendency());
                 response.setMainRiskFactors(parsed.getMainRiskFactors());
                 response.setIndicatorAnalysis(parsed.getIndicatorAnalysis());
                 response.setHealthAdvice(parsed.getHealthAdvice());
                 response.setMedicalWarning(parsed.getMedicalWarning());
                 response.setSummary(parsed.getSummary());
+                response.setCallStatus("success");
+                response.setErrorMessage(null);
             } catch (Exception ignored) {
-                response.setSummary(assessment.getRequestSummary());
+                if (!StringUtils.hasText(response.getSummary())) {
+                    response.setSummary(assessment.getRequestSummary());
+                }
             }
         }
         return response;
@@ -373,7 +519,11 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
         item.setCreateTime(assessment.getCreateTime());
         if (StringUtils.hasText(assessment.getResponseResult())) {
             try {
-                item.setSummary(RiskResultParser.parse(assessment.getResponseResult()).getSummary());
+                ParsedRiskResult parsed = RiskResultParser.parse(assessment.getResponseResult());
+                item.setRiskLevel(parsed.getRiskLevel());
+                item.setRiskScore(parsed.getRiskScore());
+                item.setSummary(parsed.getSummary());
+                item.setCallStatus("success");
             } catch (Exception ignored) {
                 item.setSummary(assessment.getRequestSummary());
             }
@@ -398,6 +548,8 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
         }
 
         RiskHistoryItem historyItem = toHistoryItem(assessment);
+        item.setRiskLevel(historyItem.getRiskLevel());
+        item.setRiskScore(historyItem.getRiskScore());
         item.setSummary(historyItem.getSummary());
         return item;
     }
@@ -406,8 +558,15 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
         RiskAssessmentDTO dto = new RiskAssessmentDTO();
         dto.setAssessmentId(assessment.getAssessmentId());
         dto.setUserId(assessment.getUserId());
+        dto.setMetricId(assessment.getMetricId());
         dto.setRiskLevel(assessment.getRiskLevel());
         dto.setRiskScore(assessment.getRiskScore());
+        dto.setDiabetesTypeTendency(assessment.getDiabetesTypeTendency());
+        dto.setMainRiskFactors(assessment.getMainRiskFactors());
+        dto.setIndicatorAnalysis(assessment.getIndicatorAnalysis());
+        dto.setHealthAdvice(assessment.getHealthAdvice());
+        dto.setMedicalWarning(assessment.getMedicalWarning());
+        dto.setSummary(assessment.getSummary());
         dto.setCallStatus(assessment.getCallStatus());
         dto.setErrorMessage(assessment.getErrorMessage());
         dto.setCreateTime(assessment.getCreateTime());
@@ -415,12 +574,16 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
         if (StringUtils.hasText(assessment.getResponseResult())) {
             try {
                 ParsedRiskResult parsed = RiskResultParser.parse(assessment.getResponseResult());
+                dto.setRiskLevel(parsed.getRiskLevel());
+                dto.setRiskScore(parsed.getRiskScore());
                 dto.setDiabetesTypeTendency(parsed.getDiabetesTypeTendency());
                 dto.setMainRiskFactors(joinList(parsed.getMainRiskFactors()));
                 dto.setIndicatorAnalysis(parsed.getIndicatorAnalysis());
                 dto.setHealthAdvice(parsed.getHealthAdvice());
                 dto.setMedicalWarning(parsed.getMedicalWarning());
                 dto.setSummary(parsed.getSummary());
+                dto.setCallStatus("success");
+                dto.setErrorMessage(null);
             } catch (Exception ignored) {
                 dto.setSummary(assessment.getRequestSummary());
             }
@@ -428,7 +591,28 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
         return dto;
     }
 
+    private void applyParsedResult(RiskAssessment assessment, ParsedRiskResult parsed) {
+        assessment.setRiskLevel(parsed.getRiskLevel());
+        assessment.setRiskScore(parsed.getRiskScore());
+        assessment.setDiabetesTypeTendency(parsed.getDiabetesTypeTendency());
+        assessment.setMainRiskFactors(joinList(parsed.getMainRiskFactors()));
+        assessment.setIndicatorAnalysis(parsed.getIndicatorAnalysis());
+        assessment.setHealthAdvice(parsed.getHealthAdvice());
+        assessment.setMedicalWarning(parsed.getMedicalWarning());
+        assessment.setSummary(parsed.getSummary());
+    }
+
+    private List<String> splitStoredList(String value) {
+        if (!StringUtils.hasText(value)) {
+            return List.of();
+        }
+        return Arrays.stream(value.split(";"))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .toList();
+    }
+
     private String joinList(List<String> values) {
-        return values == null || values.isEmpty() ? null : String.join("；", values);
+        return values == null || values.isEmpty() ? null : String.join("; ", values);
     }
 }

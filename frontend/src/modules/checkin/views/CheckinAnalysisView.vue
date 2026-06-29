@@ -25,7 +25,11 @@
     </section>
 
     <template v-else>
-      <section v-if="isLocalMock" class="source-card source-card--mock">
+      <section v-if="analysis.call_status === 'failed'" class="source-card source-card--error">
+        <AlertCircle :size="18" />
+        <p>{{ analysis.error_message || analysis.summary || 'Dify 打卡分析工作流调用失败，请检查工作流配置或网络连接。' }}</p>
+      </section>
+      <section v-else-if="isLocalMock" class="source-card source-card--mock">
         <Info :size="18" />
         <p>当前结果用于辅助理解近期打卡趋势，请结合实际身体感受判断。</p>
       </section>
@@ -337,6 +341,11 @@ onMounted(loadLatest)
 .source-card--mock {
   color: #B8862A;
   background: #FFF8E8;
+}
+
+.source-card--error {
+  color: #E87878;
+  background: rgba(239, 143, 143, 0.12);
 }
 
 .source-card p {

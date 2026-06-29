@@ -15,5 +15,5 @@ export function generateLifePlan(payload) {
     plan_days: payload.plan_days ?? 7
   }
 
-  return request.post('/ai/life-plan/generate', safePayload)
+  return request.post('/ai/life-plan/generate', safePayload, { timeout: 120000 })
 }

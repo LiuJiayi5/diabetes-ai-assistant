@@ -8,6 +8,26 @@ export function adminListUsers(params) {
   return request.get('/admin/users', { params }).then(unwrap)
 }
 
+export function adminListProfiles(params) {
+  return request.get('/profile/admin', { params, sessionScope: 'admin' }).then(unwrap)
+}
+
+export function adminGetProfileDetail(userId) {
+  return request.get(`/profile/admin/${encodeURIComponent(userId)}`, { sessionScope: 'admin' }).then(unwrap)
+}
+
+export function adminListHealthMetrics(params) {
+  return request.get('/health-metric/admin', { params, sessionScope: 'admin' }).then(unwrap)
+}
+
+export function adminListRiskAssessments(params) {
+  return request.get('/risk/admin', { params, sessionScope: 'admin' }).then(unwrap)
+}
+
+export function adminGetRiskAssessmentDetail(assessmentId) {
+  return request.get(`/risk/admin/${encodeURIComponent(assessmentId)}`, { sessionScope: 'admin' }).then(unwrap)
+}
+
 export function adminUpdateUserStatus(userId, status) {
   return request.put(`/admin/users/${encodeURIComponent(userId)}/status`, { status }).then(unwrap)
 }

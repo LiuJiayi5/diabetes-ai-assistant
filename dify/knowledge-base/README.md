@@ -1,15 +1,11 @@
-# diabetes_knowledge_base
+# 糖尿病知识库资料
 
-知识库用于支持 diabetes_ai_doctor_agent。
+本目录保存 AI 医生 Agent 可导入 Dify 知识库的糖尿病科普与安全边界资料。
 
-资料分类：
+推荐导入目录：
 
-- 糖尿病基础知识
-- 1 型、2 型、妊娠糖尿病
-- 控糖饮食
-- 运动建议
-- 血糖、血压、BMI、糖化血红蛋白指标解释
-- 并发症预防
-- 控糖误区
+```text
+dify/knowledge-base/docs/module5_diabetes_kb_docs/
+```
 
-当前阶段不导入正式知识库文件。
+其中 01-18 号分章节 Markdown 适合导入 Dify 并精细维护。知识库内容仅用于健康科普和生活方式建议，不能替代线下诊断、处方或急救处理。

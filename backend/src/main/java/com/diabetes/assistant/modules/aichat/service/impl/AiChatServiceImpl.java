@@ -14,8 +14,10 @@ import com.diabetes.assistant.modules.aichat.dto.admin.AdminAiChatQuery;
 import com.diabetes.assistant.modules.aichat.dto.admin.AdminAiChatSessionResponse;
 import com.diabetes.assistant.modules.aichat.entity.AiChatMessage;
 import com.diabetes.assistant.modules.aichat.entity.AiChatSession;
+import com.diabetes.assistant.modules.aichat.entity.AiExpert;
 import com.diabetes.assistant.modules.aichat.mapper.AiChatMessageMapper;
 import com.diabetes.assistant.modules.aichat.mapper.AiChatSessionMapper;
+import com.diabetes.assistant.modules.aichat.service.AiExpertService;
 import com.diabetes.assistant.modules.aichat.service.AiChatService;
 import com.diabetes.assistant.modules.checkin.contract.CheckinQueryApi;
 import com.diabetes.assistant.modules.checkin.contract.dto.CheckinAnalysisDTO;
@@ -62,6 +64,7 @@ public class AiChatServiceImpl implements AiChatService {
 
     private final AiChatSessionMapper sessionMapper;
     private final AiChatMessageMapper messageMapper;
+    private final AiExpertService aiExpertService;
     private final UserQueryApi userQueryApi;
     private final PatientProfileQueryApi patientProfileQueryApi;
     private final HealthMetricQueryApi healthMetricQueryApi;
@@ -85,9 +88,12 @@ public class AiChatServiceImpl implements AiChatService {
         }
         String userMessage = normalizeUserMessage(request.getMessage());
 
-        AiChatSession session = resolveSession(userId, request.getSessionId(), userMessage);
-        Map<String, Object> context = buildDifyContext(userId);
+        AiExpert expert = resolveRequestedExpert(request.getExpertId());
+        AiChatSession session = resolveSession(userId, request.getSessionId(), request.getExpertId(), userMessage);
+        expert = resolveSessionExpert(session, expert);
+        Map<String, Object> context = buildDifyContext(userId, expert);
         String contextSummary = toJson(context);
+        Map<String, Object> difyInputs = buildDifyInputs(context);
 
         String answer;
         String conversationId = request.getSessionId() != null && StringUtils.hasText(request.getConversationId())
@@ -97,7 +103,7 @@ public class AiChatServiceImpl implements AiChatService {
         String errorMessage = null;
 
         try {
-            String rawResponse = difyService.callAiDoctor(userMessage, conversationId, context, String.valueOf(userId));
+            String rawResponse = callAiDoctorWithRetry(userMessage, conversationId, difyInputs, String.valueOf(userId));
             ParsedAiResponse parsed = parseDifyResponse(rawResponse);
             answer = StringUtils.hasText(parsed.answer()) ? parsed.answer() : FALLBACK_ANSWER;
             conversationId = StringUtils.hasText(parsed.conversationId()) ? parsed.conversationId() : conversationId;
@@ -116,6 +122,9 @@ public class AiChatServiceImpl implements AiChatService {
         response.setSessionId(session.getSessionId());
         response.setMessageId(saved.getMessageId());
         response.setConversationId(conversationId);
+        response.setExpertId(expert == null ? null : expert.getExpertId());
+        response.setExpertName(expert == null ? null : expert.getExpertName());
+        response.setExpertAvatarUrl(expert == null ? null : expert.getAvatarUrl());
         response.setUserMessage(saved.getUserMessage());
         response.setAnswer(saved.getAiResponse());
         response.setContextSummary(saved.getContextSummary());
@@ -123,6 +132,24 @@ public class AiChatServiceImpl implements AiChatService {
         response.setErrorMessage(saved.getErrorMessage());
         response.setCreateTime(saved.getCreateTime());
         return response;
+    }
+
+    private String callAiDoctorWithRetry(String userMessage, String conversationId,
+                                         Map<String, Object> difyInputs, String user) {
+        try {
+            return difyService.callAiDoctor(userMessage, conversationId, difyInputs, user);
+        } catch (BusinessException exception) {
+            if (StringUtils.hasText(conversationId) && isDifyBadRequest(exception)) {
+                return difyService.callAiDoctor(userMessage, null, difyInputs, user);
+            }
+            throw exception;
+        }
+    }
+
+    private boolean isDifyBadRequest(BusinessException exception) {
+        return exception != null
+                && exception.getMessage() != null
+                && exception.getMessage().contains("Dify chat HTTP 400");
     }
 
     @Override
@@ -217,12 +244,31 @@ public class AiChatServiceImpl implements AiChatService {
         return toAdminLogResponse(message, session);
     }
 
-    private AiChatSession resolveSession(Integer userId, Integer sessionId, String firstMessage) {
+    private AiExpert resolveRequestedExpert(Integer expertId) {
+        return aiExpertService.requireEnabledExpert(expertId);
+    }
+
+    private AiExpert resolveSessionExpert(AiChatSession session, AiExpert requestedExpert) {
+        if (session.getExpertId() == null && requestedExpert != null) {
+            session.setExpertId(requestedExpert.getExpertId());
+            session.setUpdateTime(LocalDateTime.now());
+            sessionMapper.updateById(session);
+        }
+        if (session.getExpertId() != null) {
+            return aiExpertService.requireEnabledExpert(session.getExpertId());
+        }
+        return requestedExpert;
+    }
+
+    private AiChatSession resolveSession(Integer userId, Integer sessionId, Integer expertId, String firstMessage) {
         if (sessionId != null) {
             AiChatSession existing = sessionMapper.selectById(sessionId);
             if (existing == null || !Objects.equals(existing.getUserId(), userId)
                 || SESSION_STATUS_DELETED.equals(existing.getStatus())) {
                 throw new BusinessException(404, "Session does not exist or has been deleted");
+            }
+            if (expertId != null && existing.getExpertId() != null && !Objects.equals(existing.getExpertId(), expertId)) {
+                throw new BusinessException(400, "当前会话已绑定其他AI专家");
             }
             return existing;
         }
@@ -230,6 +276,7 @@ public class AiChatServiceImpl implements AiChatService {
         LocalDateTime now = LocalDateTime.now();
         AiChatSession session = new AiChatSession();
         session.setUserId(userId);
+        session.setExpertId(aiExpertService.requireEnabledExpert(expertId).getExpertId());
         session.setSessionTitle(buildSessionTitle(firstMessage));
         session.setStatus(SESSION_STATUS_ACTIVE);
         session.setLastMessageTime(now);
@@ -248,7 +295,7 @@ public class AiChatServiceImpl implements AiChatService {
         return session;
     }
 
-    private Map<String, Object> buildDifyContext(Integer userId) {
+    private Map<String, Object> buildDifyContext(Integer userId, AiExpert expert) {
         Map<String, Object> context = new LinkedHashMap<>();
         context.put("safety_rules", List.of(
                 "You are the AI doctor consultation agent for the Diabetes Prevention and Care Assistant, not a real doctor.",
@@ -256,6 +303,7 @@ public class AiChatServiceImpl implements AiChatService {
                 "Do not invent missing medical history, medication use, or test results.",
                 "For severe symptoms or clearly abnormal indicators, advise offline medical care or recheck."
         ));
+        context.put("expert_identity", buildExpertIdentity(expert));
         context.put("user_basic", buildUserBasic(userId));
         context.put("profile_summary", safeSummary(() -> patientProfileQueryApi.getProfileSummaryByUserId(userId), "No health profile"));
         context.put("latest_health_data", safeSummary(() -> healthMetricQueryApi.getLatestMetricSummaryByUserId(userId), "No latest health data"));
@@ -263,6 +311,19 @@ public class AiChatServiceImpl implements AiChatService {
         context.put("life_plan", safeSummary(() -> lifePlanQueryApi.getCurrentLifePlanSummaryByUserId(userId), "No life plan"));
         context.put("checkin", buildCheckinContext(userId));
         return context;
+    }
+
+    private Map<String, Object> buildDifyInputs(Map<String, Object> context) {
+        Map<String, Object> inputs = new LinkedHashMap<>();
+        inputs.put("safety_rules", context.get("safety_rules"));
+        inputs.put("expert_identity", context.get("expert_identity"));
+        inputs.put("user_basic", context.get("user_basic"));
+        inputs.put("profile_summary", context.get("profile_summary"));
+        inputs.put("latest_health_data", context.get("latest_health_data"));
+        inputs.put("risk_result", context.get("risk_result"));
+        inputs.put("life_plan", context.get("life_plan"));
+        inputs.put("checkin", context.get("checkin"));
+        return inputs;
     }
 
     private Map<String, Object> buildUserBasic(Integer userId) {
@@ -279,6 +340,26 @@ public class AiChatServiceImpl implements AiChatService {
             basic.put("summary", "No user basic data");
         }
         return basic;
+    }
+
+    private Map<String, Object> buildExpertIdentity(AiExpert expert) {
+        Map<String, Object> identity = new LinkedHashMap<>();
+        if (expert == null) {
+            identity.put("expert_name", "AI医生助手");
+            identity.put("title", "糖尿病预治智能助手");
+            identity.put("department", "智能健康咨询");
+            identity.put("specialty", "糖尿病健康咨询");
+            identity.put("persona", "你是糖尿病预治智能助手中的通用AI医生助手。");
+            return identity;
+        }
+        identity.put("expert_id", expert.getExpertId());
+        identity.put("expert_name", expert.getExpertName());
+        identity.put("title", expert.getTitle());
+        identity.put("department", expert.getDepartment());
+        identity.put("specialty", expert.getSpecialty());
+        identity.put("persona", expert.getPersona());
+        identity.put("opening_message", expert.getOpeningMessage());
+        return identity;
     }
 
     private Map<String, Object> buildCheckinContext(Integer userId) {
@@ -460,6 +541,7 @@ public class AiChatServiceImpl implements AiChatService {
         AiChatSessionResponse response = new AiChatSessionResponse();
         response.setSessionId(session.getSessionId());
         response.setSessionTitle(session.getSessionTitle());
+        fillExpert(response, session.getExpertId());
         response.setDifyConversationId(session.getDifyConversationId());
         response.setStatus(session.getStatus());
         response.setLastMessageTime(session.getLastMessageTime());
@@ -489,6 +571,9 @@ public class AiChatServiceImpl implements AiChatService {
         response.setUserId(message.getUserId());
         response.setUsername(user == null ? null : user.getUsername());
         response.setSessionTitle(session == null ? null : session.getSessionTitle());
+        if (session != null) {
+            fillExpert(response, session.getExpertId());
+        }
         response.setUserMessage(message.getUserMessage());
         response.setAiResponse(message.getAiResponse());
         response.setContextSummary(message.getContextSummary());
@@ -505,6 +590,7 @@ public class AiChatServiceImpl implements AiChatService {
         response.setUserId(session.getUserId());
         response.setUsername(user == null ? null : user.getUsername());
         response.setSessionTitle(session.getSessionTitle());
+        fillExpert(response, session.getExpertId());
         response.setDifyConversationId(session.getDifyConversationId());
         response.setStatus(session.getStatus());
         response.setMessageCount(messageMapper.selectCount(new LambdaQueryWrapper<AiChatMessage>()
@@ -518,6 +604,19 @@ public class AiChatServiceImpl implements AiChatService {
     private LambdaQueryWrapper<AiChatMessage> buildAdminMessageWrapper(AdminAiChatQuery query) {
         LambdaQueryWrapper<AiChatMessage> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(query.getUserId() != null, AiChatMessage::getUserId, query.getUserId());
+        if (query.getExpertId() != null) {
+            List<Integer> sessionIds = sessionMapper.selectList(new LambdaQueryWrapper<AiChatSession>()
+                            .select(AiChatSession::getSessionId)
+                            .eq(AiChatSession::getExpertId, query.getExpertId()))
+                    .stream()
+                    .map(AiChatSession::getSessionId)
+                    .toList();
+            if (sessionIds.isEmpty()) {
+                wrapper.apply("1 = 0");
+            } else {
+                wrapper.in(AiChatMessage::getSessionId, sessionIds);
+            }
+        }
         wrapper.eq(StringUtils.hasText(query.getCallStatus()), AiChatMessage::getCallStatus, query.getCallStatus());
         wrapper.ge(query.getStartDate() != null, AiChatMessage::getCreateTime,
                 query.getStartDate() == null ? null : query.getStartDate().atStartOfDay());
@@ -535,6 +634,7 @@ public class AiChatServiceImpl implements AiChatService {
     private LambdaQueryWrapper<AiChatSession> buildAdminSessionWrapper(AdminAiChatQuery query) {
         LambdaQueryWrapper<AiChatSession> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(query.getUserId() != null, AiChatSession::getUserId, query.getUserId());
+        wrapper.eq(query.getExpertId() != null, AiChatSession::getExpertId, query.getExpertId());
         wrapper.eq(StringUtils.hasText(query.getCallStatus()), AiChatSession::getStatus, query.getCallStatus());
         wrapper.ge(query.getStartDate() != null, AiChatSession::getCreateTime,
                 query.getStartDate() == null ? null : query.getStartDate().atStartOfDay());
@@ -589,6 +689,50 @@ public class AiChatServiceImpl implements AiChatService {
 
     private boolean contains(String value, String keyword) {
         return StringUtils.hasText(value) && value.contains(keyword);
+    }
+
+    private void fillExpert(AiChatSessionResponse response, Integer expertId) {
+        if (expertId == null) {
+            return;
+        }
+        try {
+            AiExpert expert = aiExpertService.requireEnabledExpert(expertId);
+            response.setExpertId(expert.getExpertId());
+            response.setExpertName(expert.getExpertName());
+            response.setExpertTitle(expert.getTitle());
+            response.setExpertDepartment(expert.getDepartment());
+            response.setExpertAvatarUrl(expert.getAvatarUrl());
+        } catch (Exception ignored) {
+            response.setExpertId(expertId);
+        }
+    }
+
+    private void fillExpert(AdminAiChatSessionResponse response, Integer expertId) {
+        if (expertId == null) {
+            return;
+        }
+        try {
+            AiExpert expert = aiExpertService.requireEnabledExpert(expertId);
+            response.setExpertId(expert.getExpertId());
+            response.setExpertName(expert.getExpertName());
+            response.setExpertTitle(expert.getTitle());
+            response.setExpertAvatarUrl(expert.getAvatarUrl());
+        } catch (Exception ignored) {
+            response.setExpertId(expertId);
+        }
+    }
+
+    private void fillExpert(AdminAiChatLogResponse response, Integer expertId) {
+        if (expertId == null) {
+            return;
+        }
+        try {
+            AiExpert expert = aiExpertService.requireEnabledExpert(expertId);
+            response.setExpertId(expert.getExpertId());
+            response.setExpertName(expert.getExpertName());
+        } catch (Exception ignored) {
+            response.setExpertId(expertId);
+        }
     }
 
     private int normalizePage(Integer page) {

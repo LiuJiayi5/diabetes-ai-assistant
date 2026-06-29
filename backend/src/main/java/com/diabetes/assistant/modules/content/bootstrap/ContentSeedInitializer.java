@@ -115,30 +115,13 @@ public class ContentSeedInitializer implements ApplicationRunner {
     }
 
     private void seedBanners() {
+        long bannerCount = homeContentMapper.selectCount(new LambdaQueryWrapper<HomeContent>()
+                .eq(HomeContent::getContentType, TYPE_BANNER));
+        if (bannerCount > 0) {
+            return;
+        }
+
         for (SeedBanner seed : bannerSeeds()) {
-            HomeContent existing = homeContentMapper.selectOne(new LambdaQueryWrapper<HomeContent>()
-                    .eq(HomeContent::getContentType, TYPE_BANNER)
-                    .eq(HomeContent::getTitle, seed.title())
-                    .last("LIMIT 1"));
-            if (existing != null) {
-                existing.setSubtitle(seed.subtitle());
-                existing.setImageUrl(seedImagePath(seed.imageName()));
-                existing.setLinkType(seed.linkType());
-                existing.setLinkValue(seed.linkValue());
-                existing.setSortOrder(seed.sortOrder());
-                existing.setStatus(STATUS_ENABLED);
-                existing.setUpdateTime(LocalDateTime.now());
-                homeContentMapper.updateById(existing);
-                continue;
-            }
-
-            long enabledBannerCount = homeContentMapper.selectCount(new LambdaQueryWrapper<HomeContent>()
-                    .eq(HomeContent::getContentType, TYPE_BANNER)
-                    .eq(HomeContent::getStatus, STATUS_ENABLED));
-            if (enabledBannerCount >= 3) {
-                continue;
-            }
-
             LocalDateTime now = LocalDateTime.now();
             HomeContent content = new HomeContent();
             content.setContentType(TYPE_BANNER);
@@ -156,7 +139,7 @@ public class ContentSeedInitializer implements ApplicationRunner {
     }
 
     private void ensureSeedImages() {
-        Path basePath = Path.of(uploadProperties.getRootDir()).toAbsolutePath().normalize().resolve(SEED_DIR);
+        Path basePath = uploadProperties.resolveRootPath().resolve(SEED_DIR);
         try {
             Files.createDirectories(basePath);
             for (SeedImage image : imageSeeds()) {

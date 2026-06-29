@@ -3,6 +3,7 @@ import { getTokenForRequest, getTokenForScope, getTokenRole, removeToken, resolv
 
 const ADMIN_LOGIN_PATH = '/admin/login'
 const PATIENT_LOGIN_PATH = '/login'
+const REQUEST_TIMEOUT_MS = 120000
 
 function requestScope(configOrError) {
   const explicitScope = configOrError?.config?.sessionScope || configOrError?.sessionScope
@@ -32,7 +33,7 @@ function clearInvalidSession(error) {
 
 const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
-  timeout: 30000
+  timeout: REQUEST_TIMEOUT_MS
 })
 
 request.interceptors.request.use((config) => {

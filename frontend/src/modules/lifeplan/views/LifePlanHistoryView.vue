@@ -35,7 +35,7 @@
         :key="plan.id"
         type="button"
         class="history-card"
-        @click="router.push(`/app/life-plan/${plan.id}`)"
+        @click="openPlan(plan)"
       >
         <span class="history-card__icon">
           <FileText />
@@ -59,6 +59,7 @@ import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft, ChevronRight, CircleAlert, FileText, History, LoaderCircle } from 'lucide-vue-next'
 import { useLifePlanStore } from '@/stores/lifePlan'
+import { pushWithBack } from '@/utils/navigation'
 import { formatPlanTime, normalizePlan } from '../utils'
 import '../styles/life-plan.css'
 
@@ -74,5 +75,9 @@ async function loadPlans() {
   } catch {
     // Store exposes the error.
   }
+}
+
+function openPlan(plan) {
+  pushWithBack(router, `/app/life-plan/${plan.id}`, '/app/life-plan/history')
 }
 </script>

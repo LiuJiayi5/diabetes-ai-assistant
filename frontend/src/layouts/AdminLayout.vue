@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="admin-layout">
     <aside class="admin-sidebar">
       <div class="admin-logo">
@@ -70,7 +70,6 @@ import {
   ClipboardList,
   FileText,
   Home,
-  Image,
   LayoutDashboard,
   Leaf,
   LogOut,
@@ -79,7 +78,8 @@ import {
   Shield,
   UserCheck,
   Users,
-  CheckSquare
+  CheckSquare,
+  RefreshCw
 } from 'lucide-vue-next'
 import { ElMessageBox } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
@@ -96,7 +96,8 @@ const navGroups = [
     items: [
       { label: '首页概览', path: '/admin/dashboard', icon: LayoutDashboard },
       { label: '用户管理', path: '/admin/users', icon: Users },
-      { label: '生活方案记录', path: '/admin/life-plans', icon: FileText }
+      { label: '生活方案记录', path: '/admin/life-plans', icon: FileText },
+      { label: '自动干预复盘', path: '/admin/intervention-reviews', icon: RefreshCw }
     ]
   },
   {
@@ -114,7 +115,6 @@ const navGroups = [
     items: [
       { label: '健康资讯管理', path: '/admin/articles', icon: Newspaper },
       { label: '首页内容管理', path: '/admin/home-content', icon: Home },
-      { label: '轮播图管理', path: '/admin/banners', icon: Image },
       { label: '专家展示管理', path: '/admin/experts', icon: UserCheck }
     ]
   }
@@ -141,7 +141,7 @@ function ensureAdminUser() {
 }
 
 function logout() {
-  ElMessageBox.confirm('退出后需要重新登录管理端，确认退出？', '确认退出登录', {
+  ElMessageBox.confirm('退出后需要重新登录管理端，确认退出吗？', '确认退出登录', {
     confirmButtonText: '确认退出',
     cancelButtonText: '取消',
     type: 'warning'
@@ -155,11 +155,12 @@ function logout() {
 
 <style scoped>
 .admin-layout {
-  min-height: 100vh;
+  height: 100vh;
   display: grid;
   grid-template-columns: var(--admin-sidebar-width) 1fr;
   background: var(--admin-bg);
   font-family: var(--admin-font-family);
+  overflow: hidden;
 }
 
 .admin-sidebar {
@@ -297,8 +298,13 @@ function logout() {
 
 .admin-main {
   min-width: 0;
-  min-height: 100vh;
-  overflow: auto;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.admin-main > :last-child {
+  min-height: calc(100vh - var(--admin-topbar-height));
 }
 
 .admin-topbar {

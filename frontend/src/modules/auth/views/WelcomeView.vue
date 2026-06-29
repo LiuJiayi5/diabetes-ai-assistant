@@ -189,11 +189,11 @@ function goRegister() {
   width: 100%;
   height: 48px;
   border-radius: var(--figma-radius-pill);
-  background: var(--figma-primary-green);
+  background: var(--figma-green-button);
   color: #FFFFFF;
   font-size: 16px;
-  font-weight: 500;
-  box-shadow: 0 6px 18px rgba(111, 207, 151, 0.25);
+  font-weight: 700;
+  box-shadow: var(--figma-shadow-button);
 }
 
 .ghost-link {

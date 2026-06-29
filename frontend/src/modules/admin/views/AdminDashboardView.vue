@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="admin-page">
     <div class="admin-page-header">
       <div>
@@ -116,7 +116,6 @@ import {
   CheckCircle,
   FileText,
   Home,
-  Image,
   Newspaper,
   TrendingUp,
   Users,
@@ -141,11 +140,9 @@ const stats = computed(() => [
   { label: '方案生成成功', value: callStatus.value.success, icon: CheckCircle, bg: 'rgba(34,197,94,0.10)', color: '#22C55E' },
   { label: '生成失败记录', value: callStatus.value.failed, icon: XCircle, bg: 'rgba(239,68,68,0.10)', color: '#EF4444' },
   { label: '健康资讯文章', value: articles.value.length, icon: BookOpen, bg: 'rgba(245,158,11,0.10)', color: '#F59E0B' },
-  { label: '首页轮播图', value: banners.value.length, icon: Image, bg: 'rgba(14,165,233,0.10)', color: '#0EA5E9' },
   { label: '首页展示内容', value: homeContents.value.length, icon: Home, bg: 'rgba(99,102,241,0.10)', color: '#6366F1' }
 ])
 
-const banners = computed(() => homeContents.value.filter((item) => item.content_type === 'banner'))
 
 const callStatus = computed(() => ({
   success: lifePlans.value.filter((item) => item.call_status === 'success').length,

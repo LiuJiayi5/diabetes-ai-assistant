@@ -14,6 +14,7 @@ public class AiChatSession {
     @TableId(value = "session_id", type = IdType.AUTO)
     private Integer sessionId;
     private Integer userId;
+    private Integer expertId;
     private String sessionTitle;
     private String difyConversationId;
     private String status;

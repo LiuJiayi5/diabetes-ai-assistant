@@ -253,6 +253,15 @@ public class AdminCheckinServiceImpl implements AdminCheckinService {
         return new PageResult<>(list, result.getTotal(), page, pageSize);
     }
 
+    @Override
+    public AdminApiCallLogResponse getAnalysisLogDetail(Integer logId) {
+        ApiCallLog log = apiCallLogMapper.selectById(logId);
+        if (log == null || !SERVICE_CHECKIN_ANALYSIS.equals(log.getServiceType())) {
+            throw new BusinessException(404, "调用日志不存在");
+        }
+        return toLogResponse(log);
+    }
+
     private LambdaQueryWrapper<CheckinRecord> buildRecordWrapper(AdminCheckinQuery query) {
         Integer keywordUserId = parseUserId(query.getPatientKeyword());
         return new LambdaQueryWrapper<CheckinRecord>()

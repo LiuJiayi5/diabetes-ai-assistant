@@ -43,6 +43,7 @@ public class SaveMetricRequest {
 
     private String dietStatus;
     private String exerciseStatus;
+    private Boolean skipInterventionReview;
 
     @NotNull
     private LocalDate recordedAt;

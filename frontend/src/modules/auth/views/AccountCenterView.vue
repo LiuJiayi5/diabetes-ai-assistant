@@ -135,13 +135,13 @@ const accountRows = computed(() => [
 
 const healthRecords = [
   { label: '健康档案', icon: Activity, bg: '#E8F7EE', iconColor: '#5BBF8A', path: '/app/profile' },
-  { label: '评估记录', icon: ClipboardList, bg: '#E2F3FA', iconColor: '#4FAAC4', path: '/app/risk' },
+  { label: '评估记录', icon: ClipboardList, bg: '#E2F3FA', iconColor: '#4FAAC4', path: '/app/risk/history' },
   { label: '生活方案', icon: Utensils, bg: '#EBF8F2', iconColor: '#5BBF8A', path: '/app/life-plan' },
-  { label: '咨询记录', icon: MessageSquare, bg: '#E4F4FB', iconColor: '#4FAAC4', path: '/app/ai-chat' }
+  { label: '咨询记录', icon: MessageSquare, bg: '#E4F4FB', iconColor: '#4FAAC4', path: '/app/ai-chat/history' }
 ]
 
 const settingsItems = [
-  { label: '打卡记录', icon: CalendarCheck, action: () => router.push('/app/checkin') },
+  { label: '打卡记录', icon: CalendarCheck, action: () => router.push('/app/checkin/history') },
   { label: '编辑账号信息', icon: Edit, action: () => router.push('/app/account/edit') },
   { label: '隐私说明', icon: FileText, action: () => router.push('/app/account/privacy') },
   { label: '关于系统', icon: Info, action: () => router.push('/app/account/about') },
@@ -186,6 +186,7 @@ function confirmLogout() {
 
 <style scoped>
 .account-page {
+  position: relative;
   min-height: 100%;
   padding: 24px 20px 16px;
   background: var(--figma-bg-page);
@@ -470,7 +471,7 @@ function confirmLogout() {
 }
 
 .logout-overlay {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 2000;
   display: flex;
@@ -527,4 +528,5 @@ function confirmLogout() {
   background: var(--figma-danger-button);
   color: #FFFFFF;
 }
+
 </style>

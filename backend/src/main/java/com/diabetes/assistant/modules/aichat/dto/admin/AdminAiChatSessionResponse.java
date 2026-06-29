@@ -19,6 +19,18 @@ public class AdminAiChatSessionResponse {
     @JsonProperty("session_title")
     private String sessionTitle;
 
+    @JsonProperty("expert_id")
+    private Integer expertId;
+
+    @JsonProperty("expert_name")
+    private String expertName;
+
+    @JsonProperty("expert_title")
+    private String expertTitle;
+
+    @JsonProperty("expert_avatar_url")
+    private String expertAvatarUrl;
+
     @JsonProperty("dify_conversation_id")
     private String difyConversationId;
 

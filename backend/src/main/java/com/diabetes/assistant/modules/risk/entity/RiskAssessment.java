@@ -14,10 +14,17 @@ public class RiskAssessment {
     @TableId(type = IdType.AUTO)
     private Integer assessmentId;
     private Integer userId;
+    private Integer metricId;
     private String requestSummary;
     private String responseResult;
     private String riskLevel;
     private Integer riskScore;
+    private String diabetesTypeTendency;
+    private String mainRiskFactors;
+    private String indicatorAnalysis;
+    private String healthAdvice;
+    private String medicalWarning;
+    private String summary;
     private String callStatus;
     private String errorMessage;
     private LocalDateTime createTime;

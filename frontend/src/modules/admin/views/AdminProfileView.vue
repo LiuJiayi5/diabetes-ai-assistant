@@ -176,20 +176,26 @@ function assignForm(user = {}) {
 
 <style scoped>
 .admin-profile-page {
-  max-width: 1160px;
+  width: min(100%, 1180px);
+  margin: 0 auto;
+  padding-inline: clamp(18px, 3vw, 32px);
 }
 
 .admin-profile-hero,
 .admin-profile-card {
-  padding: 20px;
+  padding: 24px;
 }
 
 .admin-profile-hero {
   display: flex;
   align-items: center;
   gap: 18px;
-  margin-bottom: 16px;
-  background: linear-gradient(135deg, #ffffff 0%, #eef3ff 62%, #e8f7ff 100%);
+  margin-bottom: 18px;
+  min-height: 138px;
+  border: 1px solid rgba(79, 172, 254, 0.14);
+  background:
+    radial-gradient(circle at 92% 18%, rgba(79, 172, 254, 0.18), transparent 28%),
+    linear-gradient(135deg, #ffffff 0%, #eef3ff 60%, #e8f7ff 100%);
 }
 
 .admin-profile-hero h2,
@@ -211,8 +217,8 @@ function assignForm(user = {}) {
 .admin-profile-grid {
   display: grid;
   grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 18px;
+  margin-bottom: 18px;
 }
 
 .admin-profile-card h3 {
@@ -224,9 +230,59 @@ function assignForm(user = {}) {
   margin: 0;
 }
 
+.admin-profile-card :deep(.el-form-item:last-child) {
+  margin-bottom: 0;
+}
+
+.admin-profile-card :deep(.el-input__wrapper) {
+  min-height: 42px;
+  border-radius: 12px;
+}
+
+.admin-profile-card :deep(.el-form-item__label) {
+  color: var(--admin-text-secondary);
+  font-weight: 600;
+}
+
+.admin-profile-page .admin-detail-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.admin-profile-page .admin-kv {
+  min-height: 58px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--admin-card-muted);
+}
+
+.admin-profile-page .admin-kv dd {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 980px) {
   .admin-profile-grid {
     grid-template-columns: 1fr;
+  }
+
+  .admin-profile-page .admin-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-profile-page {
+    padding-inline: 12px;
+  }
+
+  .admin-profile-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-profile-page .admin-kv dd {
+    text-align: left;
   }
 }
 </style>

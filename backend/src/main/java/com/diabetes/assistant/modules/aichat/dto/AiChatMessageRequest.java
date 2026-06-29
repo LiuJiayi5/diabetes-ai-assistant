@@ -13,6 +13,9 @@ public class AiChatMessageRequest {
     @JsonProperty("conversation_id")
     private String conversationId;
 
+    @JsonProperty("expert_id")
+    private Integer expertId;
+
     @NotBlank(message = "Message is required")
     private String message;
 }

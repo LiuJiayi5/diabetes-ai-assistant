@@ -13,7 +13,7 @@ export const useAuthStore = defineStore('auth', {
     isLoggedIn: (state) => Boolean(state.token)
   },
   actions: {
-    setSession({ token, user, role }) {
+    setSession({ token, user, role, remember = true }) {
       const sessionRole = role || user?.role || 'patient'
       const scope = resolveSessionScope(sessionRole)
       const tokenRole = decodeTokenPayload(token)?.role
@@ -25,7 +25,7 @@ export const useAuthStore = defineStore('auth', {
         return false
       }
       if (token) {
-        setToken(token, scope)
+        setToken(token, scope, remember)
         this.token = token
       }
       this.user = user || null

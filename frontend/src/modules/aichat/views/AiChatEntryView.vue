@@ -24,6 +24,28 @@
       </div>
     </section>
 
+    <section class="expert-section">
+      <div class="section-title">
+        <Stethoscope :size="18" />
+        <h3>选择咨询专家</h3>
+      </div>
+      <div v-if="loadingExperts" class="expert-loading">正在读取专家...</div>
+      <div v-else class="expert-list">
+        <article v-for="expert in experts" :key="expert.expert_id" class="expert-card">
+          <div class="expert-avatar">
+            <img v-if="expertAvatar(expert)" :src="expertAvatar(expert)" alt="" />
+            <span v-else>{{ initial(expert.expert_name) }}</span>
+          </div>
+          <div class="expert-copy">
+            <h4>{{ expert.expert_name }}</h4>
+            <p>{{ expert.title || 'AI 专家' }} · {{ expert.department || '智能咨询' }}</p>
+            <span>{{ expert.specialty || '糖尿病健康咨询' }}</span>
+          </div>
+          <button type="button" @click="startWithExpert(expert)">咨询</button>
+        </article>
+      </div>
+    </section>
+
     <section class="ability-grid">
       <article v-for="item in abilities" :key="item.title" class="ability-card">
         <div class="ability-icon" :class="item.tone">
@@ -47,11 +69,16 @@
 </template>
 
 <script setup>
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Bot, Dumbbell, HeartPulse, MessageCircle, Salad, ShieldCheck, Sparkles, Stethoscope } from 'lucide-vue-next'
 import AiChatPageShell from '../components/AiChatPageShell.vue'
+import { getAiExperts } from '@/api/aiChat'
+import { resolveAvatarUrl } from '@/utils/assets'
 
 const router = useRouter()
+const experts = ref([])
+const loadingExperts = ref(false)
 
 const quickQuestions = [
   '帮我解释最近一周打卡分析',
@@ -69,6 +96,30 @@ const abilities = [
 function startWith(question) {
   router.push({ path: '/app/ai-chat/chat', query: { q: question } })
 }
+
+function startWithExpert(expert) {
+  router.push({ path: '/app/ai-chat/chat', query: { expert_id: expert.expert_id } })
+}
+
+function initial(name) {
+  return (name || 'AI').slice(0, 1)
+}
+
+function expertAvatar(expert) {
+  return expert?.avatar_url ? resolveAvatarUrl(expert.avatar_url) : ''
+}
+
+async function loadExperts() {
+  loadingExperts.value = true
+  try {
+    const response = await getAiExperts()
+    experts.value = response?.data || []
+  } finally {
+    loadingExperts.value = false
+  }
+}
+
+onMounted(loadExperts)
 </script>
 
 <style scoped>
@@ -185,6 +236,96 @@ function startWith(question) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.expert-section {
+  margin-bottom: 14px;
+  padding: 16px;
+  border-radius: var(--figma-radius-card);
+  background: #FFFFFF;
+  box-shadow: var(--figma-shadow-card);
+}
+
+.expert-loading {
+  padding: 14px 0 2px;
+  color: var(--figma-text-muted);
+  font-size: 12px;
+}
+
+.expert-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.expert-card {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #F7FCF9, #F2FAFB);
+}
+
+.expert-avatar {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--figma-green-button);
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.expert-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.expert-copy {
+  min-width: 0;
+}
+
+.expert-copy h4 {
+  margin: 0;
+  color: var(--figma-text-strong);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.expert-copy p,
+.expert-copy span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expert-copy p {
+  margin: 3px 0 0;
+  color: var(--figma-text-secondary);
+  font-size: 11px;
+}
+
+.expert-copy span {
+  margin-top: 3px;
+  color: var(--figma-text-muted);
+  font-size: 10px;
+}
+
+.expert-card button {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: var(--figma-radius-pill);
+  background: var(--figma-green-button);
+  color: #FFFFFF;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .ability-card {

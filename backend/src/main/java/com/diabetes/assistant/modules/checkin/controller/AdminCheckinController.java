@@ -138,6 +138,14 @@ public class AdminCheckinController {
         return ApiResponse.success(adminCheckinService.listAnalysisLogs(query));
     }
 
+    @GetMapping("/analysis-logs/{logId}")
+    public ApiResponse<AdminApiCallLogResponse> analysisLogDetail(
+            HttpServletRequest request,
+            @PathVariable Integer logId) {
+        requireAdmin(request);
+        return ApiResponse.success(adminCheckinService.getAnalysisLogDetail(logId));
+    }
+
     private void requireAdmin(HttpServletRequest request) {
         Integer userId = currentUserUtil.getCurrentUserId(request);
         if (!userQueryApi.isAdmin(userId)) {

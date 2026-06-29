@@ -1,7 +1,7 @@
 <template>
   <div class="life-plan-page">
     <header class="life-plan-topbar">
-      <button type="button" class="life-back-button" @click="router.push('/app/life-plan')">
+      <button type="button" class="life-back-button" @click="goBack">
         <ArrowLeft />
       </button>
       <h1>方案详情</h1>
@@ -93,6 +93,7 @@ import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, CircleAlert, LoaderCircle } from 'lucide-vue-next'
 import { useLifePlanStore } from '@/stores/lifePlan'
+import { backPathFromRoute } from '@/utils/navigation'
 import { formatPlanTime, groupScheduleByDay, normalizePlan, toText } from '../utils'
 import '../styles/life-plan.css'
 
@@ -117,5 +118,9 @@ async function loadDetail() {
   } catch {
     // Store exposes the error.
   }
+}
+
+function goBack() {
+  router.push(backPathFromRoute(route, '/app/life-plan'))
 }
 </script>

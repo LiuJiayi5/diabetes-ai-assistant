@@ -27,3 +27,7 @@ export function getAdminInactiveUsers(params = {}) {
 export function getAdminCheckinAnalysisLogs(params = {}) {
   return request.get('/admin/checkins/analysis-logs', { params })
 }
+
+export function getAdminCheckinAnalysisLogDetail(logId) {
+  return request.get(`/admin/checkins/analysis-logs/${logId}`)
+}

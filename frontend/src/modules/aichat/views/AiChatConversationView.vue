@@ -3,11 +3,12 @@
     <section class="chat-view">
       <div class="doctor-strip">
         <div class="doctor-mini-avatar">
-          <Bot :size="22" />
+          <img v-if="activeExpertAvatar" :src="activeExpertAvatar" alt="" />
+          <Bot v-else :size="22" />
         </div>
         <div>
-          <h2>AI 医生助手</h2>
-          <p>糖尿病预治智能助手 · 在线</p>
+          <h2>{{ activeExpertName }}</h2>
+          <p>{{ activeExpertDesc }} · 在线</p>
         </div>
         <button class="history-button" type="button" @click="router.push('/app/ai-chat/history')">
           <History :size="15" />
@@ -17,7 +18,10 @@
 
       <div ref="messageListRef" class="message-list mobile-scroll">
         <article class="message-row message-row--ai">
-          <div class="avatar avatar--ai"><Bot :size="17" /></div>
+          <div class="avatar avatar--ai">
+            <img v-if="activeExpertAvatar" :src="activeExpertAvatar" alt="" />
+            <Bot v-else :size="17" />
+          </div>
           <div class="bubble bubble--ai">
             <p>你好，我可以帮你解释血糖、饮食、运动、风险评估和打卡分析相关问题。你也可以直接问我最近打卡情况应该怎么调整。</p>
           </div>
@@ -31,16 +35,22 @@
             <div class="avatar avatar--user">我</div>
           </article>
           <article class="message-row message-row--ai">
-            <div class="avatar avatar--ai"><Bot :size="17" /></div>
+            <div class="avatar avatar--ai">
+              <img v-if="activeExpertAvatar" :src="activeExpertAvatar" alt="" />
+              <Bot v-else :size="17" />
+            </div>
             <div class="bubble bubble--ai" :class="{ 'bubble--failed': message.call_status === 'failed' }">
-              <p v-for="(line, index) in answerLines(message)" :key="`${message.message_id || message.local_id}-${index}`">{{ line }}</p>
+              <MarkdownContent :content="answerText(message)" />
               <span v-if="message.call_status === 'failed'" class="error-text">{{ message.error_message || '本次回复不稳定，可以稍后重试。' }}</span>
             </div>
           </article>
         </template>
 
         <article v-if="sending" class="message-row message-row--ai">
-          <div class="avatar avatar--ai"><Bot :size="17" /></div>
+          <div class="avatar avatar--ai">
+            <img v-if="activeExpertAvatar" :src="activeExpertAvatar" alt="" />
+            <Bot v-else :size="17" />
+          </div>
           <div class="bubble bubble--ai bubble--typing">
             <LoaderCircle class="spin" :size="16" />
             <span>正在整理回复</span>
@@ -94,10 +104,14 @@ import { Bot, Eraser, History, LoaderCircle, SendHorizontal, Trash2 } from 'luci
 import {
   clearAiChatSession,
   deleteAiChatSession as deleteAiChatSessionApi,
+  getAiExperts,
+  getAiChatSessions,
   getAiChatMessages,
   sendAiDoctorMessage
 } from '@/api/aiChat'
+import MarkdownContent from '@/components/MarkdownContent.vue'
 import AiChatPageShell from '../components/AiChatPageShell.vue'
+import { resolveAvatarUrl } from '@/utils/assets'
 
 const route = useRoute()
 const router = useRouter()
@@ -106,6 +120,11 @@ const messages = ref([])
 const draft = ref('')
 const sessionId = ref(null)
 const conversationId = ref('')
+const expertId = ref(null)
+const activeExpertName = ref('AI 医生助手')
+const activeExpertDesc = ref('糖尿病预治智能助手')
+const activeExpertAvatar = ref('')
+const experts = ref([])
 const loading = ref(false)
 const sending = ref(false)
 const clearing = ref(false)
@@ -135,10 +154,19 @@ function normalizeMessage(item) {
   }
 }
 
+function applySessionMeta(session) {
+  if (!session) return
+  expertId.value = session.expert_id || expertId.value
+  activeExpertName.value = session.expert_name || activeExpertName.value
+  activeExpertDesc.value = [session.expert_title, session.expert_department].filter(Boolean).join(' · ') || activeExpertDesc.value
+  activeExpertAvatar.value = resolveExpertAvatar(session.expert_avatar_url) || activeExpertAvatar.value
+}
+
 async function loadMessages(id) {
   if (!id) return
   loading.value = true
   try {
+    await loadSessionMeta(id)
     const data = unwrap(await getAiChatMessages(id))
     messages.value = Array.isArray(data) ? data.map(normalizeMessage) : []
     sessionId.value = Number(id)
@@ -150,10 +178,26 @@ async function loadMessages(id) {
   }
 }
 
+async function loadSessionMeta(id) {
+  try {
+    const data = unwrap(await getAiChatSessions({ page: 1, page_size: 100 }))
+    const session = data?.list?.find((item) => String(item.session_id) === String(id))
+    applySessionMeta(session)
+    await applyExpertById(expertId.value)
+  } catch {
+    // Messages can still load if the session list metadata request fails.
+  }
+}
+
 function resetConversationState() {
   messages.value = []
   sessionId.value = null
   conversationId.value = ''
+  expertId.value = route.query.expert_id ? Number(route.query.expert_id) : null
+  activeExpertName.value = 'AI 医生助手'
+  activeExpertDesc.value = '糖尿病预治智能助手'
+  activeExpertAvatar.value = ''
+  applyExpertById(expertId.value)
 }
 
 async function reloadCurrentSession() {
@@ -190,11 +234,15 @@ async function sendMessage() {
     const payload = {
       message: text,
       session_id: sessionId.value || undefined,
+      expert_id: sessionId.value ? undefined : (expertId.value || undefined),
       conversation_id: conversationId.value || undefined
     }
     const data = unwrap(await sendAiDoctorMessage(payload))
     sessionId.value = data?.session_id || sessionId.value
     conversationId.value = data?.conversation_id || conversationId.value
+    expertId.value = data?.expert_id || expertId.value
+    activeExpertName.value = data?.expert_name || activeExpertName.value
+    activeExpertAvatar.value = resolveExpertAvatar(data?.expert_avatar_url) || activeExpertAvatar.value
     const index = messages.value.findIndex((item) => item.local_id === localMessage.local_id)
     const normalized = normalizeMessage({
       ...data,
@@ -258,9 +306,38 @@ async function deleteSession() {
   }
 }
 
-function answerLines(message) {
-  const text = message.ai_response || message.answer || ''
-  return text.split(/\n+/).map((line) => line.trim()).filter(Boolean)
+function answerText(message) {
+  return message.ai_response || message.answer || ''
+}
+
+function resolveExpertAvatar(value) {
+  return value ? resolveAvatarUrl(value) : ''
+}
+
+async function ensureExpertsLoaded() {
+  if (experts.value.length) return experts.value
+  try {
+    const data = unwrap(await getAiExperts())
+    experts.value = Array.isArray(data) ? data : []
+  } catch {
+    experts.value = []
+  }
+  return experts.value
+}
+
+function applyExpert(expert) {
+  if (!expert) return
+  expertId.value = expert.expert_id || expertId.value
+  activeExpertName.value = expert.expert_name || activeExpertName.value
+  activeExpertDesc.value = [expert.title, expert.department].filter(Boolean).join(' · ') || activeExpertDesc.value
+  activeExpertAvatar.value = resolveExpertAvatar(expert.avatar_url) || activeExpertAvatar.value
+}
+
+async function applyExpertById(id) {
+  if (!id) return
+  const list = await ensureExpertsLoaded()
+  const expert = list.find((item) => String(item.expert_id) === String(id))
+  applyExpert(expert)
 }
 
 async function scrollToBottom() {
@@ -277,6 +354,16 @@ watch(() => route.query.session_id, (value) => {
   }
 })
 
+watch(() => route.query.expert_id, (value) => {
+  if (!sessionId.value) {
+    expertId.value = value ? Number(value) : null
+    activeExpertName.value = 'AI 医生助手'
+    activeExpertDesc.value = '糖尿病预治智能助手'
+    activeExpertAvatar.value = ''
+    applyExpertById(expertId.value)
+  }
+})
+
 onMounted(async () => {
   const querySessionId = route.query.session_id
   const prefill = route.query.q
@@ -284,6 +371,7 @@ onMounted(async () => {
     await loadMessages(querySessionId)
   } else {
     resetConversationState()
+    await applyExpertById(expertId.value)
   }
   if (typeof prefill === 'string' && prefill) {
     draft.value = prefill
@@ -325,6 +413,14 @@ onMounted(async () => {
   width: 40px;
   height: 40px;
   border-radius: 14px;
+  overflow: hidden;
+}
+
+.doctor-mini-avatar img,
+.avatar--ai img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .doctor-strip h2 {
@@ -375,6 +471,7 @@ onMounted(async () => {
   height: 30px;
   flex: 0 0 30px;
   border-radius: 50%;
+  overflow: hidden;
   font-size: 12px;
   font-weight: 700;
 }
@@ -383,7 +480,7 @@ onMounted(async () => {
   display: grid;
   place-items: center;
   color: #FFFFFF;
-  background: linear-gradient(135deg, #9FDEB8 0%, #7FD5B2 100%);
+  background: var(--figma-green-button);
 }
 
 .bubble {

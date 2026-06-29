@@ -131,8 +131,78 @@
 .admin-pagination {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   padding: 14px 18px;
   border-top: 1px solid var(--admin-border);
+}
+
+.admin-pagination--panel {
+  padding: 16px;
+}
+
+.admin-pagination .el-pagination {
+  --el-pagination-font-size: 14px;
+  --el-pagination-button-width: 44px;
+  --el-pagination-button-height: 40px;
+  --el-pagination-button-disabled-bg-color: #F3F6FA;
+  --el-pagination-hover-color: #409EFF;
+  gap: 8px;
+  color: #606266;
+  font-weight: 500;
+}
+
+.admin-pagination .el-pagination__total {
+  height: 40px;
+  margin-right: 8px;
+  color: #606266;
+  font-size: 16px;
+  line-height: 40px;
+}
+
+.admin-pagination .el-pagination .el-select {
+  width: 172px;
+  margin-right: 14px;
+}
+
+.admin-pagination .el-pagination .el-select .el-input {
+  height: 40px;
+}
+
+.admin-pagination .el-pagination .el-select .el-input__wrapper {
+  border-radius: 4px;
+  background: #FFFFFF;
+  box-shadow: 0 0 0 1px #409EFF inset;
+}
+
+.admin-pagination .el-pagination .el-select .el-input__inner {
+  color: #606266;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.admin-pagination .el-pagination.is-background .btn-prev,
+.admin-pagination .el-pagination.is-background .btn-next,
+.admin-pagination .el-pagination.is-background .el-pager li {
+  min-width: 44px;
+  height: 40px;
+  margin: 0;
+  border-radius: 4px;
+  background: #F3F6FA;
+  color: #303133;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.admin-pagination .el-pagination.is-background .el-pager li.is-active {
+  background: #409EFF;
+  color: #FFFFFF;
+  font-weight: 700;
+}
+
+.admin-pagination .el-pagination.is-background .btn-prev.is-disabled,
+.admin-pagination .el-pagination.is-background .btn-next.is-disabled {
+  color: #C0C4CC;
+  background: #F3F6FA;
 }
 
 .admin-card-title-row {

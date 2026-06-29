@@ -26,6 +26,8 @@ public class LifePlan {
     private String status;
     private String callStatus;
     private String errorMessage;
+    private String sourceType;
+    private Integer sourceReviewId;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

@@ -3,6 +3,7 @@ package com.diabetes.assistant.modules.user.service;
 import com.diabetes.assistant.common.response.PageResult;
 import com.diabetes.assistant.modules.user.dto.LoginRequest;
 import com.diabetes.assistant.modules.user.dto.RegisterRequest;
+import com.diabetes.assistant.modules.user.dto.ResetPasswordRequest;
 import com.diabetes.assistant.modules.user.dto.UpdateUserRequest;
 import com.diabetes.assistant.modules.user.dto.UpdateUserStatusRequest;
 import com.diabetes.assistant.modules.user.vo.LoginResponse;
@@ -16,6 +17,8 @@ public interface UserService {
     UserResponse register(RegisterRequest request);
 
     LoginResponse login(LoginRequest request);
+
+    void resetPassword(ResetPasswordRequest request);
 
     UserResponse getCurrentUser(Integer userId);
 

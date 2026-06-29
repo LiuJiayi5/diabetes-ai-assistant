@@ -109,13 +109,21 @@
           </tbody>
         </table>
         <EmptyState v-if="!loading.records && !records.list.length" text="暂无打卡记录" />
-        <Pagination
+        <div
           v-if="records.total > records.page_size"
-          :page="records.page"
-          :page-size="records.page_size"
-          :total="records.total"
-          @change="loadRecords"
-        />
+          class="admin-pagination admin-pagination--panel"
+        >
+          <el-pagination
+            v-model:current-page="records.page"
+            v-model:page-size="records.page_size"
+            :total="records.total"
+            :page-sizes="[10, 20, 50]"
+            layout="total, sizes, prev, pager, next"
+            background
+            @current-change="loadRecords"
+            @size-change="handleRecordSizeChange"
+          />
+        </div>
       </div>
 
       <div v-show="activeTab === 'analyses'" class="tab-body">
@@ -180,13 +188,21 @@
           </tbody>
         </table>
         <EmptyState v-if="!loading.analyses && !analyses.list.length" text="暂无分析结果" />
-        <Pagination
+        <div
           v-if="analyses.total > analyses.page_size"
-          :page="analyses.page"
-          :page-size="analyses.page_size"
-          :total="analyses.total"
-          @change="loadAnalyses"
-        />
+          class="admin-pagination admin-pagination--panel"
+        >
+          <el-pagination
+            v-model:current-page="analyses.page"
+            v-model:page-size="analyses.page_size"
+            :total="analyses.total"
+            :page-sizes="[10, 20, 50]"
+            layout="total, sizes, prev, pager, next"
+            background
+            @current-change="loadAnalyses"
+            @size-change="handleAnalysisSizeChange"
+          />
+        </div>
       </div>
 
       <div v-show="activeTab === 'inactive'" class="tab-body">
@@ -286,6 +302,7 @@
               <th>输出摘要</th>
               <th>失败原因</th>
               <th>调用时间</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
@@ -296,21 +313,30 @@
                 <small>ID {{ item.user_id }}</small>
               </td>
               <td><span :class="['badge', item.call_status]">{{ callStatusText(item.call_status) }}</span></td>
-              <td class="wide">{{ item.request_summary || '-' }}</td>
-              <td class="wide">{{ item.response_summary || '-' }}</td>
-              <td class="wide">{{ item.error_message || '-' }}</td>
+              <td class="wide"><span class="clamp-text">{{ item.request_summary || '-' }}</span></td>
+              <td class="wide"><span class="clamp-text">{{ item.response_summary || '-' }}</span></td>
+              <td class="wide"><span class="clamp-text">{{ item.error_message || '-' }}</span></td>
               <td>{{ formatTime(item.create_time) }}</td>
+              <td><button class="link-btn" type="button" @click="openLog(item.log_id)">详情</button></td>
             </tr>
           </tbody>
         </table>
         <EmptyState v-if="!loading.logs && !logs.list.length" text="暂无调用日志" />
-        <Pagination
+        <div
           v-if="logs.total > logs.page_size"
-          :page="logs.page"
-          :page-size="logs.page_size"
-          :total="logs.total"
-          @change="loadLogs"
-        />
+          class="admin-pagination admin-pagination--panel"
+        >
+          <el-pagination
+            v-model:current-page="logs.page"
+            v-model:page-size="logs.page_size"
+            :total="logs.total"
+            :page-sizes="[10, 20, 50]"
+            layout="total, sizes, prev, pager, next"
+            background
+            @current-change="loadLogs"
+            @size-change="handleLogSizeChange"
+          />
+        </div>
       </div>
     </section>
 
@@ -418,11 +444,13 @@
         </div>
       </section>
     </div>
+
   </div>
 </template>
 
 <script setup>
 import { computed, h, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   Activity,
   AlertTriangle,
@@ -444,6 +472,7 @@ import {
   getAdminInactiveUsers
 } from '../adminApi'
 
+const router = useRouter()
 const activeTab = ref('records')
 const error = ref('')
 const recordFilters = reactive({
@@ -579,6 +608,11 @@ function resetRecordFilters() {
   applyRecordFilters()
 }
 
+function handleRecordSizeChange() {
+  records.page = 1
+  loadRecords(1)
+}
+
 function applyAnalysisFilters() {
   analyses.page = 1
   loadAnalyses(1)
@@ -592,6 +626,11 @@ function resetAnalysisFilters() {
   applyAnalysisFilters()
 }
 
+function handleAnalysisSizeChange() {
+  analyses.page = 1
+  loadAnalyses(1)
+}
+
 function applyLogFilters() {
   logs.page = 1
   loadLogs(1)
@@ -603,6 +642,11 @@ function resetLogFilters() {
   logFilters.endDate = ''
   logFilters.callStatus = ''
   applyLogFilters()
+}
+
+function handleLogSizeChange() {
+  logs.page = 1
+  loadLogs(1)
 }
 
 async function loadOverview() {
@@ -669,6 +713,10 @@ async function openAnalysis(id) {
   }
 }
 
+function openLog(id) {
+  router.push(`/admin/checkin-analysis/logs/${id}`)
+}
+
 async function run(key, fn) {
   loading[key] = true
   error.value = ''
@@ -727,19 +775,6 @@ function callStatusText(value) {
 
 const EmptyState = (props) => h('div', { class: 'state empty-state' }, props.text)
 EmptyState.props = ['text']
-
-const Pagination = (props, { emit }) => {
-  const totalPages = Math.max(1, Math.ceil(props.total / props.pageSize))
-  return h('div', { class: 'pagination' }, [
-    h('div', { class: 'pager-group' }, [
-      h('button', { class: 'pager-action pager-action-prev', type: 'button', disabled: props.page <= 1, onClick: () => emit('change', props.page - 1) }, '上一页'),
-      h('span', { class: 'pager-count' }, `${props.page} / ${totalPages}`),
-      h('button', { class: 'pager-action pager-action-next', type: 'button', disabled: props.page >= totalPages, onClick: () => emit('change', props.page + 1) }, '下一页')
-    ])
-  ])
-}
-Pagination.props = ['page', 'pageSize', 'total']
-Pagination.emits = ['change']
 
 </script>
 
@@ -1022,6 +1057,16 @@ td.wide {
   line-height: 1.5;
 }
 
+.clamp-text {
+  display: -webkit-box;
+  max-height: 40px;
+  overflow: hidden;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -1070,65 +1115,6 @@ td.wide {
 .error-state {
   color: #dc2626;
   background: rgba(239, 68, 68, 0.06);
-}
-
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 16px;
-}
-
-.pagination :deep(.pager-group) {
-  display: inline-flex;
-  align-items: center;
-  height: 34px;
-  overflow: hidden;
-  border: 1.5px solid #1e3a8a;
-  border-radius: 999px;
-  background: transparent !important;
-  box-shadow: none;
-}
-
-.pagination :deep(.pager-action),
-.pagination :deep(.pager-count) {
-  height: 100%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #1e3a8a;
-  background: transparent !important;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.pagination :deep(.pager-action) {
-  appearance: none;
-  -webkit-appearance: none;
-  min-width: 74px;
-  padding: 0 14px;
-  margin: 0;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.pagination :deep(.pager-count) {
-  min-width: 58px;
-  border-left: 1.5px solid #1e3a8a;
-  border-right: 1.5px solid #1e3a8a;
-}
-
-.pagination :deep(.pager-action:hover:not(:disabled)) {
-  color: #2563eb;
-}
-
-.pagination :deep(.pager-action:disabled) {
-  color: #94a3b8;
-  background: transparent !important;
-  cursor: not-allowed;
 }
 
 .dialog-mask {

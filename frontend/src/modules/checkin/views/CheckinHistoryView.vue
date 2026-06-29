@@ -77,11 +77,13 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { showFailToast } from 'vant'
 import { Inbox, LoaderCircle, Search } from 'lucide-vue-next'
 import { getCheckinHistory } from '@/api/checkin'
 import CheckinPageShell from '../components/CheckinPageShell.vue'
 
+const route = useRoute()
 const loading = ref(false)
 const records = ref([])
 const total = ref(0)
@@ -89,10 +91,10 @@ const page = ref(1)
 const pageSize = 10
 
 const filters = reactive({
-  start_date: '',
-  end_date: '',
-  task_type: '',
-  status: ''
+  start_date: String(route.query.start_date || ''),
+  end_date: String(route.query.end_date || ''),
+  task_type: String(route.query.task_type || ''),
+  status: String(route.query.status || '')
 })
 
 const typeOptions = [

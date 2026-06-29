@@ -4,6 +4,10 @@ export function getAiChatEntry() {
   return request.get('/ai-chat/entry')
 }
 
+export function getAiExperts() {
+  return request.get('/ai-chat/experts')
+}
+
 export function sendAiDoctorMessage(payload) {
   return request.post('/ai-chat/message', payload)
 }
@@ -34,4 +38,20 @@ export function getAdminAiChatLogs(params = {}) {
 
 export function getAdminAiChatLogDetail(messageId) {
   return request.get(`/admin/ai-chat/logs/${messageId}`)
+}
+
+export function getAdminAiExperts(params = {}) {
+  return request.get('/admin/ai-experts', { params })
+}
+
+export function createAdminAiExpert(payload) {
+  return request.post('/admin/ai-experts', payload)
+}
+
+export function updateAdminAiExpert(expertId, payload) {
+  return request.put(`/admin/ai-experts/${expertId}`, payload)
+}
+
+export function deleteAdminAiExpert(expertId) {
+  return request.delete(`/admin/ai-experts/${expertId}`)
 }

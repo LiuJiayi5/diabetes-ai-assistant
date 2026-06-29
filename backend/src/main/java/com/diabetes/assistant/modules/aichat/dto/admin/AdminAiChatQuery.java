@@ -10,6 +10,7 @@ public class AdminAiChatQuery {
     private Integer page;
     private Integer pageSize;
     private Integer userId;
+    private Integer expertId;
     private String userKeyword;
     private LocalDate startDate;
     private LocalDate endDate;

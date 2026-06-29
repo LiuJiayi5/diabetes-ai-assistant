@@ -1,19 +1,31 @@
 # Dify AI 应用说明
 
-Dify / DeepSeek 只用于真正需要 AI 的功能，不承担普通业务接口、认证、数据库读写或管理端接口。
+本项目的 AI 能力由 Spring Boot 后端统一调用 Dify，前端不直接调用 Dify。Dify 只负责需要大模型生成或推理的部分，不承担注册登录、普通 CRUD、管理端查询或数据库写入。
 
-## AI Workflow
+## Workflow / Agent
 
-- diabetes_risk_prediction_workflow：模块4，糖尿病风险预测
-- personalized_life_plan_workflow：模块6，个性化生活方案生成
-- checkin_behavior_analysis_workflow：模块8，生活打卡行为分析
+- 风险预测 Workflow：`dify/workflows/diabetes_risk_prediction_workflow.yml`
+- 个性化生活方案 Workflow：`dify/workflows/personalized_life_plan_workflow.yml`
+- 打卡行为分析 Workflow：`dify/workflows/checkin_behavior_analysis_workflow.md`
+- AI 医生 Agent：`dify/agents/exports/diabetes_ai_doctor_agent.yml`
 
-## AI Agent
+## 环境变量
 
-- diabetes_ai_doctor_agent：模块5，AI 医生咨询
+```text
+DIFY_BASE_URL=http://localhost/v1
+DIFY_RISK_PREDICT_API_KEY=风险预测工作流 Key
+DIFY_LIFE_PLAN_API_KEY=生活方案工作流 Key
+DIFY_CHECKIN_ANALYSIS_API_KEY=打卡分析工作流 Key
+DIFY_AI_DOCTOR_API_KEY=AI 医生 Agent Key
+```
 
-## Knowledge Base
+`DIFY_RISK_PREDICTION_API_KEY` 作为旧变量名兼容，推荐使用 `DIFY_RISK_PREDICT_API_KEY`。
 
-- diabetes_knowledge_base：糖尿病知识库
+## 专家身份
 
-所有 Dify 调用都由 Spring Boot 后端的 DifyService / DifyClient 发起，前端不直接调用 Dify。
+AI 医生支持多个专家身份。后端会把专家姓名、职称、科室、专长、persona 和开场白传给 Agent，使其能够回答“你是谁、擅长什么、当前以什么专家身份回答”。
+
+## 知识库
+
+知识库资料位于 `dify/knowledge-base/docs/`，可按 Dify 知识库导入流程使用。
+

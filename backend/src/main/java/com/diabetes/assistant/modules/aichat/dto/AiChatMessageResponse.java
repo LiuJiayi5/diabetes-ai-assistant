@@ -17,6 +17,15 @@ public class AiChatMessageResponse {
     @JsonProperty("conversation_id")
     private String conversationId;
 
+    @JsonProperty("expert_id")
+    private Integer expertId;
+
+    @JsonProperty("expert_name")
+    private String expertName;
+
+    @JsonProperty("expert_avatar_url")
+    private String expertAvatarUrl;
+
     @JsonProperty("user_message")
     private String userMessage;
 

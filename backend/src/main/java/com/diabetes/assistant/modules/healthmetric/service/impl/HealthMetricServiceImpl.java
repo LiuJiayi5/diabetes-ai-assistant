@@ -14,6 +14,7 @@ import com.diabetes.assistant.modules.healthmetric.entity.HealthMetric;
 import com.diabetes.assistant.modules.healthmetric.mapper.HealthMetricMapper;
 import com.diabetes.assistant.modules.healthmetric.service.HealthMetricService;
 import com.diabetes.assistant.modules.healthmetric.util.MetricAbnormalUtils;
+import com.diabetes.assistant.modules.interventionreview.service.InterventionReviewTriggerService;
 import com.diabetes.assistant.modules.user.contract.UserQueryApi;
 import com.diabetes.assistant.modules.user.contract.dto.UserBasicDTO;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class HealthMetricServiceImpl implements HealthMetricService, HealthMetri
 
     private final HealthMetricMapper healthMetricMapper;
     private final UserQueryApi userQueryApi;
+    private final InterventionReviewTriggerService interventionReviewTriggerService;
 
     @Override
     public HealthMetricDTO getEntry(Integer userId) {
@@ -59,7 +61,14 @@ public class HealthMetricServiceImpl implements HealthMetricService, HealthMetri
 
         healthMetricMapper.insert(metric);
         HealthMetric saved = healthMetricMapper.selectById(metric.getMetricId());
+        if (!Boolean.TRUE.equals(request.getSkipInterventionReview())) {
+            triggerInterventionReview(userId, "health_metric_save", "User recorded new health metrics");
+        }
         return new SaveMetricResponse(saved.getMetricId(), saved.getCreateTime());
+    }
+
+    private void triggerInterventionReview(Integer userId, String triggerType, String triggerReason) {
+        interventionReviewTriggerService.triggerAsync(userId, triggerType, triggerReason);
     }
 
     @Override

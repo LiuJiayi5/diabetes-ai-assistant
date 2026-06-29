@@ -54,6 +54,7 @@ import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, BookOpen, LoaderCircle } from 'lucide-vue-next'
 import { getCategoryMeta, useArticlesStore } from '@/stores/articles'
+import { pushWithBack } from '@/utils/navigation'
 import ArticleCard from '../components/ArticleCard.vue'
 import '../styles/articles.css'
 
@@ -74,6 +75,6 @@ onMounted(async () => {
 })
 
 function openArticle(article) {
-  router.push(`/app/articles/${article.article_id}`)
+  pushWithBack(router, `/app/articles/${article.article_id}`, `/app/articles/category/${categoryMeta.value.code}`)
 }
 </script>

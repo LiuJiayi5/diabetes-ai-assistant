@@ -18,9 +18,9 @@
           <div class="session-icon">
             <MessageCircle :size="20" />
           </div>
-          <div>
+          <div class="session-copy">
             <h3>{{ item.session_title || 'AI 医生咨询' }}</h3>
-            <p>{{ timeText(item.last_message_time || item.create_time) }} · {{ statusText(item.status) }}</p>
+            <p>{{ item.expert_name || 'AI 医生助手' }} · {{ timeText(item.last_message_time || item.create_time) }} · {{ statusText(item.status) }}</p>
           </div>
           <ChevronRight :size="17" />
         </button>
@@ -151,6 +151,10 @@ onMounted(loadSessions)
   border-radius: 14px;
   background: #E5F6EE;
   color: #4FB783;
+}
+
+.session-copy {
+  min-width: 0;
 }
 
 .session-main h3 {

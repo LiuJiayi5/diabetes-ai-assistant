@@ -21,7 +21,11 @@ public class DifyService {
 
     public String callRiskPrediction(Map<String, Object> inputs, String user) {
         DifyWorkflowResult result = difyClient.runWorkflow(difyProperties.getRiskPredictApiKey(), inputs, user);
-        return outputAsText(result.getOutputs(), "risk_result");
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("outputs", result.getOutputs());
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("data", data);
+        return toJson(response);
     }
 
     public String callAiDoctor(String message, String conversationId, Map<String, Object> context, String user) {
@@ -39,6 +43,10 @@ public class DifyService {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("data", data);
         return toJson(response);
+    }
+
+    public DifyWorkflowResult callInterventionReview(Map<String, Object> inputs, String user) {
+        return difyClient.runWorkflow(difyProperties.getInterventionReviewApiKey(), inputs, user);
     }
 
     private String outputAsText(Map<String, Object> outputs, String preferredKey) {

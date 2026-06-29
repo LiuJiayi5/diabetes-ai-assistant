@@ -13,8 +13,8 @@ export function safeJsonParse(value, fallback = null) {
 export function normalizePlan(plan) {
   const planJson = safeJsonParse(plan?.plan_json, plan?.plan_json || {})
   const checkinTasks = safeJsonParse(plan?.checkin_tasks_json, planJson?.checkin_tasks || [])
-  const dietPlan = planJson?.diet_plan || planJson?.dietPlan || {}
-  const exercisePlan = planJson?.exercise_plan || planJson?.exercisePlan || {}
+  const rawDietPlan = planJson?.diet_plan || planJson?.dietPlan || {}
+  const rawExercisePlan = planJson?.exercise_plan || planJson?.exercisePlan || {}
   const workRestPlan = planJson?.work_rest_plan || planJson?.workRestPlan || planJson?.sleep_plan || {}
   const scheduleSource =
     planJson?.daily_schedule ||
@@ -24,7 +24,9 @@ export function normalizePlan(plan) {
     planJson?.plan_days ||
     planJson?.dailySchedule ||
     planJson
-  const dailySchedule = normalizeWeeklySchedule(scheduleSource, { dietPlan, exercisePlan, workRestPlan })
+  const dailySchedule = normalizeWeeklySchedule(scheduleSource, { dietPlan: rawDietPlan, exercisePlan: rawExercisePlan, workRestPlan })
+  const dietPlan = enrichDietPlan(rawDietPlan, dailySchedule)
+  const exercisePlan = enrichExercisePlan(rawExercisePlan, dailySchedule)
 
   return {
     ...plan,
@@ -220,6 +222,37 @@ function normalizeGoal(value) {
 function pickItem(items, pattern) {
   const match = items.find((item) => pattern.test(`${item?.type || ''}${item?.task_type || ''}${item?.name || ''}${item?.task_name || ''}${item?.title || ''}${item?.time || ''}`))
   return match?.content || match?.description || match?.task_name || match?.name || match?.title || match
+}
+
+function enrichDietPlan(plan, dailySchedule) {
+  const source = plan && typeof plan === 'object' ? { ...plan } : {}
+  const firstDay = Array.isArray(dailySchedule) ? dailySchedule[0] : null
+  const cards = firstDay?.dietCards || []
+  return {
+    ...source,
+    breakfast: source.breakfast || contentByCardKey(cards, 'breakfast'),
+    lunch: source.lunch || contentByCardKey(cards, 'lunch'),
+    dinner: source.dinner || contentByCardKey(cards, 'dinner'),
+    snack: source.snack || contentByCardKey(cards, 'snack')
+  }
+}
+
+function enrichExercisePlan(plan, dailySchedule) {
+  const source = plan && typeof plan === 'object' ? { ...plan } : {}
+  const firstDay = Array.isArray(dailySchedule) ? dailySchedule[0] : null
+  const cards = firstDay?.exerciseCards || []
+  return {
+    ...source,
+    exercise_type: source.exercise_type || source.type || contentByCardKey(cards, 'light'),
+    frequency: source.frequency || source.freq || '按每日安排执行',
+    duration: source.duration || contentByCardKey(cards, 'aerobic'),
+    intensity: source.intensity || '以低到中等强度、身体可耐受为准',
+    precautions: source.precautions || source.notice || contentByCardKey(cards, 'notice')
+  }
+}
+
+function contentByCardKey(cards, key) {
+  return cards.find((item) => item.key === key)?.content || ''
 }
 
 function toArray(value) {

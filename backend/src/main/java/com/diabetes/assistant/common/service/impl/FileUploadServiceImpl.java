@@ -35,10 +35,11 @@ public class FileUploadServiceImpl implements FileUploadService {
         String extension = extension(file.getOriginalFilename());
         String relativeDir = "images/" + LocalDate.now().format(DATE_PATH);
         String filename = UUID.randomUUID().toString().replace("-", "") + "." + extension;
-        Path targetDir = Path.of(uploadProperties.getRootDir(), relativeDir).toAbsolutePath().normalize();
+        Path uploadRoot = uploadProperties.resolveRootPath();
+        Path targetDir = uploadRoot.resolve(relativeDir).normalize();
         Path target = targetDir.resolve(filename).normalize();
 
-        if (!target.startsWith(Path.of(uploadProperties.getRootDir()).toAbsolutePath().normalize())) {
+        if (!target.startsWith(uploadRoot)) {
             throw new BusinessException(400, "图片保存路径不合法");
         }
 

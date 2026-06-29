@@ -28,4 +28,6 @@ public interface AdminCheckinService {
     List<AdminInactiveUserResponse> listInactiveUsers(Integer days, Integer limit);
 
     PageResult<AdminApiCallLogResponse> listAnalysisLogs(AdminLogQuery query);
+
+    AdminApiCallLogResponse getAnalysisLogDetail(Integer logId);
 }

@@ -35,13 +35,14 @@ public class AdminAiChatController {
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(name = "page_size", defaultValue = "10") Integer pageSize,
             @RequestParam(name = "user_id", required = false) Integer userId,
+            @RequestParam(name = "expert_id", required = false) Integer expertId,
             @RequestParam(name = "user_keyword", required = false) String userKeyword,
             @RequestParam(name = "start_date", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(name = "end_date", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String status) {
         requireAdmin(request);
-        AdminAiChatQuery query = buildQuery(page, pageSize, userId, userKeyword, startDate, endDate, keyword, status);
+        AdminAiChatQuery query = buildQuery(page, pageSize, userId, expertId, userKeyword, startDate, endDate, keyword, status);
         return ApiResponse.success(aiChatService.listAdminSessions(query));
     }
 
@@ -51,13 +52,14 @@ public class AdminAiChatController {
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(name = "page_size", defaultValue = "10") Integer pageSize,
             @RequestParam(name = "user_id", required = false) Integer userId,
+            @RequestParam(name = "expert_id", required = false) Integer expertId,
             @RequestParam(name = "user_keyword", required = false) String userKeyword,
             @RequestParam(name = "start_date", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(name = "end_date", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
             @RequestParam(required = false) String keyword,
             @RequestParam(name = "call_status", required = false) String callStatus) {
         requireAdmin(request);
-        AdminAiChatQuery query = buildQuery(page, pageSize, userId, userKeyword, startDate, endDate, keyword, callStatus);
+        AdminAiChatQuery query = buildQuery(page, pageSize, userId, expertId, userKeyword, startDate, endDate, keyword, callStatus);
         return ApiResponse.success(aiChatService.listAdminLogs(query));
     }
 
@@ -69,12 +71,13 @@ public class AdminAiChatController {
         return ApiResponse.success(aiChatService.getAdminMessageDetail(messageId));
     }
 
-    private AdminAiChatQuery buildQuery(Integer page, Integer pageSize, Integer userId, String userKeyword,
+    private AdminAiChatQuery buildQuery(Integer page, Integer pageSize, Integer userId, Integer expertId, String userKeyword,
                                         LocalDate startDate, LocalDate endDate, String keyword, String status) {
         AdminAiChatQuery query = new AdminAiChatQuery();
         query.setPage(page);
         query.setPageSize(pageSize);
         query.setUserId(userId);
+        query.setExpertId(expertId);
         query.setUserKeyword(userKeyword);
         query.setStartDate(startDate);
         query.setEndDate(endDate);

@@ -1,0 +1,618 @@
+app:
+  description: 自动复盘近期生活方案执行情况、健康指标与打卡行为，判断当前方案应继续观察、轻度调整、中度调整，还是提示高风险就医/复查。
+  icon: 🧭
+  icon_background: '#E0F2FE'
+  icon_type: emoji
+  mode: workflow
+  name: 周期复盘与干预调整工作流
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/deepseek:0.0.17@f7a5c1d222d17ee419b17a80d6e4923838fe93788dc724a3af73fbc6990b3a32
+    version: null
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: code
+      id: start-source-build_retrieval_query-target
+      source: start
+      sourceHandle: source
+      target: build_retrieval_query
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: knowledge-retrieval
+      id: build_retrieval_query-source-knowledge_retrieval-target
+      source: build_retrieval_query
+      sourceHandle: source
+      target: knowledge_retrieval
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+      id: knowledge_retrieval-source-review_decision-target
+      source: knowledge_retrieval
+      sourceHandle: source
+      target: review_decision
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: review_decision-source-validate_json-target
+      source: review_decision
+      sourceHandle: source
+      target: validate_json
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: validate_json-source-end-target
+      source: validate_json
+      sourceHandle: source
+      target: end
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: 接收后端汇总的患者档案、最新健康信号、当前生活方案、执行进度与近期打卡数据。
+        selected: false
+        title: 开始
+        type: start
+        variables:
+        - label: 用户ID
+          max_length: null
+          options: []
+          required: true
+          type: text-input
+          variable: user_id
+        - label: 触发类型
+          max_length: null
+          options: []
+          required: true
+          type: text-input
+          variable: trigger_type
+        - label: 触发原因
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: trigger_reason
+        - label: 患者档案JSON
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: patient_profile_json
+        - label: 最新健康数据JSON
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: latest_health_metrics_json
+        - label: 最新风险评估JSON
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: latest_risk_assessment_json
+        - label: 当前生活方案JSON
+          max_length: null
+          options: []
+          required: true
+          type: paragraph
+          variable: current_life_plan_json
+        - label: 方案执行进度JSON
+          max_length: null
+          options: []
+          required: true
+          type: paragraph
+          variable: plan_progress_json
+        - label: 近期打卡记录JSON
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: recent_checkin_records_json
+        - label: 打卡统计JSON
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: checkin_stats_json
+        - label: 最新打卡分析JSON
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: latest_checkin_analysis_json
+        - label: 运动安全提醒JSON
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: exercise_safety_alert_json
+        - label: 方案目标
+          max_length: null
+          options: []
+          required: false
+          type: text-input
+          variable: plan_goal
+        - label: 安全规则
+          max_length: null
+          options: []
+          required: true
+          type: paragraph
+          variable: safety_rules
+        - label: 输出格式约束
+          max_length: null
+          options: []
+          required: true
+          type: paragraph
+          variable: output_contract
+      height: 531
+      id: start
+      position:
+        x: 80
+        y: 260
+      positionAbsolute:
+        x: 80
+        y: 260
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+    - data:
+        code: "import json\n\ndef _trim(text, limit=900):\n    text = (text or \"\"\
+          ).strip()\n    if len(text) <= limit:\n        return text\n    return text[:limit]\
+          \ + \"...\"\n\ndef _json_summary(text, limit=900):\n    text = (text or\
+          \ \"\").strip()\n    if not text:\n        return \"\"\n    try:\n     \
+          \   value = json.loads(text)\n        text = json.dumps(value, ensure_ascii=False,\
+          \ separators=(\",\", \":\"))\n    except Exception:\n        pass\n    return\
+          \ _trim(text, limit)\n\ndef main(\n    trigger_type: str,\n    trigger_reason:\
+          \ str,\n    latest_health_metrics_json: str,\n    latest_risk_assessment_json:\
+          \ str,\n    checkin_stats_json: str,\n    latest_checkin_analysis_json:\
+          \ str,\n    plan_goal: str\n) -> dict:\n    parts = [\n        \"糖尿病生活方式干预、饮食餐盘法、碳水化合物升糖风险、运动建议与运动禁忌、血糖监测、高血糖低血糖处理、并发症预防、体重血压血脂睡眠心理管理。\"\
+          ,\n        \"请检索可用于判断生活方案是否维持、调整、提醒复查或线下就医的专业依据。\",\n        \"重点关注：饮食结构、晚餐主食、运动完成率、低血糖风险、高血糖风险、血压异常、依从性不足、未来计划调整边界。\"\
+          \n    ]\n\n    if plan_goal:\n        parts.append(\"方案目标：\" + _trim(plan_goal,\
+          \ 120))\n    if trigger_type or trigger_reason:\n        parts.append(\"\
+          触发场景：\" + _trim((trigger_type or \"\") + \" \" + (trigger_reason or \"\"\
+          ), 240))\n\n    metrics = _json_summary(latest_health_metrics_json)\n  \
+          \  if metrics:\n        parts.append(\"最新健康数据：\" + metrics)\n\n    risk\
+          \ = _json_summary(latest_risk_assessment_json)\n    if risk:\n        parts.append(\"\
+          最新风险评估：\" + risk)\n\n    stats = _json_summary(checkin_stats_json)\n   \
+          \ if stats:\n        parts.append(\"近期打卡统计：\" + stats)\n\n    analysis =\
+          \ _json_summary(latest_checkin_analysis_json)\n    if analysis:\n      \
+          \  parts.append(\"最近打卡分析：\" + analysis)\n\n    return {\"retrieval_query\"\
+          : \"\\n\".join(parts)[:2400]}\n"
+        code_language: python3
+        desc: 根据近期健康信号、打卡统计、风险结果与方案目标，构造更聚焦的知识库检索问题。
+        outputs:
+          retrieval_query:
+            children: null
+            type: string
+        selected: false
+        title: 构造检索问题
+        type: code
+        variables:
+        - value_selector:
+          - start
+          - trigger_type
+          variable: trigger_type
+        - value_selector:
+          - start
+          - trigger_reason
+          variable: trigger_reason
+        - value_selector:
+          - start
+          - latest_health_metrics_json
+          variable: latest_health_metrics_json
+        - value_selector:
+          - start
+          - latest_risk_assessment_json
+          variable: latest_risk_assessment_json
+        - value_selector:
+          - start
+          - checkin_stats_json
+          variable: checkin_stats_json
+        - value_selector:
+          - start
+          - latest_checkin_analysis_json
+          variable: latest_checkin_analysis_json
+        - value_selector:
+          - start
+          - plan_goal
+          variable: plan_goal
+      height: 88
+      id: build_retrieval_query
+      position:
+        x: 390
+        y: 260
+      positionAbsolute:
+        x: 390
+        y: 260
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        dataset_ids:
+        - pJ4lmoPGbCRL97L8rSTYJFsNhqbvl89TDGbA1AW+h2TtzA950xnutgJDJSAJKmVT
+        desc: 从已发布的 Smart Diabetes 知识库中检索糖尿病生活方式干预、安全边界与风险提醒依据。
+        query_variable_selector:
+        - build_retrieval_query
+        - retrieval_query
+        retrieval_mode: single
+        selected: false
+        single_retrieval_config:
+          model:
+            completion_params: {}
+            mode: chat
+            name: deepseek-chat
+            provider: langgenius/deepseek/deepseek
+        title: 糖尿病知识库检索
+        type: knowledge-retrieval
+      height: 92
+      id: knowledge_retrieval
+      position:
+        x: 700
+        y: 260
+      positionAbsolute:
+        x: 700
+        y: 260
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - knowledge_retrieval
+          - result
+        desc: 结合患者数据、方案执行情况与知识库依据，判断是否继续观察、调整未来计划或发出高风险提醒。
+        model:
+          completion_params:
+            temperature: 0.25
+          mode: chat
+          name: deepseek-v4-flash
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: system
+          role: system
+          text: '你是糖尿病健康管理助手中的“周期复盘与干预调整”工作流。
+
+            你的职责不是诊断疾病，也不是开具药物或胰岛素治疗方案。你只负责评估生活方案执行情况，并判断系统应当继续观察、轻度调整未来计划、中度调整未来计划，还是展示高风险提醒。
+
+
+            安全边界：
+
+            {{#start.safety_rules#}}
+
+
+            上下文中会提供从糖尿病知识库检索到的专业依据。你需要用这些依据约束生活方式调整、安全边界、风险信号判断和面向患者的解释，但不要在回答中直接提到“知识库”或“检索结果”。
+
+
+            你必须只返回严格 JSON。不要使用 Markdown，不要把结果包裹在代码块中。
+
+            面向患者的文字要简洁、温和、可解释。
+
+            patient_notice、explanation、adjustment_strategy、safety_warning 必须使用中文。
+
+            '
+        - id: user
+          role: user
+          text: '触发信息：
+
+            类型={{#start.trigger_type#}}
+
+            原因={{#start.trigger_reason#}}
+
+
+            患者档案：
+
+            {{#start.patient_profile_json#}}
+
+
+            最新健康数据：
+
+            {{#start.latest_health_metrics_json#}}
+
+
+            最新风险评估：
+
+            {{#start.latest_risk_assessment_json#}}
+
+
+            当前生活方案：
+
+            {{#start.current_life_plan_json#}}
+
+
+            方案执行进度：
+
+            {{#start.plan_progress_json#}}
+
+
+            近期打卡记录：
+
+            {{#start.recent_checkin_records_json#}}
+
+
+            打卡统计：
+
+            {{#start.checkin_stats_json#}}
+
+
+            最新打卡分析：
+
+            {{#start.latest_checkin_analysis_json#}}
+
+
+            方案目标：
+
+            {{#start.plan_goal#}}
+
+
+            运动安全提醒：
+
+            {{#start.exercise_safety_alert_json#}}
+
+
+            检索到的糖尿病专业依据：
+
+            <knowledge_context>
+
+            {{#context#}}
+
+            </knowledge_context>
+
+
+            输出格式约束：
+
+            {{#start.output_contract#}}
+
+
+            决策规则：
+
+            1. 自动调整必须有明确触发依据：依从性下降、连续未完成、血糖/血压趋势恶化、高风险症状或当前方案明显不适配。不要因为“还可以更好”就频繁生成新方案。
+
+            2. 如果执行情况稳定，且最新血糖、血压、HbA1c 没有恶化或高风险信号，必须使用 intervention_level="observe"，should_update_plan=false，只给观察和鼓励。
+
+            3. 如果执行情况轻度不足，尤其是运动或饮食完成情况不稳定，使用 intervention_level="minor_adjustment"，只调整未来日期。
+
+            4. 如果执行情况明显较差，但没有紧急风险信号，使用 intervention_level="moderate_adjustment"，降低未来计划难度，并给出更清晰的提醒。
+
+            5. 如果血糖、血压或症状信息提示较高风险，使用 intervention_level="high_risk_alert"，should_update_plan=false，并建议线下咨询医生或复测。
+
+            6. adjusted_plan_patch 只能包含需要修改的未来 daily_schedule 项；未变化的日期不要放进 patch。
+
+            7. 不要生成药物、胰岛素、诊断结论或治疗剂量建议。
+
+            8. 需要结合检索到的糖尿病专业依据解释为什么需要调整，尤其关注饮食结构、运动强度、高血糖/低血糖处理和安全提醒。
+
+            9. 如果检索依据与某个激进调整方案冲突，优先选择更保守、更安全的判断，并说明原因。
+
+            10. 如果 exercise_safety_alert_json 中 block_lower_limb_exercise=true，或近期打卡备注提到腿部骨折、下肢伤病、不能走、不能运动、明显腿痛、术后或卧床，不要建议步行、慢跑、爬楼、原地踏步、下肢拉伸、下肢抗阻或任何站立负荷运动。
+
+            11. 对上述伤病情况，不要简单返回 should_update_plan=false；除非同时存在需要立即就医的危急信号，否则应使用 minor_adjustment
+            或 moderate_adjustment，并在 adjusted_plan_patch 中把未来日期的运动计划改为“暂停下肢负荷活动、优先康复、如医生允许可做坐姿上肢轻活动或呼吸放松”。饮食、饮水、血糖观察和安全提醒应继续保留。
+
+            12. 伤病安全调整必须在 patient_notice、explanation 和 safety_warning 中解释清楚：为什么暂停原运动、哪些运动不能做、何时需要线下就医或医生确认后再恢复。
+
+            '
+        selected: false
+        title: 复盘决策
+        type: llm
+        vision:
+          enabled: false
+      height: 96
+      id: review_decision
+      position:
+        x: 1010
+        y: 260
+      positionAbsolute:
+        x: 1010
+        y: 260
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: "import json\n\nDEFAULT_WARNING = \"本次调整仅用于生活方式管理建议，不能替代线下医生诊断或治疗。\"\
+          \n\ndef _json_text(text):\n    text = (text or \"\").strip()\n    think_end\
+          \ = text.rfind(\"</think>\")\n    if think_end >= 0:\n        text = text[think_end\
+          \ + len(\"</think>\"):].strip()\n    candidates = []\n    start = text.find(\"\
+          {\")\n    while start >= 0 and start < len(text):\n        end = _find_matching_brace(text,\
+          \ start)\n        if end > start:\n            candidates.append(text[start:end\
+          \ + 1])\n        start = text.find(\"{\", start + 1)\n    fallback = None\n\
+          \    for candidate in reversed(candidates):\n        try:\n            parsed\
+          \ = json.loads(candidate)\n            if fallback is None:\n          \
+          \      fallback = candidate\n            if isinstance(parsed, dict) and\
+          \ (\n                \"intervention_level\" in parsed\n                or\
+          \ \"review_result\" in parsed\n                or (\"success\" in parsed\
+          \ and \"adherence_score\" in parsed)\n            ):\n                return\
+          \ candidate\n        except Exception:\n            pass\n    if fallback\
+          \ is not None:\n        return fallback\n    return text\n\ndef _find_matching_brace(text,\
+          \ start):\n    depth = 0\n    in_string = False\n    escaped = False\n \
+          \   for index in range(start, len(text)):\n        current = text[index]\n\
+          \        if escaped:\n            escaped = False\n            continue\n\
+          \        if current == \"\\\\\":\n            escaped = True\n         \
+          \   continue\n        if current == '\"':\n            in_string = not in_string\n\
+          \            continue\n        if in_string:\n            continue\n   \
+          \     if current == \"{\":\n            depth += 1\n        elif current\
+          \ == \"}\":\n            depth -= 1\n            if depth == 0:\n      \
+          \          return index\n    return -1\n\ndef _list(value):\n    if isinstance(value,\
+          \ list):\n        return value\n    if value in [None, \"\"]:\n        return\
+          \ []\n    return [str(value)]\n\ndef _text(value, limit=500):\n    if value\
+          \ in [None, \"\"]:\n        return \"\"\n    if isinstance(value, str):\n\
+          \        text = value\n    else:\n        try:\n            text = json.dumps(value,\
+          \ ensure_ascii=False, separators=(\",\", \":\"))\n        except Exception:\n\
+          \            text = str(value)\n    text = text.strip()\n    return text[:limit]\n\
+          \ndef _shallow_patch(value):\n    if not isinstance(value, dict):\n    \
+          \    return {}\n    days = value.get(\"daily_schedule\")\n    if not isinstance(days,\
+          \ list):\n        return {}\n    result_days = []\n    for item in days:\n\
+          \        if not isinstance(item, dict):\n            continue\n        day\
+          \ = item.get(\"day\")\n        if day in [None, \"\"]:\n            continue\n\
+          \        shallow = {\"day\": day}\n        for key in [\"title\", \"theme\"\
+          , \"goal\", \"reminder\", \"diet_plan\", \"exercise_plan\", \"meals\"]:\n\
+          \            if key in item:\n                shallow[key] = _text(item.get(key))\n\
+          \        result_days.append(shallow)\n    return {\"daily_schedule\": result_days}\
+          \ if result_days else {}\n\ndef main(llm_output: str) -> dict:\n    try:\n\
+          \        result = json.loads(_json_text(llm_output))\n        if not isinstance(result,\
+          \ dict):\n            raise ValueError(\"root is not object\")\n    except\
+          \ Exception as exc:\n        result = {\n            \"success\": False,\n\
+          \            \"error_message\": \"intervention review output is not valid\
+          \ JSON: \" + str(exc)\n        }\n\n    result[\"success\"] = bool(result.get(\"\
+          success\", True))\n    result[\"adherence_score\"] = int(result.get(\"adherence_score\"\
+          ) or 0)\n    level = result.get(\"intervention_level\") or \"observe\"\n\
+          \    if level not in [\"observe\", \"minor_adjustment\", \"moderate_adjustment\"\
+          , \"high_risk_alert\"]:\n        level = \"observe\"\n    result[\"intervention_level\"\
+          ] = level\n    result[\"should_update_plan\"] = bool(result.get(\"should_update_plan\"\
+          )) and level != \"high_risk_alert\"\n    result[\"update_scope\"] = result.get(\"\
+          update_scope\") or (\"future_days\" if result[\"should_update_plan\"] else\
+          \ \"none\")\n    result[\"affected_days\"] = _list(result.get(\"affected_days\"\
+          ))\n    result[\"main_problem_tags\"] = _list(result.get(\"main_problem_tags\"\
+          ))\n    result[\"preserved_items\"] = _list(result.get(\"preserved_items\"\
+          ))\n    result[\"changed_items\"] = _list(result.get(\"changed_items\"))\n\
+          \    result[\"adjustment_strategy\"] = result.get(\"adjustment_strategy\"\
+          ) or \"继续观察当前方案执行情况。\"\n    result[\"patient_notice\"] = result.get(\"patient_notice\"\
+          ) or \"系统已完成本次执行复盘。\"\n    result[\"explanation\"] = result.get(\"explanation\"\
+          ) or \"系统根据近期打卡和健康数据完成自动判断。\"\n    result[\"safety_warning\"] = result.get(\"\
+          safety_warning\") or DEFAULT_WARNING\n    result[\"adjusted_plan_patch\"\
+          ] = _shallow_patch(result.get(\"adjusted_plan_patch\"))\n\n    return {\n\
+          \        \"success\": result[\"success\"],\n        \"review_result\": result,\n\
+          \        \"error_message\": result.get(\"error_message\", \"\")\n    }\n"
+        code_language: python3
+        desc: 解析并规范化模型输出的 JSON，确保后端可以获得稳定字段。
+        outputs:
+          error_message:
+            children: null
+            type: string
+          review_result:
+            children: null
+            type: object
+          success:
+            children: null
+            type: boolean
+        selected: false
+        title: 校验输出JSON
+        type: code
+        variables:
+        - value_selector:
+          - review_decision
+          - text
+          variable: llm_output
+      height: 88
+      id: validate_json
+      position:
+        x: 1320
+        y: 260
+      positionAbsolute:
+        x: 1320
+        y: 260
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        desc: 输出 Spring Boot 后端需要消费的复盘结果、结构化建议与错误信息。
+        outputs:
+        - value_selector:
+          - validate_json
+          - success
+          value_type: boolean
+          variable: success
+        - value_selector:
+          - validate_json
+          - review_result
+          value_type: object
+          variable: review_result
+        - value_selector:
+          - validate_json
+          - error_message
+          value_type: string
+          variable: error_message
+        selected: false
+        title: 结束
+        type: end
+      height: 120
+      id: end
+      position:
+        x: 1630
+        y: 260
+      positionAbsolute:
+        x: 1630
+        y: 260
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: -2.9019474037079362
+      y: 50.445593695583796
+      zoom: 0.7000000000000001
+  rag_pipeline_variables: []

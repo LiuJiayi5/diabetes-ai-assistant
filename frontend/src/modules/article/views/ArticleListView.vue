@@ -57,6 +57,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowLeft, BookOpen, LoaderCircle, Search } from 'lucide-vue-next'
 import { searchArticles, useArticlesStore } from '@/stores/articles'
+import { pushWithBack } from '@/utils/navigation'
 import ArticleCard from '../components/ArticleCard.vue'
 import '../styles/articles.css'
 
@@ -99,6 +100,6 @@ watch(pageCount, () => {
 })
 
 function openArticle(article) {
-  router.push(`/app/articles/${article.article_id}`)
+  pushWithBack(router, `/app/articles/${article.article_id}`, '/app/articles/all')
 }
 </script>

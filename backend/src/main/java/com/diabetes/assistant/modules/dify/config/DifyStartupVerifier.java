@@ -17,12 +17,13 @@ public class DifyStartupVerifier implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         log.info(
-                "Dify configuration: baseUrl={}, lifePlanKey={}, riskPredictKey={}, aiDoctorKey={}, checkinAnalysisKey={}",
+                "Dify configuration: baseUrl={}, lifePlanKey={}, riskPredictKey={}, aiDoctorKey={}, checkinAnalysisKey={}, interventionReviewKey={}",
                 valueOrMissing(difyProperties.getBaseUrl()),
                 keyStatus(difyProperties.getLifePlanApiKey()),
                 keyStatus(difyProperties.getRiskPredictApiKey()),
                 keyStatus(difyProperties.getAiDoctorApiKey()),
-                keyStatus(difyProperties.getCheckinAnalysisApiKey())
+                keyStatus(difyProperties.getCheckinAnalysisApiKey()),
+                keyStatus(difyProperties.getInterventionReviewApiKey())
         );
         if (!hasUsableKey(difyProperties.getLifePlanApiKey())) {
             log.warn("Dify life-plan workflow key is not configured. Real AI life-plan generation will not be available.");

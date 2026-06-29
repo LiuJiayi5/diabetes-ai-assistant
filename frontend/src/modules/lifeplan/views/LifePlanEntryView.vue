@@ -39,9 +39,9 @@
               <Clock />
               {{ formatPlanTime(currentPlan.update_time || currentPlan.create_time) }} 更新
             </span>
-            <button type="button" class="regenerate-button" :disabled="lifePlanStore.generating" @click="regeneratePlan">
-              <RefreshCw :class="{ spin: lifePlanStore.generating }" />
-              {{ lifePlanStore.generating ? '正在生成方案...' : '重新生成方案' }}
+            <button type="button" class="regenerate-button detail-button" @click="openCurrentPlanDetail">
+              <FileSearch />
+              查看方案详情
             </button>
           </div>
         </section>
@@ -51,15 +51,48 @@
           <span>正在生成新方案，完成后会刷新当前内容</span>
         </section>
 
+        <section v-if="currentPlan && visibleLatestReview" class="intervention-card" :class="`intervention-card--${reviewMeta.tone}`">
+          <button
+            type="button"
+            class="intervention-card__close"
+            aria-label="关闭自动复盘提示"
+            @click="dismissReviewCard"
+          >
+            <X />
+          </button>
+          <div class="intervention-card__head">
+            <span class="intervention-card__icon">
+              <Sparkles />
+            </span>
+            <div>
+              <small>系统自动复盘</small>
+              <h2>{{ reviewMeta.title }}</h2>
+            </div>
+          </div>
+          <p class="intervention-card__notice">{{ visibleLatestReview.patient_notice || reviewMeta.notice }}</p>
+          <p class="intervention-card__explain">{{ visibleLatestReview.explanation }}</p>
+          <div v-if="reviewTags.length" class="intervention-tags">
+            <span v-for="tag in reviewTags" :key="tag">{{ formatReviewTag(tag) }}</span>
+          </div>
+          <div v-if="changedItems.length" class="intervention-card__section">
+            <span>已调整</span>
+            <p>{{ changedItems.map(formatReviewTag).join('、') }}</p>
+          </div>
+          <div v-if="visibleLatestReview.safety_warning" class="intervention-card__warning">
+            <ShieldAlert />
+            <span>{{ visibleLatestReview.safety_warning }}</span>
+          </div>
+        </section>
+
         <section v-if="!currentPlan" class="empty-card">
           <span class="empty-card__icon">
             <FileText />
           </span>
           <h2>暂未生成方案</h2>
           <p>完善健康档案、健康指标和风险评估后，可以生成个性化控糖生活方案。</p>
-          <button type="button" class="regenerate-button" :disabled="lifePlanStore.generating" @click="regeneratePlan">
+          <button type="button" class="regenerate-button" :disabled="lifePlanStore.generating" @click="openGenerateDialog">
             <LoaderCircle v-if="lifePlanStore.generating" class="spin" />
-            {{ lifePlanStore.generating ? '正在生成方案...' : '立即生成' }}
+            {{ lifePlanStore.generating ? '正在生成方案...' : '填写偏好并生成' }}
           </button>
         </section>
 
@@ -85,7 +118,12 @@
               :key="day.index"
               type="button"
               class="day-switch-button"
-              :class="{ 'is-active': selectedDayIndex === day.index }"
+              :class="{
+                'is-active': selectedDayIndex === day.index,
+                'is-past': day.relation === 'past',
+                'is-today': day.relation === 'today',
+                'is-future': day.relation === 'future'
+              }"
               :style="{ '--day-color': day.color, '--day-bg': day.bg }"
               @click="selectDay(day.index)"
             >
@@ -105,6 +143,8 @@
                 title="饮食管理"
                 subtitle="早餐、午餐、晚餐和加餐建议"
                 :items="decorateDietCards(day)"
+                :execution="sectionExecution('diet')"
+                @action="handleSectionAction('diet')"
                 @select="selectCard(day, $event, '饮食管理')"
               />
 
@@ -113,6 +153,8 @@
                 title="运动管理"
                 subtitle="轻运动、有氧、抗阻和注意事项"
                 :items="decorateExerciseCards(day)"
+                :execution="sectionExecution('exercise')"
+                @action="handleSectionAction('exercise')"
                 @select="selectCard(day, $event, '运动管理')"
               />
 
@@ -168,17 +210,23 @@ import {
   CircleAlert,
   Clock,
   Dumbbell,
+  FileSearch,
   FileText,
   Footprints,
   History,
   LoaderCircle,
   Moon,
-  RefreshCw,
+  ShieldAlert,
+  Sparkles,
   Sun,
-  Utensils
+  Utensils,
+  X
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 import { useLifePlanStore } from '@/stores/lifePlan'
+import { getCheckinHistory } from '@/api/checkin'
+import { getLatestInterventionReview } from '@/api/interventionReview'
+import { pushWithBack } from '@/utils/navigation'
 import { formatPlanTime, getRiskMeta, normalizePlan } from '../utils'
 import PlanGenerateDialog from '../components/PlanGenerateDialog.vue'
 import '../styles/life-plan.css'
@@ -200,17 +248,32 @@ const PlanSection = defineComponent({
     type: { type: String, required: true },
     title: { type: String, required: true },
     subtitle: { type: String, required: true },
+    execution: {
+      type: Object,
+      default: () => ({ label: '待完成', status: 'future', disabled: true })
+    },
     items: { type: Array, required: true }
   },
-  emits: ['select'],
+  emits: ['select', 'action'],
   setup(props, { emit }) {
+    const statusIcon = () => {
+      if (props.execution?.status === 'today' || props.execution?.status === 'completed') return CheckCircle2
+      if (props.execution?.status === 'missed') return CircleAlert
+      return Clock
+    }
     return () => h('section', { class: 'plan-section' }, [
       h('div', { class: ['section-header', `section-header--${props.type}`] }, [
         h('div', { class: 'section-header__left' }, [
           h('span', { class: 'section-header__icon' }, [h(props.type === 'diet' ? Utensils : Dumbbell)]),
           h('div', [h('h2', props.title), h('p', props.subtitle)])
         ]),
-        h('span', { class: 'checkin-pill' }, [h(CheckCircle2), '今日执行'])
+        h('button', {
+          type: 'button',
+          class: ['checkin-pill', `checkin-pill--${props.execution?.status || 'future'}`],
+          disabled: props.execution?.disabled,
+          title: props.execution?.disabled ? '尚未到达该计划日' : props.execution?.hint,
+          onClick: () => emit('action')
+        }, [h(statusIcon()), props.execution?.label || '待完成'])
       ]),
       h('div', { class: 'plan-card-list' }, props.items.map((item) => h('button', {
         type: 'button',
@@ -237,6 +300,9 @@ const lifePlanStore = useLifePlanStore()
 const showGenerateDialog = ref(false)
 const selectedDayIndex = ref(0)
 const selectedCard = ref(null)
+const checkinRecords = ref([])
+const latestReview = ref(null)
+const dismissedReviewVersion = ref(0)
 
 const currentPlan = computed(() => lifePlanStore.currentPlan ? normalizePlan(lifePlanStore.currentPlan) : null)
 const riskMeta = computed(() => getRiskMeta(currentPlan.value))
@@ -244,6 +310,45 @@ const dayCards = computed(() => currentPlan.value?.dailySchedule?.length ? curre
 const visibleDays = computed(() => {
   const selected = dayCards.value[selectedDayIndex.value] || dayCards.value[0]
   return selected ? [selected] : []
+})
+const visibleLatestReview = computed(() => {
+  dismissedReviewVersion.value
+  const review = latestReview.value
+  if (!getReviewId(review)) return null
+  if (!isEffectiveAutoAdjustment(review)) return null
+  return isReviewCardDismissed(review) ? null : review
+})
+const reviewMeta = computed(() => {
+  const level = visibleLatestReview.value?.intervention_level
+  if (level === 'high_risk_alert') {
+    return { tone: 'alert', title: '需要优先关注安全提醒', notice: '系统已识别到需要谨慎处理的健康信号。' }
+  }
+  if (level === 'moderate_adjustment') {
+    return { tone: 'adjust', title: '后续计划已自动优化', notice: '系统已根据近期执行情况调整后续安排。' }
+  }
+  if (level === 'minor_adjustment') {
+    return { tone: 'light', title: '后续计划已轻微微调', notice: '系统做了轻量调整，帮助你更容易坚持。' }
+  }
+  return { tone: 'observe', title: '当前方案继续观察', notice: '近期执行状态暂不需要调整。' }
+})
+const reviewTags = computed(() => Array.isArray(visibleLatestReview.value?.main_problem_tags) ? visibleLatestReview.value.main_problem_tags.slice(0, 4) : [])
+const changedItems = computed(() => Array.isArray(visibleLatestReview.value?.changed_items) ? visibleLatestReview.value.changed_items.slice(0, 4) : [])
+const planStartDate = computed(() => parsePlanDate(currentPlan.value?.create_time || currentPlan.value?.createTime || currentPlan.value?.update_time || currentPlan.value?.updateTime))
+const selectedDayState = computed(() => daySwitchButtons.value[selectedDayIndex.value] || null)
+const checkinStatusByDate = computed(() => {
+  const map = new Map()
+  checkinRecords.value
+    .filter((record) => String(record.plan_id ?? record.planId ?? '') === String(currentPlan.value?.id ?? ''))
+    .forEach((record) => {
+      const date = record.checkin_date ?? record.checkinDate
+      const type = record.task_type ?? record.taskType
+      if (!date || !type) return
+      const key = String(date).slice(0, 10)
+      const dayStatus = map.get(key) || {}
+      dayStatus[type] = record.status === 'completed' ? 'completed' : 'missed'
+      map.set(key, dayStatus)
+    })
+  return map
 })
 const daySwitchButtons = computed(() => {
   const palette = [
@@ -255,11 +360,15 @@ const daySwitchButtons = computed(() => {
     ['#4E8F88', '#E0F3EF'],
     ['#7A9BD4', '#E8EEF9']
   ]
+  const todayKey = formatDateKey(new Date())
   return Array.from({ length: 7 }, (_, index) => ({
     index,
     label: String(index + 1),
     color: palette[index][0],
-    bg: palette[index][1]
+    bg: palette[index][1],
+    date: dateForPlanDay(index),
+    dateKey: formatDateKey(dateForPlanDay(index)),
+    relation: relationForDate(formatDateKey(dateForPlanDay(index)), todayKey)
   }))
 })
 
@@ -283,6 +392,9 @@ watch(dayCards, (days) => {
 async function loadCurrentPlan() {
   try {
     await lifePlanStore.fetchCurrentPlan()
+    selectCurrentPlanDay()
+    await loadPlanCheckins()
+    await loadLatestReview()
   } catch {
     // Store already exposes a user-facing error.
   }
@@ -299,6 +411,53 @@ function decorateExerciseCards(day) {
 function selectDay(index) {
   selectedDayIndex.value = Math.min(index, Math.max(dayCards.value.length - 1, 0))
   selectedCard.value = null
+}
+
+async function loadLatestReview() {
+  try {
+    const response = await getLatestInterventionReview()
+    const review = response?.data ?? response
+    latestReview.value = review?.review_id || review?.reviewId ? review : null
+  } catch {
+    latestReview.value = null
+  }
+}
+
+function sectionExecution(type) {
+  const day = selectedDayState.value
+  if (!day || day.relation === 'future') {
+    return { label: '待完成', status: 'future', disabled: true }
+  }
+  if (day.relation === 'today') {
+    return { label: '今日执行', status: 'today', disabled: false, hint: '前往今日打卡' }
+  }
+
+  const status = checkinStatusByDate.value.get(day.dateKey)?.[type]
+  const completed = status === 'completed'
+  return {
+    label: completed ? '已完成' : '未完成',
+    status: completed ? 'completed' : 'missed',
+    disabled: false,
+    hint: '查看当天打卡记录'
+  }
+}
+
+function handleSectionAction(type) {
+  const day = selectedDayState.value
+  if (!day) return
+  if (day.relation === 'future') return
+  if (day.relation === 'today') {
+    router.push('/app/checkin')
+    return
+  }
+  router.push({
+    path: '/app/checkin/history',
+    query: {
+      start_date: day.dateKey,
+      end_date: day.dateKey,
+      task_type: type
+    }
+  })
 }
 
 function selectCard(day, item, group) {
@@ -325,28 +484,140 @@ function openGenerateDialog() {
   showGenerateDialog.value = true
 }
 
-async function regeneratePlan() {
-  if (!ensureLoggedIn()) return
-
-  try {
-    selectedCard.value = null
-    await lifePlanStore.generateLifePlan(lifePlanStore.currentGenerateOptions)
-    selectedDayIndex.value = 0
-    showToast('生活方案已更新')
-  } catch {
-    showToast(lifePlanStore.generateError || '方案生成失败，请稍后重试')
+function openCurrentPlanDetail() {
+  const planId = currentPlan.value?.id
+  if (!planId) {
+    showToast('暂无可查看的方案详情')
+    return
   }
+  pushWithBack(router, `/app/life-plan/${planId}`, '/app/life-plan')
 }
 
 async function submitGenerate(payload) {
   try {
     selectedCard.value = null
     await lifePlanStore.generateLifePlan(payload)
-    selectedDayIndex.value = 0
+    selectCurrentPlanDay()
+    await loadPlanCheckins()
+    await loadLatestReview()
     showGenerateDialog.value = false
     showToast('生活方案已更新')
   } catch {
     // Error is displayed in the dialog.
   }
+}
+
+function formatReviewTag(value) {
+  const text = String(value || '').trim()
+  const dictionary = {
+    exercise_adherence_low: '运动完成率偏低',
+    diet_record_unstable: '饮食记录不稳定',
+    execution_stable: '执行较稳定',
+    exercise_duration: '运动时长',
+    dinner_staple_reminder: '晚餐主食提醒',
+    breakfast_structure: '早餐结构',
+    water_reminder: '饮水提醒'
+  }
+  return dictionary[text] || text.replace(/_/g, ' ')
+}
+
+function dismissReviewCard() {
+  const reviewId = getReviewId(latestReview.value)
+  if (!reviewId) return
+  localStorage.setItem(reviewDismissKey(reviewId), '1')
+  dismissedReviewVersion.value += 1
+}
+
+function isReviewCardDismissed(review) {
+  const reviewId = getReviewId(review)
+  return reviewId ? localStorage.getItem(reviewDismissKey(reviewId)) === '1' : false
+}
+
+function isEffectiveAutoAdjustment(review) {
+  const shouldUpdate = review?.should_update_plan ?? review?.shouldUpdatePlan
+  const generatedPlanId = review?.generated_plan_id ?? review?.generatedPlanId
+  const callStatus = review?.call_status ?? review?.callStatus
+  return callStatus === 'success' && shouldUpdate === true && Boolean(generatedPlanId)
+}
+
+function getReviewId(review) {
+  return review?.review_id ?? review?.reviewId ?? ''
+}
+
+function reviewDismissKey(reviewId) {
+  return `diabetes_intervention_review_card_dismissed_${reviewId}`
+}
+
+async function loadPlanCheckins() {
+  const start = planStartDate.value
+  const plan = currentPlan.value
+  if (!start || !plan?.id) {
+    checkinRecords.value = []
+    return
+  }
+
+  const end = addDays(start, Math.max(dayCards.value.length || 7, 1) - 1)
+  try {
+    const response = await getCheckinHistory({
+      page: 1,
+      page_size: 100,
+      start_date: formatDateKey(start),
+      end_date: formatDateKey(end)
+    })
+    const data = response?.data ?? response
+    checkinRecords.value = data?.list || data?.records || []
+  } catch {
+    checkinRecords.value = []
+  }
+}
+
+function selectCurrentPlanDay() {
+  const start = planStartDate.value
+  const total = dayCards.value.length || 7
+  if (!start) {
+    selectedDayIndex.value = 0
+    return
+  }
+  const index = Math.min(Math.max(daysBetween(start, new Date()), 0), total - 1)
+  selectedDayIndex.value = index
+}
+
+function dateForPlanDay(index) {
+  return addDays(planStartDate.value || new Date(), index)
+}
+
+function relationForDate(dateKey, todayKey) {
+  if (dateKey < todayKey) return 'past'
+  if (dateKey > todayKey) return 'future'
+  return 'today'
+}
+
+function parsePlanDate(value) {
+  if (!value) return null
+  const date = new Date(String(value).replace(' ', 'T'))
+  if (Number.isNaN(date.getTime())) return null
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+function addDays(date, days) {
+  const base = date ? new Date(date) : new Date()
+  base.setHours(0, 0, 0, 0)
+  base.setDate(base.getDate() + days)
+  return base
+}
+
+function daysBetween(start, end) {
+  const startTime = addDays(start, 0).getTime()
+  const endTime = addDays(end, 0).getTime()
+  return Math.floor((endTime - startTime) / 86400000)
+}
+
+function formatDateKey(date) {
+  const value = addDays(date, 0)
+  return [
+    value.getFullYear(),
+    String(value.getMonth() + 1).padStart(2, '0'),
+    String(value.getDate()).padStart(2, '0')
+  ].join('-')
 }
 </script>

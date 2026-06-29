@@ -13,34 +13,61 @@ Module 5: AI doctor consultation.
 Spring Boot calls this Agent through `DifyService.callAiDoctor`, which delegates to
 `DifyClient.sendChatMessage` and Dify's `/chat-messages` API.
 
+The backend currently calls the Agent in streaming mode because Dify Agent Chat
+apps do not support the blocking mode used by workflow apps. `DifyClient`
+aggregates the SSE response into a normal JSON string for the AI chat module.
+
 The frontend must not call Dify directly and must not hold a Dify API key.
 
 ## Inputs
 
-The backend sends a blocking chat message request with:
+The backend sends a streaming chat message request with:
 
 - `query`: the user's consultation question.
 - `conversation_id`: optional Dify conversation id for multi-turn dialogue.
 - `user`: current user id as text.
 - `inputs`: a context object assembled by the backend.
 
-Recommended `inputs` keys:
+Current `inputs` keys. These names must match the YAML `user_input_form`
+variables exactly:
 
-- `safety_rules`
-- `user_basic`
-- `profile_summary`
-- `latest_health_data`
-- `risk_result`
-- `life_plan`
-- `checkin`
+- `expert_identity`: the expert persona selected for this chat session. It may
+  include `expert_id`, `expert_name`, `title`, `department`, `specialty`,
+  `persona`, and `opening_message`. The Agent must answer as this expert
+  identity for the whole conversation. If the user asks who you are or what you
+  do, answer with the selected expert's name, title, department, specialty, and
+  persona in natural language. Do not expose raw JSON or internal ids.
+- `safety_rules`: backend safety constraints. This is the highest-priority
+  context and should not be contradicted by the prompt.
+- `user_basic`: current user id, username, role, and status. The Agent should
+  use it only as identity context and should not expose internal ids.
+- `profile_summary`: long-term health profile summary, such as age, sex,
+  height, base weight, waist circumference, family history, chronic disease,
+  allergy history, and lifestyle background.
+- `latest_health_data`: latest health metric summary, such as weight, waist
+  circumference, blood pressure, fasting glucose, postprandial glucose, HbA1c,
+  diet, exercise, and record date.
+- `risk_result`: latest risk assessment summary, including risk level, score,
+  risk factors, indicator analysis, advice, and medical warning.
+- `life_plan`: current life plan summary, including stage goal, plan summary,
+  diet tasks, exercise tasks, weight management tasks, and follow-up focus.
+- `checkin`: recent life check-in records and behavior analysis context.
 
-The `checkin` object is reserved for Module 8 integration and may contain:
+The `checkin` object is provided by Module 8 integration and may contain:
 
 - `period_days`
 - `recent_summary`
 - `completion_rate`
-- `recent_records`
-- `latest_analysis`
+- `recent_records`: each item may include `checkin_id`, `date`, `task_type`,
+  `task_name`, `status`, and `note`.
+- `latest_analysis`: may include `analysis_id`, `start_date`, `end_date`,
+  `total_days`, `diet_completion_count`, `exercise_completion_count`,
+  `completion_rate`, `habit_score`, `diet_summary`, `exercise_summary`,
+  `life_evaluation`, `main_problems`, `improvement_suggestions`,
+  `next_focus`, `summary`, `call_status`, and `error_message`.
+
+`DifyClient` normalizes non-string input values to JSON text before sending the
+chat request, because Dify Agent chat input form variables are text fields.
 
 ## Outputs
 
@@ -71,6 +98,19 @@ Use the backend-provided user context only as supporting information. Do not
 invent missing medical history, medication use, test results, or check-in data.
 If information is insufficient, say what information is missing and give general
 safe advice.
+
+Use the context with these priorities:
+
+- `safety_rules` always wins.
+- `expert_identity` defines the speaking identity and consultation focus. Keep
+  this identity stable in multi-turn chat unless the backend starts a new
+  session with another expert.
+- For current measurements and today-level advice, prefer `latest_health_data`.
+- For long-term background and risk factors, use `profile_summary`.
+- Treat `risk_result`, `life_plan`, and `checkin` as advisory context, not
+  medical diagnosis.
+- If contexts conflict, prefer newer and more specific data and state the
+  uncertainty briefly.
 
 When the user asks about Module 8 check-in or behavior analysis, use the
 provided `checkin` context first: recent records, completion rate, diet and
@@ -119,6 +159,13 @@ dify/agents/exports/diabetes_ai_doctor_agent.yml
 Import this YAML in Dify, confirm the model provider/model after import, bind
 the `diabetes_knowledge_base` knowledge base in the Dify console, then publish
 the app and create an API key.
+
+After import, confirm that the Agent input form contains all eight variables:
+`expert_identity`, `safety_rules`, `user_basic`, `profile_summary`,
+`latest_health_data`, `risk_result`, `life_plan`, and `checkin`. If Dify creates a new app/API key
+during import, update the backend environment variable accordingly. If the
+existing published app is updated in place, the current key can continue to be
+used.
 
 Finally configure the backend with the published Agent API key:
 

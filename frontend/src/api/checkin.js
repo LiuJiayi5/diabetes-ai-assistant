@@ -126,7 +126,21 @@ export function getTodayCheckins(params = {}) {
     request.get('/checkins/today', { params }),
     () => ({
       list: todayTasks(),
-      message: 'mock success'
+      message: 'mock success',
+      plan_id: 1,
+      plan_title: '餐后血糖平稳计划',
+      plan_goal: '控糖管理',
+      plan_summary: '本地演示方案用于展示打卡与生活方案的联动。',
+      plan_day: 1,
+      total_plan_days: 7,
+      is_plan_expired: false,
+      today_focus: '第 1 天：先建立饮食与餐后活动记录习惯。',
+      today_schedule: {
+        title: '第 1 天',
+        diet: '三餐保持主食定量，优先选择全谷物、蔬菜和优质蛋白。',
+        exercise: '餐后散步 15-20 分钟，以轻松能说话的强度为宜。',
+        reminder: '记录餐后感受，方便后续分析。'
+      }
     })
   )
 }

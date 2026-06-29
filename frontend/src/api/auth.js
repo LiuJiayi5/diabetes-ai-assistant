@@ -8,6 +8,14 @@ export function login(payload) {
   return request.post('/auth/login', payload).then(unwrap)
 }
 
+export function resetPassword(payload) {
+  return request.post('/auth/reset-password', payload).then(unwrap)
+}
+
+export function sendEmailCode(payload) {
+  return request.post('/auth/email-code', payload).then(unwrap)
+}
+
 export function register(payload) {
   return request.post('/auth/register', payload).then(unwrap)
 }

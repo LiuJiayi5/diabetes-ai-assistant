@@ -17,7 +17,6 @@
 | 健康资讯管理 | `src/app/pages/ArticlesPage.tsx` | `/articles` | `ArticlesPage` |
 | 资讯编辑 | `src/app/pages/ArticleEditPage.tsx` | `/articles/new`、`/articles/:id/edit` | `ArticleEditPage` |
 | 首页内容管理 | `src/app/pages/HomeContentPage.tsx` | `/home-content` | `HomeContentPage` |
-| 轮播图管理 | `src/app/pages/BannersPage.tsx` | `/banners` | `BannersPage` |
 | 专家展示管理 | `src/app/pages/ExpertsPage.tsx` | `/experts` | `ExpertsPage` |
 
 ## 2. 全局视觉 Token

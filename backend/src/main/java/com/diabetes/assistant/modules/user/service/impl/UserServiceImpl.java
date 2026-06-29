@@ -13,10 +13,12 @@ import com.diabetes.assistant.modules.user.contract.UserQueryApi;
 import com.diabetes.assistant.modules.user.contract.dto.UserBasicDTO;
 import com.diabetes.assistant.modules.user.dto.LoginRequest;
 import com.diabetes.assistant.modules.user.dto.RegisterRequest;
+import com.diabetes.assistant.modules.user.dto.ResetPasswordRequest;
 import com.diabetes.assistant.modules.user.dto.UpdateUserRequest;
 import com.diabetes.assistant.modules.user.dto.UpdateUserStatusRequest;
 import com.diabetes.assistant.modules.user.entity.User;
 import com.diabetes.assistant.modules.user.mapper.UserMapper;
+import com.diabetes.assistant.modules.user.service.EmailVerificationService;
 import com.diabetes.assistant.modules.user.service.UserService;
 import com.diabetes.assistant.modules.user.vo.LoginResponse;
 import com.diabetes.assistant.modules.user.vo.UserResponse;
@@ -38,6 +40,7 @@ public class UserServiceImpl implements UserService, UserQueryApi {
 
     private final UserMapper userMapper;
     private final JwtUtil jwtUtil;
+    private final EmailVerificationService emailVerificationService;
 
     @Override
     public String entry() {
@@ -50,6 +53,8 @@ public class UserServiceImpl implements UserService, UserQueryApi {
         String username = required(request == null ? null : request.getUsername(), "username不能为空");
         String password = required(request.getPassword(), "password不能为空");
         String phone = normalize(request.getPhone());
+        String email = required(request.getEmail(), "邮箱不能为空");
+        String emailCode = required(request.getEmailCode(), "邮箱验证码不能为空");
 
         if (existsByUsername(username, null)) {
             throw new BusinessException(409, "用户名已存在");
@@ -57,13 +62,17 @@ public class UserServiceImpl implements UserService, UserQueryApi {
         if (StringUtils.hasText(phone) && existsByPhone(phone, null)) {
             throw new BusinessException(409, "手机号已存在");
         }
+        if (existsByEmail(email, null)) {
+            throw new BusinessException(409, "邮箱已被注册");
+        }
+        emailVerificationService.verifyAndConsume(email, EmailVerificationService.PURPOSE_REGISTER, emailCode);
 
         LocalDateTime now = LocalDateTime.now();
         User user = new User();
         user.setUsername(username);
         user.setPasswordHash(PasswordUtil.hashPassword(password));
         user.setPhone(phone);
-        user.setEmail(normalize(request.getEmail()));
+        user.setEmail(normalize(email));
         user.setAvatar(normalize(request.getAvatar()));
         user.setRole(RoleConstants.PATIENT);
         user.setStatus(StatusConstants.ACTIVE);
@@ -93,6 +102,31 @@ public class UserServiceImpl implements UserService, UserQueryApi {
 
         String token = jwtUtil.generateToken(user.getUserId(), user.getUsername(), user.getRole());
         return new LoginResponse(token, toResponse(user, false, true, false));
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        String account = required(request == null ? null : request.getAccount(), "account不能为空");
+        String newPassword = required(request.getNewPassword(), "new_password不能为空");
+        if (newPassword.length() < 6 || newPassword.length() > 32) {
+            throw new BusinessException(400, "新密码长度需为6-32位");
+        }
+        String email = required(request.getEmail(), "邮箱不能为空");
+        String emailCode = required(request.getEmailCode(), "邮箱验证码不能为空");
+
+        User user = findByAccount(account);
+        if (user == null) {
+            throw new BusinessException(404, "账号不存在");
+        }
+        if (!email.equalsIgnoreCase(user.getEmail())) {
+            throw new BusinessException(400, "账号与邮箱不匹配，无法重置密码");
+        }
+        emailVerificationService.verifyAndConsume(email, EmailVerificationService.PURPOSE_RESET_PASSWORD, emailCode);
+
+        user.setPasswordHash(PasswordUtil.hashPassword(newPassword));
+        user.setUpdateTime(LocalDateTime.now());
+        userMapper.updateById(user);
     }
 
     @Override
@@ -255,6 +289,8 @@ public class UserServiceImpl implements UserService, UserQueryApi {
                 .eq(User::getUsername, account)
                 .or()
                 .eq(User::getPhone, account)
+                .or()
+                .eq(User::getEmail, account)
                 .last("LIMIT 1"));
     }
 
@@ -267,6 +303,12 @@ public class UserServiceImpl implements UserService, UserQueryApi {
     private boolean existsByPhone(String phone, Integer excludeUserId) {
         return userMapper.selectCount(new LambdaQueryWrapper<User>()
                 .eq(User::getPhone, phone)
+                .ne(excludeUserId != null, User::getUserId, excludeUserId)) > 0;
+    }
+
+    private boolean existsByEmail(String email, Integer excludeUserId) {
+        return userMapper.selectCount(new LambdaQueryWrapper<User>()
+                .eq(User::getEmail, normalize(email))
                 .ne(excludeUserId != null, User::getUserId, excludeUserId)) > 0;
     }
 

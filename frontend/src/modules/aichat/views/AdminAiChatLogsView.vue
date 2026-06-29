@@ -45,6 +45,15 @@
             <input v-model.trim="logFilters.userKeyword" placeholder="用户名或用户ID" @keyup.enter="applyLogFilters" />
           </div>
           <div class="field">
+            <label>专家</label>
+            <select v-model="logFilters.expertId">
+              <option value="">全部专家</option>
+              <option v-for="expert in experts" :key="expert.expert_id" :value="expert.expert_id">
+                {{ expert.expert_name }}
+              </option>
+            </select>
+          </div>
+          <div class="field">
             <label>关键词</label>
             <input v-model.trim="logFilters.keyword" placeholder="问题或回复关键词" @keyup.enter="applyLogFilters" />
           </div>
@@ -80,6 +89,7 @@
             <tr>
               <th>ID</th>
               <th>用户</th>
+              <th>专家</th>
               <th>会话</th>
               <th>问题摘要</th>
               <th>回复摘要</th>
@@ -96,6 +106,10 @@
                 <small>ID {{ item.user_id }}</small>
               </td>
               <td>
+                <strong>{{ item.expert_name || '通用助手' }}</strong>
+                <small>ID {{ item.expert_id || '-' }}</small>
+              </td>
+              <td>
                 <strong>{{ item.session_title || 'AI 医生咨询' }}</strong>
                 <small>会话 #{{ item.session_id }}</small>
               </td>
@@ -108,13 +122,21 @@
           </tbody>
         </table>
         <EmptyState v-if="!loading.logs && !logs.list.length" text="暂无咨询日志" />
-        <Pagination
+        <div
           v-if="logs.total > logs.page_size"
-          :page="logs.page"
-          :page-size="logs.page_size"
-          :total="logs.total"
-          @change="loadLogs"
-        />
+          class="admin-pagination admin-pagination--panel"
+        >
+          <el-pagination
+            v-model:current-page="logs.page"
+            v-model:page-size="logs.page_size"
+            :total="logs.total"
+            :page-sizes="[10, 20, 50]"
+            layout="total, sizes, prev, pager, next"
+            background
+            @current-change="loadLogs"
+            @size-change="handleLogSizeChange"
+          />
+        </div>
       </div>
 
       <div v-show="activeTab === 'sessions'" class="tab-body">
@@ -122,6 +144,15 @@
           <div class="field">
             <label>用户</label>
             <input v-model.trim="sessionFilters.userKeyword" placeholder="用户名或用户ID" @keyup.enter="applySessionFilters" />
+          </div>
+          <div class="field">
+            <label>专家</label>
+            <select v-model="sessionFilters.expertId">
+              <option value="">全部专家</option>
+              <option v-for="expert in experts" :key="expert.expert_id" :value="expert.expert_id">
+                {{ expert.expert_name }}
+              </option>
+            </select>
           </div>
           <div class="field">
             <label>会话关键词</label>
@@ -159,6 +190,7 @@
             <tr>
               <th>会话ID</th>
               <th>用户</th>
+              <th>专家</th>
               <th>标题</th>
               <th>消息数</th>
               <th>状态</th>
@@ -173,6 +205,10 @@
                 <strong>{{ item.username || '未知用户' }}</strong>
                 <small>ID {{ item.user_id }}</small>
               </td>
+              <td>
+                <strong>{{ item.expert_name || '通用助手' }}</strong>
+                <small>{{ item.expert_title || 'AI专家' }}</small>
+              </td>
               <td class="wide">{{ item.session_title || 'AI 医生咨询' }}</td>
               <td>{{ item.message_count || 0 }}</td>
               <td><span :class="['badge', item.status]">{{ sessionStatusText(item.status) }}</span></td>
@@ -182,13 +218,21 @@
           </tbody>
         </table>
         <EmptyState v-if="!loading.sessions && !sessions.list.length" text="暂无咨询会话" />
-        <Pagination
+        <div
           v-if="sessions.total > sessions.page_size"
-          :page="sessions.page"
-          :page-size="sessions.page_size"
-          :total="sessions.total"
-          @change="loadSessions"
-        />
+          class="admin-pagination admin-pagination--panel"
+        >
+          <el-pagination
+            v-model:current-page="sessions.page"
+            v-model:page-size="sessions.page_size"
+            :total="sessions.total"
+            :page-sizes="[10, 20, 50]"
+            layout="total, sizes, prev, pager, next"
+            background
+            @current-change="loadSessions"
+            @size-change="handleSessionSizeChange"
+          />
+        </div>
       </div>
     </section>
 
@@ -244,11 +288,12 @@
 <script setup>
 import { computed, h, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { AlertCircle, Bot, FileText, FileClock, MessageCircle, MessagesSquare, RefreshCcw, X } from 'lucide-vue-next'
-import { getAdminAiChatLogDetail, getAdminAiChatLogs, getAdminAiChatSessions } from '@/api/aiChat'
+import { getAdminAiChatLogDetail, getAdminAiChatLogs, getAdminAiChatSessions, getAdminAiExperts } from '@/api/aiChat'
 
 const activeTab = ref('logs')
 const error = ref('')
 const detail = ref(null)
+const experts = ref([])
 const loading = reactive({
   logs: false,
   sessions: false
@@ -257,6 +302,7 @@ const logs = reactive({ list: [], total: 0, page: 1, page_size: 10 })
 const sessions = reactive({ list: [], total: 0, page: 1, page_size: 10 })
 const logFilters = reactive({
   userKeyword: '',
+  expertId: '',
   keyword: '',
   startDate: '',
   endDate: '',
@@ -264,6 +310,7 @@ const logFilters = reactive({
 })
 const sessionFilters = reactive({
   userKeyword: '',
+  expertId: '',
   keyword: '',
   startDate: '',
   endDate: '',
@@ -286,6 +333,7 @@ const detailItems = computed(() => detail.value ? [
   ['消息ID', `#${detail.value.message_id}`],
   ['会话ID', `#${detail.value.session_id}`],
   ['用户', `${detail.value.username || '-'} (ID ${detail.value.user_id})`],
+  ['专家', `${detail.value.expert_name || '通用助手'} (ID ${detail.value.expert_id || '-'})`],
   ['会话标题', detail.value.session_title || 'AI 医生咨询'],
   ['调用状态', callStatusText(detail.value.call_status)],
   ['创建时间', formatTime(detail.value.create_time)]
@@ -301,19 +349,29 @@ watch(activeTab, (tab) => {
 onMounted(refreshAll)
 
 async function refreshAll() {
-  await Promise.all([loadLogs(), loadSessions()])
+  await Promise.all([loadExperts(), loadLogs(), loadSessions()])
 }
 
 function buildParams(source, statusKey = 'call_status') {
   const params = {}
   if (source.userKeyword) params.user_keyword = source.userKeyword
   if (/^\d+$/.test(source.userKeyword || '')) params.user_id = Number(source.userKeyword)
+  if (source.expertId) params.expert_id = Number(source.expertId)
   if (source.keyword) params.keyword = source.keyword
   if (source.startDate) params.start_date = source.startDate
   if (source.endDate) params.end_date = source.endDate
   if (source.callStatus) params[statusKey] = source.callStatus
   if (source.status) params.status = source.status
   return params
+}
+
+async function loadExperts() {
+  try {
+    const response = await getAdminAiExperts({ page: 1, page_size: 100, status: 'enabled' })
+    experts.value = response.data?.list || []
+  } catch {
+    experts.value = []
+  }
 }
 
 async function loadLogs(page = logs.page) {
@@ -343,11 +401,17 @@ function applyLogFilters() {
 
 function resetLogFilters() {
   logFilters.userKeyword = ''
+  logFilters.expertId = ''
   logFilters.keyword = ''
   logFilters.startDate = ''
   logFilters.endDate = ''
   logFilters.callStatus = ''
   applyLogFilters()
+}
+
+function handleLogSizeChange() {
+  logs.page = 1
+  loadLogs(1)
 }
 
 function applySessionFilters() {
@@ -357,11 +421,17 @@ function applySessionFilters() {
 
 function resetSessionFilters() {
   sessionFilters.userKeyword = ''
+  sessionFilters.expertId = ''
   sessionFilters.keyword = ''
   sessionFilters.startDate = ''
   sessionFilters.endDate = ''
   sessionFilters.status = ''
   applySessionFilters()
+}
+
+function handleSessionSizeChange() {
+  sessions.page = 1
+  loadSessions(1)
 }
 
 async function openLog(messageId) {
@@ -429,6 +499,7 @@ function parseContext(raw) {
     const data = JSON.parse(raw)
     const checkin = data.checkin || {}
     const items = [
+      ['专家身份', readable(data.expert_identity)],
       ['用户信息', readable(data.user_basic)],
       ['健康档案', data.profile_summary],
       ['最新健康数据', data.latest_health_data],
@@ -458,18 +529,6 @@ function readable(value) {
 const EmptyState = (props) => h('div', { class: 'state empty-state' }, props.text)
 EmptyState.props = ['text']
 
-const Pagination = (props, { emit }) => {
-  const totalPages = Math.max(1, Math.ceil(props.total / props.pageSize))
-  return h('div', { class: 'pagination' }, [
-    h('div', { class: 'pager-group' }, [
-      h('button', { class: 'pager-action pager-action-prev', type: 'button', disabled: props.page <= 1, onClick: () => emit('change', props.page - 1) }, '上一页'),
-      h('span', { class: 'pager-count' }, `${props.page} / ${totalPages}`),
-      h('button', { class: 'pager-action pager-action-next', type: 'button', disabled: props.page >= totalPages, onClick: () => emit('change', props.page + 1) }, '下一页')
-    ])
-  ])
-}
-Pagination.props = ['page', 'pageSize', 'total']
-Pagination.emits = ['change']
 </script>
 
 <style scoped>
@@ -777,55 +836,6 @@ td.wide {
 .error-state {
   color: #dc2626;
   background: rgba(239, 68, 68, 0.06);
-}
-
-.pagination {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 16px;
-}
-
-.pagination :deep(.pager-group) {
-  display: inline-flex;
-  align-items: center;
-  height: 34px;
-  overflow: hidden;
-  border: 1.5px solid #1e3a8a;
-  border-radius: 999px;
-  background: transparent !important;
-}
-
-.pagination :deep(.pager-action),
-.pagination :deep(.pager-count) {
-  height: 100%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #1e3a8a;
-  background: transparent !important;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.pagination :deep(.pager-action) {
-  min-width: 74px;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 0;
-}
-
-.pagination :deep(.pager-count) {
-  min-width: 58px;
-  border-left: 1.5px solid #1e3a8a;
-  border-right: 1.5px solid #1e3a8a;
-}
-
-.pagination :deep(.pager-action:disabled) {
-  color: #94a3b8;
-  cursor: not-allowed;
 }
 
 .dialog-mask {

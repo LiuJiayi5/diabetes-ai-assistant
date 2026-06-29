@@ -32,4 +32,7 @@ public class CheckinTaskResponse {
 
     @JsonProperty("completed_time")
     private LocalDateTime completedTime;
+
+    @JsonProperty("plan_advice")
+    private String planAdvice;
 }

@@ -1,7 +1,7 @@
 <template>
-  <CheckinPageShell title="今日打卡" subtitle="记录饮食与运动完成情况" @refresh="loadToday">
+  <CheckinPageShell title="今日打卡" subtitle="跟随当前生活方案完成每日执行" @refresh="loadToday">
     <section class="hero-card">
-      <div>
+      <div class="hero-copy">
         <p class="eyebrow">今日进度</p>
         <h2>{{ completedCount }}/{{ tasks.length }} 项已完成</h2>
         <p>{{ todayText }}</p>
@@ -9,6 +9,44 @@
       <div class="hero-ring" :style="{ '--percent': completionPercent }">
         <span>{{ completionPercent }}%</span>
       </div>
+    </section>
+
+    <section v-if="planInfo.plan_id" class="plan-card">
+      <div class="plan-card__head">
+        <div>
+          <p class="eyebrow">当前生活方案</p>
+          <h3>{{ planInfo.plan_title || '个性化控糖生活方案' }}</h3>
+        </div>
+        <span class="day-pill" :class="{ 'day-pill--expired': planInfo.is_plan_expired }">
+          {{ planDayText }}
+        </span>
+      </div>
+
+      <p class="plan-goal">{{ planInfo.plan_goal || '控糖管理' }}</p>
+      <p class="plan-summary">{{ planInfo.today_focus || planInfo.plan_summary || '今天按方案完成饮食与运动记录。' }}</p>
+
+      <div class="schedule-grid" v-if="todayDiet || todayExercise">
+        <article v-if="todayDiet" class="schedule-mini schedule-mini--diet">
+          <Salad :size="16" />
+          <div>
+            <strong>今日饮食</strong>
+            <p>{{ todayDiet }}</p>
+          </div>
+        </article>
+        <article v-if="todayExercise" class="schedule-mini schedule-mini--exercise">
+          <Dumbbell :size="16" />
+          <div>
+            <strong>今日运动</strong>
+            <p>{{ todayExercise }}</p>
+          </div>
+        </article>
+      </div>
+
+      <button class="detail-link" type="button" @click="goPlanDetail">
+        <ClipboardList :size="16" />
+        <span>查看方案详情</span>
+        <ArrowRight :size="15" />
+      </button>
     </section>
 
     <section v-if="loading" class="state-card">
@@ -35,6 +73,8 @@
           </div>
           <span class="status-pill" :class="`status-pill--${task.status}`">{{ statusText(task.status) }}</span>
         </div>
+
+        <p class="task-advice">{{ taskAdvice(task) }}</p>
 
         <div class="status-actions">
           <button
@@ -71,24 +111,29 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { showFailToast, showSuccessToast } from 'vant'
 import {
+  ArrowRight,
   CalendarX2,
   CheckCircle2,
   Circle,
+  ClipboardList,
   Dumbbell,
   LoaderCircle,
   Salad,
   XCircle
 } from 'lucide-vue-next'
 import { getTodayCheckins, submitCheckin } from '@/api/checkin'
+import { pushWithBack } from '@/utils/navigation'
 import CheckinPageShell from '../components/CheckinPageShell.vue'
 
+const router = useRouter()
 const loading = ref(false)
 const savingId = ref(null)
 const tasks = ref([])
 const message = ref('')
+const planInfo = ref({})
 const draftMap = reactive({})
 
 const statusOptions = [
@@ -109,6 +154,17 @@ const todayText = computed(() => new Date().toLocaleDateString('zh-CN', {
   weekday: 'long'
 }))
 
+const planDayText = computed(() => {
+  const day = Number(planInfo.value.plan_day || 0)
+  const total = Number(planInfo.value.total_plan_days || 0)
+  if (planInfo.value.is_plan_expired) return total ? `已完成 ${total} 天周期` : '周期已结束'
+  if (day > 0 && total > 0) return `第 ${day} / ${total} 天`
+  return '执行中'
+})
+
+const todayDiet = computed(() => scheduleText(['diet', 'diet_advice', 'diet_plan', 'dietPlan', 'meal', 'meals']))
+const todayExercise = computed(() => scheduleText(['exercise', 'exercise_advice', 'exercise_plan', 'exercisePlan', 'sport', 'training']))
+
 function unwrap(response) {
   return response?.data ?? response
 }
@@ -128,6 +184,7 @@ async function loadToday() {
     const data = unwrap(await getTodayCheckins())
     tasks.value = data?.list || []
     message.value = data?.message || ''
+    planInfo.value = data || {}
     hydrateDrafts(tasks.value)
   } catch (error) {
     showFailToast(error?.response?.data?.message || '今日打卡任务读取失败')
@@ -150,13 +207,27 @@ async function saveTask(task) {
     }
     const updated = unwrap(await submitCheckin(payload))
     const index = tasks.value.findIndex((item) => item.checkin_id === task.checkin_id)
-    if (index >= 0) tasks.value[index] = updated
-    hydrateDrafts([updated])
+    if (index >= 0) {
+      tasks.value[index] = {
+        ...tasks.value[index],
+        ...updated,
+        plan_advice: updated?.plan_advice || tasks.value[index]?.plan_advice
+      }
+    }
+    hydrateDrafts([tasks.value[index] || updated])
     showSuccessToast('打卡已保存')
   } catch (error) {
     showFailToast(error?.response?.data?.message || '保存失败，请稍后重试')
   } finally {
     savingId.value = null
+  }
+}
+
+function goPlanDetail() {
+  if (planInfo.value.plan_id) {
+    pushWithBack(router, `/app/life-plan/${planInfo.value.plan_id}`, '/app/life-plan')
+  } else {
+    router.push('/app/life-plan')
   }
 }
 
@@ -181,6 +252,34 @@ function taskIcon(type) {
   return type === 'exercise' ? Dumbbell : Salad
 }
 
+function taskAdvice(task) {
+  if (task?.plan_advice) return task.plan_advice
+  if (task?.task_type === 'diet') {
+    return todayDiet.value || planInfo.value.today_focus || '按今日方案控制主食比例，搭配优质蛋白和蔬菜，记录饮食感受。'
+  }
+  if (task?.task_type === 'exercise') {
+    return todayExercise.value || planInfo.value.today_focus || '按今日方案完成适合自己的活动安排，如有不适请及时停止并记录。'
+  }
+  return planInfo.value.today_focus || '按今日方案完成打卡并记录身体感受。'
+}
+
+function scheduleText(keys) {
+  const schedule = planInfo.value.today_schedule || {}
+  for (const key of keys) {
+    const text = valueText(schedule[key])
+    if (text) return text
+  }
+  return ''
+}
+
+function valueText(value) {
+  if (value == null) return ''
+  if (typeof value === 'string') return value.trim()
+  if (Array.isArray(value)) return value.map(valueText).filter(Boolean).join('；')
+  if (typeof value === 'object') return Object.values(value).map(valueText).filter(Boolean).join('；')
+  return String(value)
+}
+
 onMounted(loadToday)
 </script>
 
@@ -199,11 +298,15 @@ onMounted(loadToday)
   overflow: hidden;
 }
 
+.hero-copy {
+  min-width: 0;
+}
+
 .eyebrow {
   margin: 0 0 5px;
   color: rgba(36, 50, 61, 0.65);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .hero-card h2 {
@@ -237,16 +340,125 @@ onMounted(loadToday)
   font-weight: 700;
 }
 
-.task-list {
-  display: grid;
-  gap: 12px;
-}
-
+.plan-card,
 .task-card,
 .state-card {
   border-radius: var(--figma-radius-card);
   background: #FFFFFF;
   box-shadow: var(--figma-shadow-card);
+}
+
+.plan-card {
+  margin-bottom: 14px;
+  padding: 16px;
+}
+
+.plan-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.plan-card h3 {
+  margin: 0;
+  color: var(--figma-text-strong);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.day-pill {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border-radius: var(--figma-radius-pill);
+  background: #E5F6EE;
+  color: #3C8D66;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.day-pill--expired {
+  background: #FFF4D7;
+  color: #B8862A;
+}
+
+.plan-goal,
+.plan-summary,
+.schedule-mini p,
+.task-advice {
+  color: var(--figma-text-secondary);
+  line-height: 1.65;
+}
+
+.plan-goal {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.plan-summary {
+  margin: 7px 0 0;
+  font-size: 12px;
+}
+
+.schedule-grid {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.schedule-mini {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 9px;
+  padding: 10px;
+  border-radius: 16px;
+}
+
+.schedule-mini--diet {
+  background: #F2FAF5;
+  color: #4FB783;
+}
+
+.schedule-mini--exercise {
+  background: #F0F8FC;
+  color: #4FAAC4;
+}
+
+.schedule-mini strong {
+  display: block;
+  color: var(--figma-text-strong);
+  font-size: 12px;
+}
+
+.schedule-mini p {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 2px 0 0;
+  font-size: 11px;
+}
+
+.detail-link {
+  width: 100%;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+  border-radius: var(--figma-radius-pill);
+  background: #F7FCF9;
+  color: #3C8D66;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.task-list {
+  display: grid;
+  gap: 12px;
 }
 
 .task-card {
@@ -282,13 +494,23 @@ onMounted(loadToday)
   margin: 0;
   color: var(--figma-text-strong);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .task-head p {
   margin: 2px 0 0;
   color: var(--figma-text-muted);
   font-size: 11px;
+}
+
+.task-advice {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #F7FCF9;
+  color: #1F5F43;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .status-pill {

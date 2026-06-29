@@ -44,6 +44,7 @@ function handleBack() {
 }
 
 .page-header__back {
+  grid-column: 1;
   width: 36px;
   height: 36px;
   display: flex;
@@ -61,6 +62,7 @@ function handleBack() {
 }
 
 .page-header__title {
+  grid-column: 2;
   margin: 0;
   text-align: center;
   font-size: 17px;
@@ -69,6 +71,7 @@ function handleBack() {
 }
 
 .page-header__right {
+  grid-column: 3;
   display: flex;
   justify-content: flex-end;
 }

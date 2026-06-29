@@ -9,27 +9,53 @@ export function resolveSessionScope(roleOrPath) {
 }
 
 export function getToken(scope = currentScope()) {
-  return localStorage.getItem(tokenKey(scope))
+  const key = tokenKey(scope)
+  const localToken = localStorage.getItem(key)
+  if (localToken) {
+    if (!isTokenExpired(localToken)) return localToken
+    localStorage.removeItem(key)
+  }
+
+  const sessionToken = sessionStorage.getItem(key)
+  if (sessionToken) {
+    if (!isTokenExpired(sessionToken)) return sessionToken
+    sessionStorage.removeItem(key)
+  }
+
+  return null
 }
 
-export function setToken(token, scope = currentScope()) {
+export function setToken(token, scope = currentScope(), remember = true) {
   if (!token) return
-  localStorage.setItem(tokenKey(scope), token)
+  const key = tokenKey(scope)
+  localStorage.removeItem(key)
+  sessionStorage.removeItem(key)
+  const storage = remember ? localStorage : sessionStorage
+  storage.setItem(key, token)
   localStorage.removeItem(LEGACY_TOKEN_KEY)
 }
 
 export function removeToken(scope) {
   if (scope) {
     localStorage.removeItem(tokenKey(scope))
+    sessionStorage.removeItem(tokenKey(scope))
     return
   }
   localStorage.removeItem(PATIENT_TOKEN_KEY)
   localStorage.removeItem(ADMIN_TOKEN_KEY)
   localStorage.removeItem(LEGACY_TOKEN_KEY)
+  sessionStorage.removeItem(PATIENT_TOKEN_KEY)
+  sessionStorage.removeItem(ADMIN_TOKEN_KEY)
 }
 
 export function getTokenRole(token) {
   return decodeTokenPayload(token)?.role || null
+}
+
+export function isTokenExpired(token) {
+  const payload = decodeTokenPayload(token)
+  if (!payload?.exp) return false
+  return payload.exp * 1000 <= Date.now()
 }
 
 export function getTokenForRequest(url = '') {

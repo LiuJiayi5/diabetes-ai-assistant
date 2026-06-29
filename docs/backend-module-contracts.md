@@ -1,355 +1,63 @@
-# 后端模块 Contract 规则
+# 后端模块契约概览
 
-## 为什么需要 contract 接口
+本文档记录当前后端模块职责和跨模块调用边界，具体字段以 Java DTO、VO、Entity 和数据库 SQL 为准。
 
-本项目后端采用模块化 Spring Boot 架构。每个模块拥有自己的 Controller、Service、ServiceImpl、Mapper、Entity、DTO。为了避免模块之间互相穿透内部实现，跨模块读取数据只能通过 `contract` 包中的 Java Interface 和 contract DTO。
+## 公共约定
 
-contract 接口用于稳定模块边界，降低模块耦合，方便各模块负责人独立开发。
+- 所有业务接口返回统一响应结构。
+- 登录后通过 JWT 鉴权，管理端接口需要管理员角色。
+- 分页接口默认使用 `page` 和 `page_size` 或后端 DTO 中的 `pageSize`，前端做字段适配。
+- Dify 调用统一在 `modules/dify` 中封装，业务模块不直接拼接 HTTP。
 
-## 核心规则
+## 用户模块
 
-允许调用：
+职责：注册、登录、邮箱验证码、忘记密码、用户状态和用户管理。
 
-- 其他模块 `contract` 包下的 Java Interface
-- 其他模块 `contract/dto` 包下的 DTO
+关键能力：
 
-禁止跨模块调用：
+- 患者注册必须填写邮箱并通过邮箱验证码。
+- 忘记密码统一使用邮箱验证码校验身份。
+- 管理员可查询、编辑用户基础信息和状态。
 
-- 其他模块 Controller
-- 其他模块 ServiceImpl
-- 其他模块 Mapper
-- 其他模块 Entity
-- 其他模块私有 DTO
+## 健康档案模块
 
-contract DTO 不等于数据库 Entity，不能直接暴露数据库实体。
+职责：保存患者年龄、性别、身高、基础体重、腰围、家族史、慢病史和过敏史。
 
-## 模块1：用户模块
+跨模块输出：风险预测、生活方案、AI 医生上下文会读取档案摘要。
 
-接口路径：
+## 健康数据模块
 
-```text
-backend/src/main/java/com/diabetes/assistant/modules/user/contract/UserQueryApi.java
-```
+职责：记录体重、腰围、血压、空腹血糖、餐后血糖、糖化血红蛋白、饮食状态和运动状态。
 
-方法：
+跨模块输出：风险预测和生活方案优先使用用户最新健康数据。
 
-```java
-UserBasicDTO getUserBasicById(Integer userId);
-boolean existsActiveUser(Integer userId);
-boolean isAdmin(Integer userId);
-```
+## 风险评估模块
 
-DTO：`UserBasicDTO`
+职责：组织档案和指标上下文，调用 Dify 风险预测工作流，解析并保存风险等级、分数、风险因素、指标分析、健康建议和就医提醒。
 
-字段：
+失败策略：Dify 调用失败时保存失败状态和错误信息，前端给出可理解提示。
 
-- Integer userId
-- String username
-- String phone
-- String email
-- String avatar
-- String role
-- String status
+## 生活方案模块
 
-## 模块2：健康档案模块
+职责：基于档案、最新指标和风险评估生成生活方案，并将任务拆解为打卡任务。
 
-接口路径：
+跨模块关系：方案可关联 `profile_id`、`metric_id`、`assessment_id`，打卡记录可关联 `plan_id`。
 
-```text
-backend/src/main/java/com/diabetes/assistant/modules/profile/contract/PatientProfileQueryApi.java
-```
+## 打卡模块
 
-方法：
+职责：生成、保存和查询打卡任务，统计完成情况，并调用 Dify 打卡分析工作流生成行为分析。
 
-```java
-PatientProfileDTO getProfileByUserId(Integer userId);
-String getProfileSummaryByUserId(Integer userId);
-boolean hasProfile(Integer userId);
-```
+管理端可查询打卡记录、分析记录、未活跃用户和 AI 调用日志。
 
-DTO：`PatientProfileDTO`
+## AI 咨询模块
 
-字段：
+职责：维护专家身份、会话和消息。每个会话绑定一个用户，并可绑定一个专家；专家信息会作为 Dify Agent 输入上下文的一部分。
 
-- Integer profileId
-- Integer userId
-- Integer age
-- String gender
-- BigDecimal heightCm
-- BigDecimal baseWeightKg
-- BigDecimal baseWaistCm
-- String familyHistory
-- String chronicHistory
-- String allergyHistory
-- String profileSummary
-- LocalDateTime createTime
-- LocalDateTime updateTime
+约束：一个专家可以拥有多个会话，一个会话最多绑定一个专家。患者端新建会话时应选择专家身份。
 
-## 模块3：健康数据模块
+## 内容模块
 
-接口路径：
+职责：健康资讯、首页轮播和管理端内容维护。
 
-```text
-backend/src/main/java/com/diabetes/assistant/modules/healthmetric/contract/HealthMetricQueryApi.java
-```
+健康资讯、首页轮播图和专家医生演示数据由 `database/02_seed_demo_data.sql` 初始化，图片资源位于 `backend/uploads/seed/content/`。
 
-方法：
-
-```java
-HealthMetricDTO getLatestMetricByUserId(Integer userId);
-List<HealthMetricDTO> listMetricsByUserId(Integer userId, LocalDate startDate, LocalDate endDate);
-String getLatestMetricSummaryByUserId(Integer userId);
-```
-
-DTO：`HealthMetricDTO`
-
-字段：
-
-- Integer metricId
-- Integer userId
-- BigDecimal weightKg
-- BigDecimal waistCm
-- Integer systolicBp
-- Integer diastolicBp
-- BigDecimal fastingGlucose
-- BigDecimal postprandialGlucose
-- BigDecimal hba1c
-- String dietStatus
-- String exerciseStatus
-- String metricSummary
-- LocalDate recordedAt
-- LocalDateTime createTime
-
-## 模块4：风险评估模块
-
-接口路径：
-
-```text
-backend/src/main/java/com/diabetes/assistant/modules/risk/contract/RiskAssessmentQueryApi.java
-```
-
-方法：
-
-```java
-RiskAssessmentDTO getLatestAssessmentByUserId(Integer userId);
-List<RiskAssessmentDTO> listAssessmentsByUserId(Integer userId, LocalDate startDate, LocalDate endDate);
-String getLatestRiskSummaryByUserId(Integer userId);
-```
-
-DTO：`RiskAssessmentDTO`
-
-字段：
-
-- Integer assessmentId
-- Integer userId
-- Integer metricId
-- String riskLevel
-- Integer riskScore
-- String diabetesTypeTendency
-- String mainRiskFactors
-- String indicatorAnalysis
-- String healthAdvice
-- String medicalWarning
-- String summary
-- String callStatus
-- String errorMessage
-- LocalDateTime createTime
-
-## 模块5：AI 医生咨询模块
-
-接口路径：
-
-```text
-backend/src/main/java/com/diabetes/assistant/modules/aichat/contract/AiChatQueryApi.java
-```
-
-方法：
-
-```java
-long countMessagesByUserId(Integer userId);
-List<AiChatSessionSummaryDTO> listRecentSessionsByUserId(Integer userId, Integer limit);
-String getLatestChatSummaryByUserId(Integer userId);
-```
-
-DTO：`AiChatSessionSummaryDTO`
-
-字段：
-
-- Integer sessionId
-- Integer userId
-- String sessionTitle
-- String status
-- LocalDateTime lastMessageTime
-- LocalDateTime createTime
-
-## 模块6：生活方案模块
-
-接口路径：
-
-```text
-backend/src/main/java/com/diabetes/assistant/modules/lifeplan/contract/LifePlanQueryApi.java
-```
-
-方法：
-
-```java
-LifePlanDTO getCurrentPlanByUserId(Integer userId);
-Integer getCurrentPlanIdByUserId(Integer userId);
-String getCurrentLifePlanSummaryByUserId(Integer userId);
-String getCurrentCheckinTasksJsonByUserId(Integer userId);
-```
-
-DTO：`LifePlanDTO`
-
-字段：
-
-- Integer planId
-- Integer userId
-- Integer assessmentId
-- String planTitle
-- String planGoal
-- String dietPlanJson
-- String exercisePlanJson
-- String dailyScheduleJson
-- String checkinTasksJson
-- String healthTipsJson
-- String summary
-- String status
-- String callStatus
-- String errorMessage
-- LocalDateTime createTime
-
-## 模块7：内容模块
-
-接口路径：
-
-```text
-backend/src/main/java/com/diabetes/assistant/modules/content/contract/ContentQueryApi.java
-```
-
-方法：
-
-```java
-ArticleSummaryDTO getArticleSummaryById(Integer articleId);
-List<ArticleSummaryDTO> listRecommendedArticles(Integer limit);
-List<HomeContentDTO> listEnabledHomeContents();
-```
-
-DTO：`ArticleSummaryDTO`
-
-字段：
-
-- Integer articleId
-- String title
-- String category
-- String coverImage
-- String summary
-- Integer viewCount
-- Boolean isRecommended
-- LocalDateTime createTime
-
-DTO：`HomeContentDTO`
-
-字段：
-
-- Integer contentId
-- String contentType
-- String title
-- String subtitle
-- String imageUrl
-- String linkType
-- String linkValue
-- Integer sortOrder
-- String status
-
-## 模块8：生活打卡与行为分析模块
-
-接口路径：
-
-```text
-backend/src/main/java/com/diabetes/assistant/modules/checkin/contract/CheckinQueryApi.java
-```
-
-方法：
-
-```java
-List<CheckinRecordDTO> listRecentCheckins(Integer userId, Integer period);
-BigDecimal getRecentCompletionRate(Integer userId, Integer period);
-String getLatestCheckinSummaryByUserId(Integer userId, Integer period);
-CheckinAnalysisDTO getLatestAnalysisByUserId(Integer userId);
-String getLatestCheckinAnalysisSummaryByUserId(Integer userId);
-```
-
-DTO：`CheckinRecordDTO`
-
-字段：
-
-- Integer checkinId
-- Integer userId
-- Integer planId
-- String taskType
-- String taskName
-- String status
-- String note
-- LocalDate checkinDate
-- LocalDateTime completedTime
-- LocalDateTime createTime
-
-DTO：`CheckinAnalysisDTO`
-
-字段：
-
-- Integer analysisId
-- Integer userId
-- Integer planId
-- LocalDate startDate
-- LocalDate endDate
-- Integer totalDays
-- Integer dietCompletionCount
-- Integer exerciseCompletionCount
-- BigDecimal completionRate
-- Integer habitScore
-- String dietSummary
-- String exerciseSummary
-- String lifeEvaluation
-- String mainProblems
-- String improvementSuggestions
-- String nextFocus
-- String summary
-- String inputSummary
-- String callStatus
-- String errorMessage
-- LocalDateTime createTime
-
-## 调用示例
-
-```java
-@Service
-public class RiskContextAssembler {
-
-    private final PatientProfileQueryApi patientProfileQueryApi;
-    private final HealthMetricQueryApi healthMetricQueryApi;
-
-    public RiskContextAssembler(PatientProfileQueryApi patientProfileQueryApi,
-                                HealthMetricQueryApi healthMetricQueryApi) {
-        this.patientProfileQueryApi = patientProfileQueryApi;
-        this.healthMetricQueryApi = healthMetricQueryApi;
-    }
-
-    public void assemble(Integer userId) {
-        String profileSummary = patientProfileQueryApi.getProfileSummaryByUserId(userId);
-        String metricSummary = healthMetricQueryApi.getLatestMetricSummaryByUserId(userId);
-        // TODO: 组装风险预测上下文。
-    }
-}
-```
-
-## 后续负责人如何实现自己的 contract 接口
-
-每个模块负责人在本模块内创建实现类，例如：
-
-```text
-modules/profile/service/impl/PatientProfileQueryApiImpl.java
-```
-
-实现类可以访问本模块 Service、Mapper、Entity，并把 Entity 转换为 contract DTO 后返回。实现类不能返回 Entity，也不能让其他模块直接依赖本模块 Mapper。

@@ -11,6 +11,23 @@ const router = createRouter({
 router.beforeEach((to) => {
   const authStore = useAuthStore()
 
+  if (to.path === '/admin/login') {
+    const token = authStore.restoreSession('admin')
+    const payload = decodeTokenPayload(token)
+    if (token && payload?.role === 'admin') {
+      return { path: '/admin/dashboard' }
+    }
+    return true
+  }
+
+  if (isPatientPublicEntry(to.path)) {
+    const token = authStore.restoreSession('patient')
+    const payload = decodeTokenPayload(token)
+    if (token && payload?.role === 'patient') {
+      return { path: '/app/home' }
+    }
+  }
+
   if (to.path.startsWith('/admin') && to.path !== '/admin/login') {
     return guardAdmin(to, authStore)
   }
@@ -67,6 +84,10 @@ function guardAdmin(to, authStore) {
   }
 
   return true
+}
+
+function isPatientPublicEntry(path) {
+  return path === '/' || path === '/welcome' || path === '/login' || path === '/register'
 }
 
 export default router

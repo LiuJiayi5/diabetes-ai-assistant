@@ -60,14 +60,6 @@ public class RiskController {
         return ApiResponse.success(riskService.getHistory(userId, page, pageSize, startDate, endDate));
     }
 
-    @GetMapping("/{assessment_id}")
-    public ApiResponse<RiskDetailResponse> getAssessmentDetail(
-            @PathVariable("assessment_id") Integer assessmentId,
-            HttpServletRequest request) {
-        Integer userId = currentUserUtil.getCurrentUserId(request);
-        return ApiResponse.success(riskService.getAssessmentDetail(userId, assessmentId));
-    }
-
     @GetMapping("/admin")
     public ApiResponse<PageResult<AdminRiskListItem>> adminListAssessments(
             @RequestParam(name = "user_id", required = false) Integer userId,
@@ -90,5 +82,13 @@ public class RiskController {
             HttpServletRequest request) {
         currentUserUtil.requireAdmin(request);
         return ApiResponse.success(riskService.adminGetAssessmentDetail(assessmentId));
+    }
+
+    @GetMapping("/{assessment_id}")
+    public ApiResponse<RiskDetailResponse> getAssessmentDetail(
+            @PathVariable("assessment_id") Integer assessmentId,
+            HttpServletRequest request) {
+        Integer userId = currentUserUtil.getCurrentUserId(request);
+        return ApiResponse.success(riskService.getAssessmentDetail(userId, assessmentId));
     }
 }

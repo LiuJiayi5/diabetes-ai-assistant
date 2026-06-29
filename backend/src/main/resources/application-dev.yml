@@ -8,6 +8,21 @@ spring:
     multipart:
       max-file-size: ${UPLOAD_MAX_FILE_SIZE:5MB}
       max-request-size: ${UPLOAD_MAX_REQUEST_SIZE:6MB}
+  mail:
+    host: smtp.qq.com
+    port: 465
+    username: ${SMTP_QQ_USERNAME:2385448139@qq.com}
+    password: ${SMTP_QQ_AUTH_CODE:}
+    protocol: smtps
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+          socketFactory:
+            class: javax.net.ssl.SSLSocketFactory
+            port: 465
 
 mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
@@ -16,10 +31,11 @@ mybatis-plus:
 
 dify:
   base-url: ${DIFY_BASE_URL:http://localhost/v1}
-  risk-predict-api-key: ${DIFY_RISK_PREDICT_API_KEY:your_risk_predict_api_key}
+  risk-predict-api-key: ${DIFY_RISK_PREDICT_API_KEY:${DIFY_RISK_PREDICTION_API_KEY:your_risk_predict_api_key}}
   ai-doctor-api-key: ${DIFY_AI_DOCTOR_API_KEY:your_ai_doctor_api_key}
   life-plan-api-key: ${DIFY_LIFE_PLAN_API_KEY:your_life_plan_api_key}
   checkin-analysis-api-key: ${DIFY_CHECKIN_ANALYSIS_API_KEY:your_checkin_analysis_api_key}
+  intervention-review-api-key: ${DIFY_INTERVENTION_REVIEW_API_KEY:your_intervention_review_api_key}
 
 jwt:
   secret: ${JWT_SECRET:diabetes_assistant_dev_secret}

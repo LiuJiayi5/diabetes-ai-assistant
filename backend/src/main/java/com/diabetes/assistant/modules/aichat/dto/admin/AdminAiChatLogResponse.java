@@ -22,6 +22,12 @@ public class AdminAiChatLogResponse {
     @JsonProperty("session_title")
     private String sessionTitle;
 
+    @JsonProperty("expert_id")
+    private Integer expertId;
+
+    @JsonProperty("expert_name")
+    private String expertName;
+
     @JsonProperty("user_message")
     private String userMessage;
 
