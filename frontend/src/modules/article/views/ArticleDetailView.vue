@@ -94,7 +94,7 @@ const article = computed(() => articlesStore.detail)
 const coverUrl = computed(() => resolveAssetUrl(article.value?.cover_image))
 const imageFailed = ref(false)
 const enteredAt = ref(Date.now())
-const readTracked = ref(false)
+const lastTrackedSeconds = ref(0)
 const isFavorite = computed(() => article.value && articlesStore.isFavorite(article.value.article_id))
 const sections = computed(() => {
   const content = article.value?.content || article.value?.summary || ''
@@ -115,9 +115,13 @@ onMounted(async () => {
     await articlesStore.fetchArticles()
   }
   await articlesStore.fetchArticleDetail(route.params.articleId)
+  startReadTracking()
 })
 
-onBeforeUnmount(trackReadEvent)
+onBeforeUnmount(() => {
+  trackReadEvent({ force: true })
+  stopReadTracking()
+})
 
 watch(coverUrl, () => {
   imageFailed.value = false
@@ -143,16 +147,41 @@ function formatTime(value) {
   return String(value).replace('T', ' ').slice(0, 16)
 }
 
-function trackReadEvent() {
-  if (readTracked.value || !article.value?.article_id) return
-  readTracked.value = true
+let trackingTimer = null
+
+function startReadTracking() {
+  if (!article.value?.article_id) return
+  trackReadEvent({ force: true })
+  window.clearInterval(trackingTimer)
+  trackingTimer = window.setInterval(() => {
+    trackReadEvent()
+  }, 8000)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+}
+
+function stopReadTracking() {
+  window.clearInterval(trackingTimer)
+  trackingTimer = null
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'hidden') {
+    trackReadEvent({ force: true })
+  }
+}
+
+function trackReadEvent({ force = false } = {}) {
+  if (!article.value?.article_id) return
   const readSeconds = Math.max(1, Math.round((Date.now() - enteredAt.value) / 1000))
+  if (!force && readSeconds - lastTrackedSeconds.value < 6) return
+  lastTrackedSeconds.value = readSeconds
   recordArticleReadEvent({
     article_id: article.value.article_id,
     recommendation_id: route.query.recommendation_id ? Number(route.query.recommendation_id) : undefined,
     source_scenario: route.query.scenario || 'article_detail',
     read_seconds: readSeconds,
-    progress_percent: readSeconds >= 20 ? 100 : Math.min(95, readSeconds * 5)
+    progress_percent: readSeconds >= 20 ? 100 : Math.max(8, Math.min(95, readSeconds * 5))
   }).catch(() => {})
 }
 </script>

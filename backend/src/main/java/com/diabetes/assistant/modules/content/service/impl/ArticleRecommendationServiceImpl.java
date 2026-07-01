@@ -175,12 +175,25 @@ public class ArticleRecommendationServiceImpl implements ArticleRecommendationSe
         ArticleReadEvent event = new ArticleReadEvent();
         event.setUserId(userId);
         event.setArticleId(request.getArticleId());
-        event.setRecommendationId(request.getRecommendationId());
-        event.setSourceScenario(normalizeScenario(request.getSourceScenario()));
-        event.setReadSeconds(clamp(request.getReadSeconds(), 0, 86400));
-        event.setProgressPercent(clamp(request.getProgressPercent(), 0, 100));
-        event.setCreateTime(LocalDateTime.now());
-        readEventMapper.insert(event);
+        String sourceScenario = normalizeScenario(request.getSourceScenario());
+        Integer recommendationId = resolveRecommendationId(userId, request.getArticleId(), request.getRecommendationId(), sourceScenario);
+        int readSeconds = clamp(request.getReadSeconds(), 0, 86400);
+        int progressPercent = clamp(request.getProgressPercent(), 0, 100);
+
+        ArticleReadEvent existing = findActiveReadEvent(userId, request.getArticleId(), recommendationId, sourceScenario);
+        if (existing != null) {
+            existing.setReadSeconds(Math.max(safeInt(existing.getReadSeconds()), readSeconds));
+            existing.setProgressPercent(Math.max(safeInt(existing.getProgressPercent()), progressPercent));
+            readEventMapper.updateById(existing);
+            event = existing;
+        } else {
+            event.setRecommendationId(recommendationId);
+            event.setSourceScenario(sourceScenario);
+            event.setReadSeconds(readSeconds);
+            event.setProgressPercent(progressPercent);
+            event.setCreateTime(LocalDateTime.now());
+            readEventMapper.insert(event);
+        }
 
         return ArticleReadEventResponse.builder()
                 .eventId(event.getEventId())
@@ -188,6 +201,55 @@ public class ArticleRecommendationServiceImpl implements ArticleRecommendationSe
                 .sourceScenario(event.getSourceScenario())
                 .tracked(true)
                 .build();
+    }
+
+    private Integer resolveRecommendationId(Integer userId, Integer articleId, Integer requestRecommendationId, String sourceScenario) {
+        if (requestRecommendationId != null) {
+            ArticleRecommendationLog log = recommendationLogMapper.selectById(requestRecommendationId);
+            if (log != null
+                    && Objects.equals(log.getUserId(), userId)
+                    && Objects.equals(log.getArticleId(), articleId)) {
+                return requestRecommendationId;
+            }
+        }
+
+        ArticleRecommendationLog latestLog = recommendationLogMapper.selectOne(new LambdaQueryWrapper<ArticleRecommendationLog>()
+                .eq(ArticleRecommendationLog::getUserId, userId)
+                .eq(ArticleRecommendationLog::getArticleId, articleId)
+                .eq(ArticleRecommendationLog::getScenario, sourceScenario)
+                .ge(ArticleRecommendationLog::getCreateTime, LocalDateTime.now().minusDays(7))
+                .orderByDesc(ArticleRecommendationLog::getCreateTime)
+                .orderByDesc(ArticleRecommendationLog::getRecommendationId)
+                .last("LIMIT 1"));
+        if (latestLog != null) {
+            return latestLog.getRecommendationId();
+        }
+
+        latestLog = recommendationLogMapper.selectOne(new LambdaQueryWrapper<ArticleRecommendationLog>()
+                .eq(ArticleRecommendationLog::getUserId, userId)
+                .eq(ArticleRecommendationLog::getArticleId, articleId)
+                .ge(ArticleRecommendationLog::getCreateTime, LocalDateTime.now().minusDays(7))
+                .orderByDesc(ArticleRecommendationLog::getCreateTime)
+                .orderByDesc(ArticleRecommendationLog::getRecommendationId)
+                .last("LIMIT 1"));
+        return latestLog == null ? null : latestLog.getRecommendationId();
+    }
+
+    private ArticleReadEvent findActiveReadEvent(Integer userId, Integer articleId, Integer recommendationId, String sourceScenario) {
+        LambdaQueryWrapper<ArticleReadEvent> wrapper = new LambdaQueryWrapper<ArticleReadEvent>()
+                .eq(ArticleReadEvent::getUserId, userId)
+                .eq(ArticleReadEvent::getArticleId, articleId)
+                .eq(ArticleReadEvent::getSourceScenario, sourceScenario);
+        if (recommendationId == null) {
+            wrapper.isNull(ArticleReadEvent::getRecommendationId);
+        } else {
+            wrapper.eq(ArticleReadEvent::getRecommendationId, recommendationId);
+        }
+        wrapper.ge(ArticleReadEvent::getCreateTime, LocalDateTime.now().minusHours(2))
+                .orderByDesc(ArticleReadEvent::getCreateTime)
+                .orderByDesc(ArticleReadEvent::getEventId)
+                .last("LIMIT 1");
+        return readEventMapper.selectOne(wrapper);
     }
 
     private EducationContext buildContext(Integer userId) {
@@ -590,6 +652,10 @@ public class ArticleRecommendationServiceImpl implements ArticleRecommendationSe
     private int clamp(Integer value, int min, int max) {
         if (value == null) return 0;
         return Math.max(min, Math.min(max, value));
+    }
+
+    private int safeInt(Integer value) {
+        return value == null ? 0 : value;
     }
 
     private String text(String value, String fallback) {

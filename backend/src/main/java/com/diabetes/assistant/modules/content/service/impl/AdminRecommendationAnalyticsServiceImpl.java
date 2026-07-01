@@ -190,10 +190,29 @@ public class AdminRecommendationAnalyticsServiceImpl implements AdminRecommendat
                 .collect(Collectors.groupingBy(ArticleReadEvent::getRecommendationId));
 
         List<AdminRecommendationLogResponse> rows = pageRows.stream()
-                .map(log -> toLogResponse(log, readsByRecommendation.getOrDefault(log.getRecommendationId(), List.of()),
+                .map(log -> toLogResponse(log, readsForLog(log, reads, readsByRecommendation),
                         users.get(log.getUserId()), articles.get(log.getArticleId())))
                 .toList();
         return new PageResult<>(rows, (long) logs.size(), page, pageSize);
+    }
+
+    private List<ArticleReadEvent> readsForLog(ArticleRecommendationLog log,
+                                               List<ArticleReadEvent> reads,
+                                               Map<Integer, List<ArticleReadEvent>> readsByRecommendation) {
+        Map<Integer, ArticleReadEvent> matched = new LinkedHashMap<>();
+        readsByRecommendation.getOrDefault(log.getRecommendationId(), List.of()).forEach(event -> matched.put(event.getEventId(), event));
+
+        LocalDateTime start = log.getCreateTime();
+        LocalDateTime end = start == null ? null : start.plusDays(7);
+        reads.stream()
+                .filter(event -> event.getRecommendationId() == null)
+                .filter(event -> Objects.equals(event.getUserId(), log.getUserId()))
+                .filter(event -> Objects.equals(event.getArticleId(), log.getArticleId()))
+                .filter(event -> !StringUtils.hasText(log.getScenario()) || !StringUtils.hasText(event.getSourceScenario()) || Objects.equals(event.getSourceScenario(), log.getScenario()))
+                .filter(event -> start == null || event.getCreateTime() == null || !event.getCreateTime().isBefore(start))
+                .filter(event -> end == null || event.getCreateTime() == null || event.getCreateTime().isBefore(end))
+                .forEach(event -> matched.put(event.getEventId(), event));
+        return new ArrayList<>(matched.values());
     }
 
     private PageResult<AdminReadEventResponse> pageReads(List<ArticleReadEvent> reads,

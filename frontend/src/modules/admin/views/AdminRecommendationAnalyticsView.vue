@@ -20,6 +20,14 @@
       </section>
     </div>
 
+    <section v-if="dashboard && !Number(overview.total_reads || 0)" class="admin-card recommendation-insight-card">
+      <Info :size="18" />
+      <div>
+        <strong>推荐已生成，阅读闭环还没有回传</strong>
+        <p>患者从推荐卡片进入文章后才会写入阅读行为；如果只生成推荐但没有点进文章，这里的阅读次数和停留时长会保持为 0。</p>
+      </div>
+    </section>
+
     <section class="admin-card recommendation-overview-card">
       <div>
         <span class="admin-label">场景分布</span>
@@ -110,9 +118,13 @@
         </el-table-column>
         <el-table-column label="阅读表现" width="150">
           <template #default="{ row }">
-            <div class="read-metric-cell">
-              <strong>{{ row.read_count || 0 }} 次</strong>
-              <span>{{ row.avg_progress_percent || 0 }}% · {{ row.avg_read_seconds || 0 }} 秒</span>
+            <div class="read-metric-cell" :class="{ 'is-empty': !Number(row.read_count || 0) }">
+              <strong>{{ Number(row.read_count || 0) ? `${row.read_count} 次` : '未阅读' }}</strong>
+              <span v-if="Number(row.read_count || 0)">
+                {{ row.avg_progress_percent || 0 }}% · {{ formatSeconds(row.avg_read_seconds) }}
+              </span>
+              <span v-else>等待患者点进文章</span>
+              <small v-if="row.latest_read_time">最近 {{ row.latest_read_time }}</small>
             </div>
           </template>
         </el-table-column>
@@ -179,7 +191,7 @@
           </template>
         </el-table-column>
         <el-table-column label="停留时长" width="110">
-          <template #default="{ row }">{{ row.read_seconds || 0 }} 秒</template>
+          <template #default="{ row }">{{ formatSeconds(row.read_seconds) }}</template>
         </el-table-column>
         <el-table-column prop="create_time" label="阅读时间" width="158" show-overflow-tooltip />
       </el-table>
@@ -220,10 +232,16 @@ const topArticles = computed(() => overview.value.top_articles || [])
 const stats = computed(() => [
   { label: '推荐记录', value: overview.value.total_recommendations || 0, icon: BarChart3, bg: 'rgba(37,99,235,0.10)', color: '#2563EB' },
   { label: '阅读行为', value: overview.value.total_reads || 0, icon: Eye, bg: 'rgba(14,165,233,0.10)', color: '#0EA5E9' },
+  { label: '阅读转化', value: `${readRate.value}%`, icon: BookOpenCheck, bg: 'rgba(16,185,129,0.10)', color: '#10B981' },
   { label: '平均进度', value: `${overview.value.avg_progress_percent || 0}%`, icon: BookOpenCheck, bg: 'rgba(34,197,94,0.10)', color: '#22C55E' },
-  { label: '平均停留', value: `${overview.value.avg_read_seconds || 0}s`, icon: Clock3, bg: 'rgba(245,158,11,0.12)', color: '#F59E0B' },
+  { label: '平均停留', value: formatSeconds(overview.value.avg_read_seconds), icon: Clock3, bg: 'rgba(245,158,11,0.12)', color: '#F59E0B' },
   { label: '知识库增强', value: `${overview.value.knowledge_enhanced_rate || 0}%`, icon: BrainCircuit, bg: 'rgba(139,92,246,0.12)', color: '#8B5CF6' }
 ])
+const readRate = computed(() => {
+  const total = Number(overview.value.total_recommendations || 0)
+  if (!total) return 0
+  return Math.min(100, Math.round(Number(overview.value.total_reads || 0) * 100 / total))
+})
 
 async function loadDashboard() {
   loading.value = true
@@ -280,6 +298,14 @@ function shortSignals(signals = []) {
   return Array.isArray(signals) ? signals.slice(0, 3) : []
 }
 
+function formatSeconds(value) {
+  const seconds = Number(value || 0)
+  if (seconds < 60) return `${seconds} 秒`
+  const minutes = Math.floor(seconds / 60)
+  const remain = seconds % 60
+  return remain ? `${minutes} 分 ${remain} 秒` : `${minutes} 分`
+}
+
 function openArticle(article) {
   if (!article?.article_id) return
   router.push(`/admin/articles/${article.article_id}/edit`)
@@ -309,7 +335,31 @@ onMounted(loadDashboard)
 
 <style scoped>
 .recommendation-stat-grid {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.recommendation-insight-card {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid rgba(96, 165, 250, 0.24);
+  background: linear-gradient(135deg, #F8FBFF, #F1F8FF);
+  color: #2563EB;
+}
+
+.recommendation-insight-card strong {
+  display: block;
+  color: var(--admin-text-title);
+  font-size: 14px;
+}
+
+.recommendation-insight-card p {
+  margin: 4px 0 0;
+  color: var(--admin-text-secondary);
+  font-size: 12px;
+  line-height: 1.65;
 }
 
 .recommendation-overview-card {
@@ -398,7 +448,8 @@ onMounted(loadDashboard)
 }
 
 .read-metric-cell strong,
-.read-metric-cell span {
+.read-metric-cell span,
+.read-metric-cell small {
   display: block;
 }
 
@@ -406,10 +457,20 @@ onMounted(loadDashboard)
   color: var(--admin-text-title);
 }
 
+.read-metric-cell.is-empty strong {
+  color: #94A3B8;
+}
+
 .read-metric-cell span,
+.read-metric-cell small,
 .recommendation-reason {
   color: var(--admin-text-secondary);
   font-size: 12px;
+}
+
+.read-metric-cell small {
+  margin-top: 2px;
+  color: #8AA2B5;
 }
 
 .signal-chip-row {
