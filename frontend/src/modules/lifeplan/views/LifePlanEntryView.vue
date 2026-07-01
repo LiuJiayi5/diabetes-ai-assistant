@@ -144,6 +144,7 @@
                 subtitle="早餐、午餐、晚餐和加餐建议"
                 :items="decorateDietCards(day)"
                 :execution="sectionExecution('diet')"
+                :active-key="selectedCard?.selectKey"
                 @action="handleSectionAction('diet')"
                 @select="selectCard(day, $event, '饮食管理')"
               />
@@ -154,6 +155,7 @@
                 subtitle="轻运动、有氧、抗阻和注意事项"
                 :items="decorateExerciseCards(day)"
                 :execution="sectionExecution('exercise')"
+                :active-key="selectedCard?.selectKey"
                 @action="handleSectionAction('exercise')"
                 @select="selectCard(day, $event, '运动管理')"
               />
@@ -167,21 +169,14 @@
             </article>
           </section>
 
-          <section v-if="selectedCard" class="selected-card-detail">
-            <div>
-              <span>{{ selectedCard.dayTitle }} · {{ selectedCard.group }}</span>
-              <h2>{{ selectedCard.title }}</h2>
-              <p>{{ selectedCard.content }}</p>
-            </div>
-            <button type="button" @click="selectedCard = null">收起详情</button>
-          </section>
-
           <section class="reminder-card">
             <h2>健康提示</h2>
             <ul>
               <li v-for="tip in reminderTips" :key="tip">{{ tip }}</li>
             </ul>
           </section>
+
+          <SmartRecommendationPanel v-if="recommendationReady" :scenario="readingScenario" title="今日方案配套阅读" :limit="4" />
         </template>
       </template>
     </main>
@@ -229,6 +224,7 @@ import { getLatestInterventionReview } from '@/api/interventionReview'
 import { pushWithBack } from '@/utils/navigation'
 import { formatPlanTime, getRiskMeta, normalizePlan } from '../utils'
 import PlanGenerateDialog from '../components/PlanGenerateDialog.vue'
+import SmartRecommendationPanel from '@/modules/article/components/SmartRecommendationPanel.vue'
 import '../styles/life-plan.css'
 
 const cardMeta = {
@@ -252,7 +248,8 @@ const PlanSection = defineComponent({
       type: Object,
       default: () => ({ label: '待完成', status: 'future', disabled: true })
     },
-    items: { type: Array, required: true }
+    items: { type: Array, required: true },
+    activeKey: { type: String, default: '' }
   },
   emits: ['select', 'action'],
   setup(props, { emit }) {
@@ -275,21 +272,33 @@ const PlanSection = defineComponent({
           onClick: () => emit('action')
         }, [h(statusIcon()), props.execution?.label || '待完成'])
       ]),
-      h('div', { class: 'plan-card-list' }, props.items.map((item) => h('button', {
-        type: 'button',
-        class: 'plan-item-card',
-        onClick: () => emit('select', item)
-      }, [
-        h('span', {
-          class: 'plan-item-card__icon',
-          style: { background: item.iconBg, color: item.iconColor }
-        }, [h(item.icon)]),
-        h('span', { class: 'plan-item-card__content' }, [
-          h('strong', item.title),
-          h('span', item.content)
-        ]),
-        h('span', { class: 'plan-item-card__side' }, [h('small', item.time), h(ChevronRight)])
-      ])))
+      h('div', { class: 'plan-card-list' }, props.items.map((item) => {
+        const expanded = props.activeKey && props.activeKey === item.selectKey
+        return h('div', { class: ['plan-card-item-wrap', { 'is-expanded': expanded }] }, [
+          h('button', {
+            type: 'button',
+            class: ['plan-item-card', { 'is-active': expanded }],
+            onClick: () => emit('select', item)
+          }, [
+            h('span', {
+              class: 'plan-item-card__icon',
+              style: { background: item.iconBg, color: item.iconColor }
+            }, [h(item.icon)]),
+            h('span', { class: 'plan-item-card__content' }, [
+              h('strong', item.title),
+              h('span', item.preview || '点开查看这一段内容')
+            ]),
+            h('span', { class: 'plan-item-card__side' }, [h('small', item.time), h(ChevronRight)])
+          ]),
+          expanded ? h('div', { class: 'plan-item-card__detail' }, [
+            h('div', { class: 'plan-item-card__detail-head' }, [
+              h('span', item.time || '今日')
+            ]),
+            h('p', item.content),
+            h('small', props.type === 'diet' ? '按方案完成后，可到今日打卡记录饮食执行情况。' : '运动前后留意身体状态，完成后可到今日打卡记录。')
+          ]) : null
+        ])
+      }))
     ])
   }
 })
@@ -302,6 +311,7 @@ const selectedDayIndex = ref(0)
 const selectedCard = ref(null)
 const checkinRecords = ref([])
 const latestReview = ref(null)
+const latestReviewLoaded = ref(false)
 const dismissedReviewVersion = ref(0)
 
 const currentPlan = computed(() => lifePlanStore.currentPlan ? normalizePlan(lifePlanStore.currentPlan) : null)
@@ -333,6 +343,8 @@ const reviewMeta = computed(() => {
 })
 const reviewTags = computed(() => Array.isArray(visibleLatestReview.value?.main_problem_tags) ? visibleLatestReview.value.main_problem_tags.slice(0, 4) : [])
 const changedItems = computed(() => Array.isArray(visibleLatestReview.value?.changed_items) ? visibleLatestReview.value.changed_items.slice(0, 4) : [])
+const readingScenario = computed(() => latestReview.value ? 'intervention_review' : 'life_plan')
+const recommendationReady = computed(() => latestReviewLoaded.value)
 const planStartDate = computed(() => parsePlanDate(currentPlan.value?.create_time || currentPlan.value?.createTime || currentPlan.value?.update_time || currentPlan.value?.updateTime))
 const selectedDayState = computed(() => daySwitchButtons.value[selectedDayIndex.value] || null)
 const checkinStatusByDate = computed(() => {
@@ -401,11 +413,21 @@ async function loadCurrentPlan() {
 }
 
 function decorateDietCards(day) {
-  return day.dietCards.map((item) => ({ ...item, ...(cardMeta[item.key] || cardMeta.lunch) }))
+  return day.dietCards.map((item) => ({
+    ...item,
+    ...(cardMeta[item.key] || cardMeta.lunch),
+    selectKey: cardSelectKey(day, item, 'diet'),
+    preview: mealPreview(item)
+  }))
 }
 
 function decorateExerciseCards(day) {
-  return day.exerciseCards.map((item) => ({ ...item, ...(cardMeta[item.key] || cardMeta.aerobic) }))
+  return day.exerciseCards.map((item) => ({
+    ...item,
+    ...(cardMeta[item.key] || cardMeta.aerobic),
+    selectKey: cardSelectKey(day, item, 'exercise'),
+    preview: exercisePreview(item)
+  }))
 }
 
 function selectDay(index) {
@@ -414,12 +436,15 @@ function selectDay(index) {
 }
 
 async function loadLatestReview() {
+  latestReviewLoaded.value = false
   try {
     const response = await getLatestInterventionReview()
     const review = response?.data ?? response
     latestReview.value = review?.review_id || review?.reviewId ? review : null
   } catch {
     latestReview.value = null
+  } finally {
+    latestReviewLoaded.value = true
   }
 }
 
@@ -461,12 +486,38 @@ function handleSectionAction(type) {
 }
 
 function selectCard(day, item, group) {
-  selectedCard.value = {
+  const next = {
+    selectKey: item.selectKey || cardSelectKey(day, item, group),
     dayTitle: day.title,
     group,
     title: item.title,
     content: item.content
   }
+  selectedCard.value = selectedCard.value?.selectKey === next.selectKey ? null : next
+}
+
+function cardSelectKey(day, item, group) {
+  return `${day.title}-${group}-${item.key || item.title}-${item.time || ''}`
+}
+
+function mealPreview(item) {
+  const map = {
+    breakfast: '点开查看今日早餐搭配与份量',
+    lunch: '点开查看午餐主食、蛋白和蔬菜搭配',
+    dinner: '点开查看晚餐清淡搭配与控糖重点',
+    snack: '点开查看加餐选择和适合时间'
+  }
+  return map[item.key] || '点开查看这一餐的具体吃法'
+}
+
+function exercisePreview(item) {
+  const map = {
+    light: '点开查看轻运动动作和执行时机',
+    aerobic: '点开查看有氧运动时长与强度',
+    resistance: '点开查看抗阻或拉伸动作安排',
+    notice: '点开查看运动前后的安全提醒'
+  }
+  return map[item.key] || '点开查看这一段的运动安排'
 }
 
 function ensureLoggedIn() {

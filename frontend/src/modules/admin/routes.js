@@ -7,6 +7,7 @@ import AdminLifePlanLogView from './views/AdminLifePlanLogView.vue'
 import AdminInterventionReviewsView from './views/AdminInterventionReviewsView.vue'
 import AdminArticlesView from './views/AdminArticlesView.vue'
 import AdminArticleEditView from './views/AdminArticleEditView.vue'
+import AdminRecommendationAnalyticsView from './views/AdminRecommendationAnalyticsView.vue'
 import AdminHomeContentView from './views/AdminHomeContentView.vue'
 import AdminExpertsView from './views/AdminExpertsView.vue'
 import AdminProfileView from './views/AdminProfileView.vue'
@@ -36,6 +37,7 @@ export default [
   { path: 'life-plans/:planId', name: 'AdminLifePlanDetail', component: AdminLifePlanDetailView, meta: { title: '生活方案详情' } },
   { path: 'life-plans/:planId/log', name: 'AdminLifePlanLog', component: AdminLifePlanLogView, meta: { title: '方案生成日志' } },
   { path: 'articles', name: 'AdminArticles', component: AdminArticlesView, meta: { title: '健康资讯管理' } },
+  { path: 'content-recommendations', name: 'AdminRecommendationAnalytics', component: AdminRecommendationAnalyticsView, meta: { title: '推荐闭环看板' } },
   { path: 'articles/create', name: 'AdminArticleCreate', component: AdminArticleEditView, meta: { title: '新增资讯' } },
   { path: 'articles/:articleId/edit', name: 'AdminArticleEdit', component: AdminArticleEditView, meta: { title: '编辑资讯' } },
   { path: 'home-content', name: 'AdminHomeContent', component: AdminHomeContentView, meta: { title: '首页内容管理' } },

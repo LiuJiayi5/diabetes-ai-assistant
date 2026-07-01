@@ -53,6 +53,10 @@ public class DifyService {
         return difyClient.runWorkflow(difyProperties.getComprehensiveReportApiKey(), inputs, user);
     }
 
+    public DifyWorkflowResult callContentRecommendation(Map<String, Object> inputs, String user) {
+        return difyClient.runWorkflow(difyProperties.getContentRecommendationApiKey(), inputs, user);
+    }
+
     private String outputAsText(Map<String, Object> outputs, String preferredKey) {
         if (outputs == null || outputs.isEmpty()) {
             return "{}";

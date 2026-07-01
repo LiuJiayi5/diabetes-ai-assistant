@@ -159,10 +159,10 @@ workflow:
               vector_weight: 0.7
         selected: false
         summary_index_setting:
-          enable: null
-          model_name: null
-          model_provider_name: null
-          summary_prompt: null
+          enable: false
+          model_name: ''
+          model_provider_name: ''
+          summary_prompt: ''
         title: Knowledge Base
         type: knowledge-index
       height: 165

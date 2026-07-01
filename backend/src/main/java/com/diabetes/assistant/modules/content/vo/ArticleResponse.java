@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -25,6 +27,7 @@ public class ArticleResponse {
     private Integer isRecommended;
     @JsonProperty("sort_order")
     private Integer sortOrder;
+    private List<String> tags;
     @JsonProperty("create_time")
     private String createTime;
     @JsonProperty("update_time")

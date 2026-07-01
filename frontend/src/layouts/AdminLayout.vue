@@ -74,6 +74,7 @@ import {
   Leaf,
   LogOut,
   Newspaper,
+  ChartNoAxesCombined,
   Search,
   Shield,
   UserCheck,
@@ -114,6 +115,7 @@ const navGroups = [
     label: '内容管理',
     items: [
       { label: '健康资讯管理', path: '/admin/articles', icon: Newspaper },
+      { label: '推荐闭环看板', path: '/admin/content-recommendations', icon: ChartNoAxesCombined },
       { label: '首页内容管理', path: '/admin/home-content', icon: Home },
       { label: '专家展示管理', path: '/admin/experts', icon: UserCheck }
     ]

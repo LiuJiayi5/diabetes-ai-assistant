@@ -61,6 +61,10 @@ export function adminGetContentManagement(params) {
   return request.get('/admin/content-management', { params }).then(unwrap)
 }
 
+export function adminGetRecommendationDashboard(params) {
+  return request.get('/admin/content-recommendations/dashboard', { params, sessionScope: 'admin' }).then(unwrap)
+}
+
 export function adminSaveArticle(payload) {
   return request.post('/admin/articles/save', payload).then(unwrap)
 }

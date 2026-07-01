@@ -123,36 +123,7 @@
         </div>
       </section>
 
-      <section class="home-section">
-        <div class="home-section__head">
-          <h2>健康科普</h2>
-          <button type="button" @click="router.push('/app/articles')">
-            更多
-            <ArrowRight />
-          </button>
-        </div>
-        <div class="article-list">
-          <button
-            v-for="article in articles"
-            :key="article.title"
-            type="button"
-            class="article-card"
-            @click="openArticle(article)"
-          >
-            <span class="article-card__icon" :style="{ background: article.color }">
-              <component :is="article.icon" />
-            </span>
-            <span class="article-card__body">
-              <strong>{{ article.title }}</strong>
-              <span>{{ article.summary }}</span>
-              <em>
-                <Eye />
-                {{ article.views }} 浏览
-              </em>
-            </span>
-          </button>
-        </div>
-      </section>
+      <SmartRecommendationPanel scenario="home" title="为你推荐的健康科普" :limit="3" />
 
       <section class="home-disclaimer">
         AI 建议仅供参考，不能替代线下诊疗
@@ -165,12 +136,10 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   ArrowRight,
-  BookOpen,
   CalendarCheck,
   ChevronLeft,
   ChevronRight,
   Droplet,
-  Eye,
   Leaf,
   ShieldCheck
 } from 'lucide-vue-next'
@@ -178,6 +147,8 @@ import { useRouter } from 'vue-router'
 import { getAiExperts } from '@/api/aiChat'
 import { useArticlesStore } from '@/stores/articles'
 import { resolveAssetUrl, resolveAvatarUrl } from '@/utils/assets'
+import SmartRecommendationPanel from '../components/SmartRecommendationPanel.vue'
+import { prewarmPatientSmartRecommendations } from '../utils/smartRecommendationCache'
 
 const router = useRouter()
 const articlesStore = useArticlesStore()
@@ -236,29 +207,6 @@ const activeHomeBanner = computed(() => {
 })
 
 const activeHomeBannerImage = computed(() => resolveAssetUrl(activeHomeBanner.value?.image_url))
-
-const articles = [
-  {
-    title: '糖尿病的早期症状及预防措施',
-    summary: '糖尿病在早期可能出现多饮、多食、多尿等明显症状...',
-    views: 156,
-    color: '#DDF7E9',
-    icon: BookOpen,
-    articleId: 4
-  },
-  {
-    title: '控糖饮食的三个关键原则',
-    summary: '合理控制碳水摄入，搭配优质蛋白和蔬菜，帮助稳定血糖水平...',
-    views: 120,
-    color: '#BEEAF2',
-    icon: Leaf,
-    articleId: 1
-  }
-]
-
-function openArticle(article) {
-  router.push(`/app/articles/${article.articleId}`)
-}
 
 function openDoctor(doctor) {
   if (doctor.id) {
@@ -322,6 +270,7 @@ function prevHomeBanner() {
 }
 
 onMounted(async () => {
+  prewarmPatientSmartRecommendations()
   await Promise.all([
     loadExperts(),
     articlesStore.fetchHomeContents()

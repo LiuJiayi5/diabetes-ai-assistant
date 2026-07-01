@@ -1,0 +1,544 @@
+app:
+  description: 基于患者画像、生活方案、自动复盘和糖尿病知识库的个性化健康科普推荐工作流。
+  icon: 📚
+  icon_background: '#E8F7EE'
+  icon_type: emoji
+  mode: workflow
+  name: content_recommendation_workflow
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/deepseek:0.0.17@f7a5c1d222d17ee419b17a80d6e4923838fe93788dc724a3af73fbc6990b3a32
+    version: null
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  rag_pipeline_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 20
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: code
+      id: start-source-validate_input-target
+      source: start
+      sourceHandle: source
+      target: validate_input
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: code
+      id: validate_input-source-build_retrieval_query-target
+      source: validate_input
+      sourceHandle: source
+      target: build_retrieval_query
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: knowledge-retrieval
+      id: build_retrieval_query-source-knowledge_retrieval-target
+      source: build_retrieval_query
+      sourceHandle: source
+      target: knowledge_retrieval
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+      id: knowledge_retrieval-source-generate_recommendations-target
+      source: knowledge_retrieval
+      sourceHandle: source
+      target: generate_recommendations
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: generate_recommendations-source-validate_json-target
+      source: generate_recommendations
+      sourceHandle: source
+      target: validate_json
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: validate_json-source-end-target
+      source: validate_json
+      sourceHandle: source
+      target: end
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        desc: 接收后端聚合好的患者教育画像、生活方案摘要、自动复盘摘要和候选文章列表。
+        selected: false
+        title: 开始
+        type: start
+        variables:
+        - label: 推荐场景
+          max_length: null
+          options: []
+          required: true
+          type: text-input
+          variable: scenario
+        - label: 患者教育画像JSON
+          max_length: null
+          options: []
+          required: true
+          type: paragraph
+          variable: patient_profile
+        - label: 当前生活方案摘要
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: latest_plan_summary
+        - label: 最新自动复盘摘要
+          max_length: null
+          options: []
+          required: false
+          type: paragraph
+          variable: latest_review_summary
+        - label: 候选文章JSON
+          max_length: null
+          options: []
+          required: true
+          type: paragraph
+          variable: candidate_articles
+      height: 196
+      id: start
+      position:
+        x: 80
+        y: 260
+      positionAbsolute:
+        x: 80
+        y: 260
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          import json
+
+          def _loads(raw, fallback):
+              if raw is None or str(raw).strip() == "":
+                  return fallback
+              try:
+                  return json.loads(raw)
+              except Exception:
+                  return fallback
+
+          def main(scenario: str,
+                   patient_profile: str,
+                   latest_plan_summary: str = "",
+                   latest_review_summary: str = "",
+                   candidate_articles: str = "") -> dict:
+              profile = _loads(patient_profile, {})
+              candidates = _loads(candidate_articles, [])
+              if isinstance(candidates, dict):
+                  candidates = candidates.get("list") or candidates.get("articles") or []
+              if not isinstance(candidates, list):
+                  candidates = []
+
+              return {
+                  "scenario": scenario or "home",
+                  "profile_text": json.dumps(profile, ensure_ascii=False)[:3000],
+                  "plan_text": str(latest_plan_summary or "")[:1600],
+                  "review_text": str(latest_review_summary or "")[:1600],
+                  "candidate_text": json.dumps(candidates[:20], ensure_ascii=False)[:6000],
+                  "candidate_count": len(candidates)
+              }
+        code_language: python3
+        desc: 解析输入并限制上下文长度，避免空候选或脏数据导致推荐失败。
+        outputs:
+          candidate_count:
+            children: null
+            type: number
+          candidate_text:
+            children: null
+            type: string
+          plan_text:
+            children: null
+            type: string
+          profile_text:
+            children: null
+            type: string
+          review_text:
+            children: null
+            type: string
+          scenario:
+            children: null
+            type: string
+        selected: false
+        title: 输入校验与压缩
+        type: code
+        variables:
+        - value_selector:
+          - start
+          - scenario
+          variable: scenario
+        - value_selector:
+          - start
+          - patient_profile
+          variable: patient_profile
+        - value_selector:
+          - start
+          - latest_plan_summary
+          variable: latest_plan_summary
+        - value_selector:
+          - start
+          - latest_review_summary
+          variable: latest_review_summary
+        - value_selector:
+          - start
+          - candidate_articles
+          variable: candidate_articles
+      height: 86
+      id: validate_input
+      position:
+        x: 390
+        y: 260
+      positionAbsolute:
+        x: 390
+        y: 260
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          def main(scenario: str,
+                   profile_text: str,
+                   plan_text: str = "",
+                   review_text: str = "") -> dict:
+              parts = [
+                  "糖尿病 健康科普 个性化推荐",
+                  f"推荐场景 {scenario}",
+                  profile_text,
+                  plan_text,
+                  review_text
+              ]
+              query = "\n".join([p for p in parts if p])[:1200]
+              return {"retrieval_query": query}
+        code_language: python3
+        desc: 将患者画像、生活方案任务和自动复盘问题压缩为知识库检索查询。
+        outputs:
+          retrieval_query:
+            children: null
+            type: string
+        selected: false
+        title: 构造知识库检索查询
+        type: code
+        variables:
+        - value_selector:
+          - validate_input
+          - scenario
+          variable: scenario
+        - value_selector:
+          - validate_input
+          - profile_text
+          variable: profile_text
+        - value_selector:
+          - validate_input
+          - plan_text
+          variable: plan_text
+        - value_selector:
+          - validate_input
+          - review_text
+          variable: review_text
+      height: 86
+      id: build_retrieval_query
+      position:
+        x: 700
+        y: 260
+      positionAbsolute:
+        x: 700
+        y: 260
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        dataset_ids: []
+        desc: 导入后请在 Dify 中绑定 Smart Diabetes / diabetes_knowledge_base，用于检索饮食、运动、血糖监测、并发症预防和安全边界依据。
+        multiple_retrieval_config:
+          reranking_enable: false
+          reranking_mode: reranking_model
+          reranking_model:
+            model: ''
+            provider: ''
+          score_threshold: null
+          top_k: 4
+          weights:
+            keyword_setting:
+              keyword_weight: 0.3
+            vector_setting:
+              embedding_model_name: ''
+              embedding_provider_name: ''
+              vector_weight: 0.7
+        query_variable_selector:
+        - build_retrieval_query
+        - retrieval_query
+        retrieval_mode: single
+        selected: false
+        title: 糖尿病知识库检索
+        type: knowledge-retrieval
+      height: 92
+      id: knowledge_retrieval
+      position:
+        x: 1010
+        y: 260
+      positionAbsolute:
+        x: 1010
+        y: 260
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - knowledge_retrieval
+          - result
+        desc: 结合患者画像、生活方案、复盘问题、候选文章标签和知识库依据，生成推荐解释。
+        model:
+          completion_params:
+            temperature: 0.2
+          mode: chat
+          name: deepseek-chat
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: system
+          role: system
+          text: '你是糖尿病健康管理系统中的健康科普推荐工作流。你不是医生，不能诊断疾病，不能调整药物或胰岛素剂量。你的任务是根据患者画像、生活方案任务、自动复盘问题、候选文章和知识库依据，选择最适合患者当前执行任务的科普文章，并给出温和、清楚、可解释的中文推荐理由。必须只返回严格 JSON。'
+        - id: user
+          role: user
+          text: '推荐场景：{{#validate_input.scenario#}}
+
+            患者教育画像：
+            {{#validate_input.profile_text#}}
+
+            当前生活方案：
+            {{#validate_input.plan_text#}}
+
+            最新自动复盘：
+            {{#validate_input.review_text#}}
+
+            候选文章：
+            {{#validate_input.candidate_text#}}
+
+            知识库依据：
+            <knowledge_context>
+            {{#context#}}
+            </knowledge_context>
+
+            推荐规则：
+            1. 优先推荐能帮助用户完成当前生活方案任务的文章，例如方案中出现餐后散步、早餐结构、晚餐主食控制、血糖监测，就匹配对应文章。
+            2. 如果存在自动复盘问题，优先推荐能解释问题原因并给出可执行纠偏方向的文章，例如运动完成率偏低、饮食记录不稳定、餐后血糖偏高。
+            3. 推荐理由要面向患者，不要出现“向量检索”“模型评分”等技术词。
+            4. knowledge_signal 写成一句短中文依据，例如“餐后轻运动与餐后血糖波动管理”。
+            5. score_boost 是 0 到 30 的整数，表示因知识库和方案匹配获得的加权提升。
+            6. 只从候选文章中选择，article_id 必须来自候选文章。
+
+            只返回 JSON，不要 Markdown，不要代码块：
+            {
+              "recommendations": [
+                {
+                  "article_id": 1,
+                  "reason": "推荐理由",
+                  "knowledge_signal": "知识依据短语",
+                  "score_boost": 12
+                }
+              ]
+            }'
+        selected: false
+        structured_output_enabled: false
+        title: 生成个性化推荐
+        type: llm
+        vision:
+          enabled: false
+      height: 96
+      id: generate_recommendations
+      position:
+        x: 1320
+        y: 260
+      positionAbsolute:
+        x: 1320
+        y: 260
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        code: |
+          import json
+
+          def _extract_json(text):
+              text = (text or "").strip()
+              start = text.find("{")
+              end = text.rfind("}")
+              if start >= 0 and end > start:
+                  return text[start:end + 1]
+              return text
+
+          def main(llm_text: str, candidate_count: int = 0) -> dict:
+              fallback = {"recommendations": []}
+              if not candidate_count:
+                  return {"recommendation_result": json.dumps(fallback, ensure_ascii=False)}
+              try:
+                  parsed = json.loads(_extract_json(llm_text))
+                  rows = parsed.get("recommendations") if isinstance(parsed, dict) else []
+                  if not isinstance(rows, list):
+                      rows = []
+                  normalized = []
+                  for row in rows[:8]:
+                      if not isinstance(row, dict):
+                          continue
+                      article_id = row.get("article_id")
+                      if article_id is None:
+                          continue
+                      normalized.append({
+                          "article_id": article_id,
+                          "reason": str(row.get("reason") or "这篇内容和你当前的控糖任务相关，适合优先阅读。")[:220],
+                          "knowledge_signal": str(row.get("knowledge_signal") or "糖尿病生活方式管理")[:80],
+                          "score_boost": int(row.get("score_boost") or 0)
+                      })
+                  return {"recommendation_result": json.dumps({"recommendations": normalized}, ensure_ascii=False)}
+              except Exception:
+                  return {"recommendation_result": json.dumps(fallback, ensure_ascii=False)}
+        code_language: python3
+        desc: 提取并校验 JSON，保证后端可解析、可落库、可展示。
+        outputs:
+          recommendation_result:
+            children: null
+            type: string
+        selected: false
+        title: JSON 校验与兜底
+        type: code
+        variables:
+        - value_selector:
+          - generate_recommendations
+          - text
+          variable: llm_text
+        - value_selector:
+          - validate_input
+          - candidate_count
+          variable: candidate_count
+      height: 86
+      id: validate_json
+      position:
+        x: 1630
+        y: 260
+      positionAbsolute:
+        x: 1630
+        y: 260
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    - data:
+        outputs:
+        - value_selector:
+          - validate_json
+          - recommendation_result
+          value_type: string
+          variable: recommendation_result
+        selected: false
+        title: 输出
+        type: end
+      height: 86
+      id: end
+      position:
+        x: 1940
+        y: 260
+      positionAbsolute:
+        x: 1940
+        y: 260
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 244
+    viewport:
+      x: -120
+      y: -40
+      zoom: 0.75

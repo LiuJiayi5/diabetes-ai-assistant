@@ -57,16 +57,6 @@
           <p>{{ workRestText }}</p>
         </section>
 
-        <section class="detail-card" v-if="Object.keys(scheduleGroups).length">
-          <h2>每日安排</h2>
-          <div v-for="(items, day) in scheduleGroups" :key="day" class="day-group">
-            <strong>{{ day }}</strong>
-            <p v-for="item in items" :key="`${day}-${item.time || item.task_name || item.name}`">
-              {{ item.time || item.period || '全天' }} · {{ item.task_name || item.name || item.content || toText(item) }}
-            </p>
-          </div>
-        </section>
-
         <section class="detail-card" v-if="detail.checkinTasks.length">
           <h2>打卡任务</h2>
           <ul>
@@ -94,7 +84,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, CircleAlert, LoaderCircle } from 'lucide-vue-next'
 import { useLifePlanStore } from '@/stores/lifePlan'
 import { backPathFromRoute } from '@/utils/navigation'
-import { formatPlanTime, groupScheduleByDay, normalizePlan, toText } from '../utils'
+import { formatPlanTime, normalizePlan, toText } from '../utils'
 import '../styles/life-plan.css'
 
 const route = useRoute()
@@ -107,7 +97,6 @@ const dietPrinciples = computed(() => {
   return Array.isArray(principles) ? principles : []
 })
 const workRestText = computed(() => toText(detail.value?.workRestPlan, ''))
-const scheduleGroups = computed(() => groupScheduleByDay(detail.value?.dailySchedule || []))
 const tips = computed(() => detail.value?.healthTips?.length ? detail.value.healthTips : ['保持规律睡眠，避免长时间久坐'])
 
 onMounted(loadDetail)

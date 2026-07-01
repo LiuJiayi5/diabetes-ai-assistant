@@ -14,4 +14,5 @@ public class DifyProperties {
     private String checkinAnalysisApiKey;
     private String interventionReviewApiKey;
     private String comprehensiveReportApiKey;
+    private String contentRecommendationApiKey;
 }

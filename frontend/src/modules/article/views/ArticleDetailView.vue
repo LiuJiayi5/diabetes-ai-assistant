@@ -77,11 +77,12 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { ArrowLeft, Bookmark, BookOpen, Eye, LoaderCircle } from 'lucide-vue-next'
 import { useArticlesStore } from '@/stores/articles'
+import { recordArticleReadEvent } from '@/api/article'
 import { resolveAssetUrl } from '@/utils/assets'
 import '../styles/articles.css'
 
@@ -92,6 +93,8 @@ const articlesStore = useArticlesStore()
 const article = computed(() => articlesStore.detail)
 const coverUrl = computed(() => resolveAssetUrl(article.value?.cover_image))
 const imageFailed = ref(false)
+const enteredAt = ref(Date.now())
+const readTracked = ref(false)
 const isFavorite = computed(() => article.value && articlesStore.isFavorite(article.value.article_id))
 const sections = computed(() => {
   const content = article.value?.content || article.value?.summary || ''
@@ -107,11 +110,14 @@ const sections = computed(() => {
 })
 
 onMounted(async () => {
+  enteredAt.value = Date.now()
   if (!articlesStore.articles.length) {
     await articlesStore.fetchArticles()
   }
   await articlesStore.fetchArticleDetail(route.params.articleId)
 })
+
+onBeforeUnmount(trackReadEvent)
 
 watch(coverUrl, () => {
   imageFailed.value = false
@@ -135,5 +141,18 @@ function toggleFavorite() {
 function formatTime(value) {
   if (!value) return '发布时间待同步'
   return String(value).replace('T', ' ').slice(0, 16)
+}
+
+function trackReadEvent() {
+  if (readTracked.value || !article.value?.article_id) return
+  readTracked.value = true
+  const readSeconds = Math.max(1, Math.round((Date.now() - enteredAt.value) / 1000))
+  recordArticleReadEvent({
+    article_id: article.value.article_id,
+    recommendation_id: route.query.recommendation_id ? Number(route.query.recommendation_id) : undefined,
+    source_scenario: route.query.scenario || 'article_detail',
+    read_seconds: readSeconds,
+    progress_percent: readSeconds >= 20 ? 100 : Math.min(95, readSeconds * 5)
+  }).catch(() => {})
 }
 </script>

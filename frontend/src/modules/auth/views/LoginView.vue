@@ -94,6 +94,7 @@ import { Droplet, Eye, EyeOff, Leaf } from 'lucide-vue-next'
 import MobileShell from '@/components/mobile/MobileShell.vue'
 import { login, resetPassword, sendEmailCode } from '@/api/auth'
 import { useAuthStore } from '@/stores/auth'
+import { prewarmPatientSmartRecommendations } from '@/modules/article/utils/smartRecommendationCache'
 
 const route = useRoute()
 const router = useRouter()
@@ -145,6 +146,9 @@ async function handleLogin() {
     authStore.setUser(null)
     authStore.setSession({ ...session, remember: rememberMe.value })
     saveRememberedAccount()
+    if (!isAdmin.value) {
+      prewarmPatientSmartRecommendations()
+    }
     showToast('登录成功')
     router.push(isAdmin.value ? '/admin/dashboard' : '/app/home')
   } catch (error) {

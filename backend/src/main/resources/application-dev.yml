@@ -37,6 +37,7 @@ dify:
   checkin-analysis-api-key: ${DIFY_CHECKIN_ANALYSIS_API_KEY:your_checkin_analysis_api_key}
   intervention-review-api-key: ${DIFY_INTERVENTION_REVIEW_API_KEY:your_intervention_review_api_key}
   comprehensive-report-api-key: ${DIFY_COMPREHENSIVE_REPORT_API_KEY:your_comprehensive_report_api_key}
+  content-recommendation-api-key: ${DIFY_CONTENT_RECOMMENDATION_API_KEY:app-G8RhZNwQlonLasO7w8nZlq6q}
 
 jwt:
   secret: ${JWT_SECRET:diabetes_assistant_dev_secret}

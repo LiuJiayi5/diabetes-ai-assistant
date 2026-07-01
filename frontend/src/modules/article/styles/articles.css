@@ -833,6 +833,329 @@
   animation: article-spin 1s linear infinite;
 }
 
+.smart-reco-panel {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid rgba(174, 232, 199, 0.42);
+  border-radius: 24px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(240, 249, 246, 0.96)),
+    radial-gradient(circle at 12% 0, rgba(174, 232, 199, 0.28), transparent 34%);
+  box-shadow: 0 18px 42px rgba(74, 138, 106, 0.12);
+}
+
+.smart-reco-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: stretch;
+}
+
+.smart-reco-panel__head > div {
+  width: 100%;
+  min-width: 0;
+}
+
+.smart-reco-panel__head span {
+  color: #4A8A6A;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.smart-reco-panel__head h2 {
+  margin: 4px 0 6px;
+  color: var(--figma-text-strong);
+  font-size: 18px;
+  font-weight: 850;
+}
+
+.smart-reco-panel__head p {
+  margin: 0;
+  color: #6A7A86;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.smart-reco-panel__head button {
+  flex-shrink: 0;
+  min-height: 34px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  background: #E3F5EA;
+  color: #4A8A6A;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.smart-reco-panel__head svg {
+  width: 14px;
+  height: 14px;
+}
+
+.smart-reco-list,
+.smart-reco-stack {
+  margin-top: 14px;
+}
+
+.smart-reco-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.smart-reco-stack {
+  position: relative;
+  min-height: 226px;
+  padding: 8px 58px 24px 0;
+  overflow: visible;
+  touch-action: pan-y;
+  user-select: none;
+  --stack-active-x: var(--drag-x, 0px);
+  --stack-next-x: 30px;
+  --stack-next-y: 10px;
+  --stack-next-next-x: 54px;
+  --stack-next-next-y: 20px;
+  --stack-duration: 360ms;
+  --stack-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.smart-reco-card {
+  position: absolute;
+  top: 8px;
+  left: 0;
+  width: calc(100% - 38px);
+  min-height: 170px;
+  padding: 14px 52px 14px 14px;
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  background: #FFFFFF;
+  text-align: left;
+  box-shadow:
+    0 24px 44px rgba(47, 83, 67, 0.16),
+    0 3px 0 rgba(255, 255, 255, 0.92) inset;
+  transform-origin: 58% 100%;
+  transition:
+    transform var(--stack-duration) var(--stack-ease),
+    opacity var(--stack-duration) ease,
+    box-shadow var(--stack-duration) ease,
+    filter var(--stack-duration) ease;
+  will-change: transform, opacity;
+}
+
+.smart-reco-card--active {
+  z-index: 4;
+  opacity: 1;
+  transform: translate3d(var(--stack-active-x), 0, 0) rotate(0deg) scale(1);
+  cursor: default;
+}
+
+.smart-reco-card--next {
+  z-index: 3;
+  opacity: 0.82;
+  transform: translate3d(var(--stack-next-x), var(--stack-next-y), 0) rotate(5.5deg) scale(0.96);
+  box-shadow:
+    0 22px 38px rgba(47, 83, 67, 0.13),
+    0 0 0 1px rgba(255,255,255,0.66) inset;
+  filter: saturate(0.94);
+  pointer-events: none;
+}
+
+.smart-reco-card--next-next {
+  z-index: 2;
+  opacity: 0.58;
+  transform: translate3d(var(--stack-next-next-x), var(--stack-next-next-y), 0) rotate(10deg) scale(0.92);
+  box-shadow:
+    0 18px 32px rgba(47, 83, 67, 0.10),
+    0 0 0 1px rgba(255,255,255,0.58) inset;
+  filter: saturate(0.86);
+  pointer-events: none;
+}
+
+.smart-reco-stack.is-dragging .smart-reco-card {
+  transition-duration: 0ms;
+}
+
+.smart-reco-stack.is-dragging .smart-reco-card--active {
+  cursor: grabbing;
+  transform: translate3d(var(--stack-active-x), 0, 0) rotate(calc(var(--stack-active-x) * -0.025deg)) scale(1);
+}
+
+.smart-reco-stack.is-animating-next .smart-reco-card--active {
+  opacity: 0;
+  transform: translate3d(-118px, -4px, 0) rotate(-8deg) scale(0.94);
+}
+
+.smart-reco-stack.is-animating-next .smart-reco-card--next {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+}
+
+.smart-reco-stack.is-animating-next .smart-reco-card--next-next {
+  opacity: 0.82;
+  transform: translate3d(var(--stack-next-x), var(--stack-next-y), 0) rotate(5.5deg) scale(0.96);
+}
+
+.smart-reco-stack.is-animating-prev .smart-reco-card--active {
+  opacity: 0;
+  transform: translate3d(112px, 18px, 0) rotate(10deg) scale(0.92);
+}
+
+.smart-reco-stack.is-animating-prev .smart-reco-card--next {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) rotate(0deg) scale(1);
+}
+
+.smart-reco-card:active {
+  box-shadow:
+    0 18px 32px rgba(47, 83, 67, 0.14),
+    0 3px 0 rgba(255, 255, 255, 0.92) inset;
+}
+
+.smart-reco-card__cover {
+  width: 82px;
+  height: 112px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #DDF4E8, #DDEFF8);
+  color: #4A8A6A;
+  box-shadow:
+    0 16px 26px rgba(47, 83, 67, 0.13),
+    0 0 0 1px rgba(255,255,255,0.72) inset;
+}
+
+.smart-reco-card__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.smart-reco-card__cover svg {
+  width: 30px;
+  height: 30px;
+}
+
+.smart-reco-card__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.smart-reco-card__body strong {
+  color: var(--figma-text-strong);
+  font-size: 16px;
+  font-weight: 850;
+  line-height: 1.38;
+}
+
+.smart-reco-card__body small {
+  color: #637381;
+  font-size: 12px;
+  line-height: 1.58;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.smart-reco-card__signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.smart-reco-card__signals em {
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(191, 227, 245, 0.35);
+  color: #3D8BA6;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 750;
+}
+
+.smart-reco-card__meta {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(227, 245, 234, 0.92);
+  color: #4A8A6A;
+  box-shadow: 0 10px 20px rgba(74, 138, 106, 0.14);
+}
+
+.smart-reco-card__meta svg {
+  width: 17px;
+  height: 17px;
+}
+
+.smart-reco-next {
+  position: absolute;
+  right: 22px;
+  bottom: 18px;
+  z-index: 6;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #E3F5EA;
+  color: #4A8A6A;
+  box-shadow:
+    0 12px 24px rgba(47, 83, 67, 0.18),
+    0 0 0 1px rgba(255,255,255,0.78) inset;
+  transition: transform 0.22s ease, opacity 0.22s ease;
+}
+
+.smart-reco-next:disabled {
+  opacity: 0.62;
+}
+
+.smart-reco-next svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.22s ease;
+}
+
+.smart-reco-next:active svg {
+  transform: rotate(180deg);
+}
+
+.smart-reco-state {
+  margin-top: 14px;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.70);
+  color: #6A7A86;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.smart-reco-state svg {
+  width: 18px;
+  height: 18px;
+}
+
 @keyframes article-spin {
   to {
     transform: rotate(360deg);
@@ -928,5 +1251,57 @@
 
   .article-card__summary {
     -webkit-line-clamp: 1;
+  }
+
+  .smart-reco-panel {
+    padding: 14px;
+  }
+
+  .smart-reco-stack {
+    min-height: 214px;
+    padding-right: 38px;
+    padding-bottom: 24px;
+    --stack-next-x: 20px;
+    --stack-next-y: 9px;
+    --stack-next-next-x: 36px;
+    --stack-next-next-y: 18px;
+  }
+
+  .smart-reco-card {
+    width: calc(100% - 22px);
+    min-height: 160px;
+    padding: 12px 42px 12px 12px;
+    grid-template-columns: 66px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .smart-reco-card__cover {
+    width: 66px;
+    height: 92px;
+    border-radius: 16px;
+  }
+
+  .smart-reco-card__body strong {
+    font-size: 14px;
+  }
+
+  .smart-reco-card__body small {
+    font-size: 11px;
+    line-height: 1.5;
+    -webkit-line-clamp: 2;
+  }
+
+  .smart-reco-card__meta {
+    top: 14px;
+    right: 14px;
+    width: 30px;
+    height: 30px;
+  }
+
+  .smart-reco-next {
+    right: 16px;
+    bottom: 18px;
+    width: 38px;
+    height: 38px;
   }
 }
