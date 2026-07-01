@@ -953,7 +953,7 @@
   z-index: 4;
   opacity: 1;
   transform: translate3d(var(--stack-active-x), 0, 0) rotate(0deg) scale(1);
-  cursor: default;
+  cursor: pointer;
 }
 
 .smart-reco-card--next {

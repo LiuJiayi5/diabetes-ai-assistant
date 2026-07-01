@@ -102,7 +102,8 @@ const drag = reactive({
   startX: 0,
   startY: 0,
   offsetX: 0,
-  moved: false
+  moved: false,
+  startedOnActiveCard: false
 })
 let animationTimer = null
 
@@ -204,6 +205,7 @@ function startDrag(event) {
   drag.startY = event.clientY
   drag.offsetX = 0
   drag.moved = false
+  drag.startedOnActiveCard = Boolean(event.target?.closest?.('.smart-reco-card--active'))
   event.currentTarget?.setPointerCapture?.(event.pointerId)
 }
 
@@ -221,16 +223,19 @@ function endDrag(event) {
   const offset = drag.offsetX
   const threshold = Math.max(40, Math.min(72, (event.currentTarget?.clientWidth || 320) * 0.18))
   const wasMoved = drag.moved
-  const tappedActiveCard = Boolean(event.target?.closest?.('.smart-reco-card--active'))
   event.currentTarget?.releasePointerCapture?.(event.pointerId)
+  const shouldOpenActiveCard = !wasMoved && drag.startedOnActiveCard
   resetDrag()
-  temporarilySuppressClick()
   if (Math.abs(offset) < threshold) {
-    if (!wasMoved && tappedActiveCard && !isAnimating.value) {
+    if (shouldOpenActiveCard && !isAnimating.value) {
+      temporarilySuppressClick()
       openRecommendation(activeItem.value)
+    } else if (wasMoved) {
+      temporarilySuppressClick()
     }
     return
   }
+  temporarilySuppressClick()
   if (offset < 0) {
     nextRecommendation()
   } else {
@@ -251,10 +256,10 @@ function resetDrag() {
   drag.startY = 0
   drag.offsetX = 0
   drag.moved = false
+  drag.startedOnActiveCard = false
 }
 
 function handleCardClick(layer, event) {
-  if (event?.detail !== 0) return
   if (layer.layer !== 'active' || isAnimating.value || drag.moved || suppressClick.value) return
   openRecommendation(layer.item)
 }
