@@ -7,6 +7,7 @@ import com.diabetes.assistant.modules.risk.dto.RiskEntryResponse;
 import com.diabetes.assistant.modules.risk.dto.RiskHistoryItem;
 import com.diabetes.assistant.modules.risk.dto.RiskPredictResponse;
 import com.diabetes.assistant.modules.risk.dto.RiskTrendResponse;
+import com.diabetes.assistant.modules.risk.dto.PatientSimilarCaseItem;
 import com.diabetes.assistant.modules.risk.dto.SimilarCaseItem;
 
 import java.time.LocalDate;
@@ -36,4 +37,6 @@ public interface RiskService {
     RiskTrendResponse adminGetRiskTrend(Integer userId);
 
     List<SimilarCaseItem> adminGetSimilarCases(Integer assessmentId, Integer limit);
+
+    List<PatientSimilarCaseItem> getSimilarCases(Integer userId, Integer assessmentId, Integer limit);
 }

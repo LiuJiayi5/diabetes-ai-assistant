@@ -15,6 +15,10 @@ public class SimilarCaseItem {
     private String riskLevel;
     private Integer riskScore;
     private String summary;
+    private String planTitle;
+    private String interventionSummary;
+    private String outcomeSummary;
+    private Integer checkinCompletionRate;
     private BigDecimal fastingGlucose;
     private BigDecimal weightKg;
     private BigDecimal waistCm;

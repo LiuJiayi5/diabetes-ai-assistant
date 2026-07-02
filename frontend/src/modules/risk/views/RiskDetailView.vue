@@ -87,6 +87,32 @@
         </ul>
       </section>
 
+      <section v-if="similarCases.length" class="risk-report-card peer-reference-card">
+        <div class="section-title">
+          <Users :size="17" />
+          <h3>相似案例参考</h3>
+        </div>
+        <p class="peer-reference-card__hint">以下为已脱敏的相似用户干预与结果，供您结合自身情况参考。</p>
+        <article v-for="item in similarCases" :key="item.case_label || item.caseLabel" class="peer-case">
+          <div class="peer-case__head">
+            <strong>{{ item.case_label || item.caseLabel }}</strong>
+            <span>{{ item.similarity_score ?? item.similarityScore }}%</span>
+          </div>
+          <p v-if="item.match_reason || item.matchReason" class="peer-case__reason">
+            相似点：{{ item.match_reason || item.matchReason }}
+          </p>
+          <div v-if="item.intervention_summary || item.interventionSummary" class="peer-case__block">
+            <span class="peer-case__label">参考干预</span>
+            <p>{{ item.intervention_summary || item.interventionSummary }}</p>
+          </div>
+          <div v-if="item.outcome_summary || item.outcomeSummary" class="peer-case__block">
+            <span class="peer-case__label">参考结果</span>
+            <p>{{ item.outcome_summary || item.outcomeSummary }}</p>
+          </div>
+        </article>
+        <p class="peer-reference-card__disclaimer">以上为匿名参考，不能替代医生诊断与个体化治疗。</p>
+      </section>
+
       <section v-if="detail.request_summary" class="risk-report-card request-card">
         <div class="section-title">
           <ClipboardList :size="17" />
@@ -123,11 +149,12 @@ import {
   FileText,
   HeartPulse,
   ShieldAlert,
-  Sparkles
+  Sparkles,
+  Users
 } from 'lucide-vue-next'
 import PageHeader from '@/components/mobile/PageHeader.vue'
 import RiskLevelTag from '@/components/mobile/RiskLevelTag.vue'
-import { getRiskDetail } from '@/api/riskAssessment'
+import { getRiskDetail, getRiskSimilarCases } from '@/api/riskAssessment'
 import { assertSuccess } from '@/utils/response'
 import { formatDateTime } from '@/utils/format'
 import { formatRiskLevel } from '@/utils/health'
@@ -135,6 +162,7 @@ import { formatRiskLevel } from '@/utils/health'
 const route = useRoute()
 const loading = ref(true)
 const detail = ref(null)
+const similarCases = ref([])
 
 const riskTitle = computed(() => {
   const label = formatRiskLevel(detail.value?.risk_level)
@@ -155,7 +183,17 @@ onMounted(loadDetail)
 async function loadDetail() {
   loading.value = true
   try {
-    detail.value = assertSuccess(await getRiskDetail(route.params.assessmentId))
+    const assessmentId = route.params.assessmentId
+    const [detailRes, casesRes] = await Promise.all([
+      getRiskDetail(assessmentId),
+      getRiskSimilarCases(assessmentId, { limit: 2 })
+    ])
+    detail.value = assertSuccess(detailRes)
+    try {
+      similarCases.value = assertSuccess(casesRes) || []
+    } catch {
+      similarCases.value = []
+    }
   } catch (error) {
     showToast(error.message || '加载失败')
   } finally {
@@ -378,6 +416,70 @@ async function loadDetail() {
   color: var(--figma-text-secondary);
   font-size: 13px;
   line-height: 1.8;
+}
+
+.peer-reference-card {
+  background: linear-gradient(145deg, #FFFFFF 0%, #F7FAFF 100%);
+}
+
+.peer-reference-card__hint,
+.peer-reference-card__disclaimer {
+  margin: 0 0 12px;
+  color: rgba(36, 50, 61, 0.62);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.peer-reference-card__disclaimer {
+  margin: 12px 0 0;
+}
+
+.peer-case {
+  padding: 12px 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.peer-case:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.peer-case__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.peer-case__head strong {
+  color: var(--figma-text-strong);
+  font-size: 13px;
+}
+
+.peer-case__head span {
+  color: #4FAAC4;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.peer-case__reason,
+.peer-case__block p {
+  margin: 0;
+  color: var(--figma-text-secondary);
+  font-size: 12px;
+  line-height: 1.75;
+}
+
+.peer-case__block {
+  margin-top: 8px;
+}
+
+.peer-case__label {
+  display: block;
+  margin-bottom: 2px;
+  color: #4FB783;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .pre-line {

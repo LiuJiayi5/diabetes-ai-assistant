@@ -1,7 +1,30 @@
 ﻿# 管理端模块
 
-负责功能：管理端仪表盘和各业务模块管理入口。
-入口路由：/admin/dashboard 及 /admin/*。
-后端接口：src/modules/admin/api.js 汇总各模块 API。
-是否涉及 Dify：仅 AI 模块相关管理间接涉及。
-当前阶段：仪表盘入口、统一管理模块入口、路由骨架。
+## 模块 2/3/4 管理页（已实现）
+
+| 路由 | 页面 |
+|------|------|
+| `/admin/profiles` | 健康档案列表（筛选 + 分页） |
+| `/admin/profiles/:userId` | 档案详情 |
+| `/admin/health-metrics` | 健康数据列表（筛选 + 分页） |
+| `/admin/risk-assessments` | 风险评估列表（筛选 + 分页） |
+| `/admin/risk-assessments/:assessmentId` | 评估详情 |
+
+## API
+
+- `src/api/profile.js` → `adminListProfiles` / `adminGetProfileDetail`
+- `src/api/healthMetric.js` → `adminListMetrics`
+- `src/api/riskAssessment.js` → `adminListAssessments` / `adminGetRiskDetail`
+
+## 开发环境鉴权
+
+访问 `/admin/*` 时，`request.js` 自动附加：
+
+- `X-Dev-User-Id: 2`（可通过 `VITE_DEV_ADMIN_USER_ID` 覆盖）
+- `X-Dev-User-Role: admin`
+
+登录模块就绪后改为 JWT + admin 角色校验。
+
+## 其他管理模块
+
+用户、内容、打卡等仍为 `AdminModuleEntryView` 占位，由对应模块同学实现。

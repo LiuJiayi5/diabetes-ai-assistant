@@ -20,6 +20,10 @@ export function getRiskDetail(assessmentId) {
   return request.get(`/risk/${assessmentId}`)
 }
 
+export function getRiskSimilarCases(assessmentId, params) {
+  return request.get(`/risk/${encodeURIComponent(assessmentId)}/similar-cases`, { params })
+}
+
 export function getRiskTrends() {
   return request.get('/risk/trends')
 }

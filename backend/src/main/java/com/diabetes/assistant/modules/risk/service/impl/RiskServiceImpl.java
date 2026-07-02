@@ -7,12 +7,16 @@ import com.diabetes.assistant.common.response.PageResult;
 import com.diabetes.assistant.common.utils.PageUtils;
 import com.diabetes.assistant.modules.dify.config.DifyProperties;
 import com.diabetes.assistant.modules.dify.service.DifyService;
+import com.diabetes.assistant.common.utils.GenderUtils;
 import com.diabetes.assistant.modules.healthmetric.contract.HealthMetricQueryApi;
 import com.diabetes.assistant.modules.healthmetric.contract.dto.HealthMetricDTO;
 import com.diabetes.assistant.modules.healthmetric.entity.HealthMetric;
 import com.diabetes.assistant.modules.healthmetric.mapper.HealthMetricMapper;
+import com.diabetes.assistant.modules.checkin.contract.CheckinQueryApi;
 import com.diabetes.assistant.modules.healthmetric.util.MetricAbnormalUtils;
 import com.diabetes.assistant.modules.interventionreview.service.InterventionReviewTriggerService;
+import com.diabetes.assistant.modules.lifeplan.contract.LifePlanQueryApi;
+import com.diabetes.assistant.modules.lifeplan.contract.dto.LifePlanDTO;
 import com.diabetes.assistant.modules.profile.contract.PatientProfileQueryApi;
 import com.diabetes.assistant.modules.profile.contract.dto.PatientProfileDTO;
 import com.diabetes.assistant.modules.profile.entity.PatientProfile;
@@ -20,6 +24,7 @@ import com.diabetes.assistant.modules.profile.mapper.PatientProfileMapper;
 import com.diabetes.assistant.modules.risk.contract.RiskAssessmentQueryApi;
 import com.diabetes.assistant.modules.risk.contract.dto.RiskAssessmentDTO;
 import com.diabetes.assistant.modules.risk.dto.AdminRiskListItem;
+import com.diabetes.assistant.modules.risk.dto.PatientSimilarCaseItem;
 import com.diabetes.assistant.modules.risk.dto.RiskDetailResponse;
 import com.diabetes.assistant.modules.risk.dto.RiskEntryResponse;
 import com.diabetes.assistant.modules.risk.dto.RiskHistoryItem;
@@ -29,8 +34,10 @@ import com.diabetes.assistant.modules.risk.dto.SimilarCaseItem;
 import com.diabetes.assistant.modules.risk.entity.RiskAssessment;
 import com.diabetes.assistant.modules.risk.mapper.RiskAssessmentMapper;
 import com.diabetes.assistant.modules.risk.service.RiskService;
+import com.diabetes.assistant.modules.risk.util.PatientSimilarCaseMapper;
 import com.diabetes.assistant.modules.risk.util.RiskResultParser;
 import com.diabetes.assistant.modules.risk.util.RiskResultParser.ParsedRiskResult;
+import com.diabetes.assistant.modules.risk.util.SimilarCaseReferenceBuilder;
 import com.diabetes.assistant.modules.risk.util.RiskSimilarityUtil;
 import com.diabetes.assistant.modules.user.contract.UserQueryApi;
 import com.diabetes.assistant.modules.user.contract.dto.UserBasicDTO;
@@ -39,6 +46,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -61,6 +69,8 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
     private final DifyService difyService;
     private final DifyProperties difyProperties;
     private final UserQueryApi userQueryApi;
+    private final LifePlanQueryApi lifePlanQueryApi;
+    private final CheckinQueryApi checkinQueryApi;
     private final InterventionReviewTriggerService interventionReviewTriggerService;
 
     @Override
@@ -223,14 +233,29 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
         if (assessment == null) {
             throw new BusinessException(404, "评估记录不存在");
         }
+        int topK = normalizeSimilarCaseLimit(limit, 3, 10);
+        return buildSimilarCases(assessment, topK);
+    }
 
+    @Override
+    public List<PatientSimilarCaseItem> getSimilarCases(Integer userId, Integer assessmentId, Integer limit) {
+        RiskAssessment assessment = requireOwnedAssessment(assessmentId, userId);
+        int topK = normalizeSimilarCaseLimit(limit, 2, 5);
+        List<SimilarCaseItem> items = buildSimilarCases(assessment, topK);
+        List<PatientSimilarCaseItem> result = new ArrayList<>(items.size());
+        for (int i = 0; i < items.size(); i++) {
+            result.add(PatientSimilarCaseMapper.toPatientItem(i + 1, items.get(i)));
+        }
+        return result;
+    }
+
+    private List<SimilarCaseItem> buildSimilarCases(RiskAssessment assessment, int topK) {
         PatientProfileDTO sourceProfile = patientProfileQueryApi.getProfileByUserId(assessment.getUserId());
         HealthMetricDTO sourceMetric = resolveMetricForAssessment(assessment);
         if (sourceProfile == null || sourceMetric == null) {
             return List.of();
         }
 
-        int topK = limit == null || limit < 1 ? 3 : Math.min(limit, 10);
         List<SimilarCaseItem> candidates = new ArrayList<>();
 
         for (PatientProfile profile : patientProfileMapper.selectList(null)) {
@@ -258,7 +283,7 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
             item.setUserId(profile.getUserId());
             item.setUsername(user.getUsername());
             item.setAge(candidateProfile.getAge());
-            item.setGender(candidateProfile.getGender());
+            item.setGender(GenderUtils.toDisplayLabel(candidateProfile.getGender()));
             item.setSimilarityScore(similarity);
             item.setFastingGlucose(RiskSimilarityUtil.round(candidateMetric.getFastingGlucose()));
             item.setWeightKg(RiskSimilarityUtil.round(candidateMetric.getWeightKg()));
@@ -271,15 +296,36 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
             if (latestRisk != null) {
                 item.setRiskLevel(latestRisk.getRiskLevel());
                 item.setRiskScore(latestRisk.getRiskScore());
-                item.setSummary(StringUtils.hasText(latestRisk.getSummary())
-                        ? latestRisk.getSummary()
-                        : latestRisk.getRequestSummary());
             }
+
+            LifePlanDTO plan = lifePlanQueryApi.getCurrentPlanByUserId(profile.getUserId());
+            String planTitle = plan == null ? null : plan.getPlanTitle();
+            String planSummary = plan == null ? null : plan.getSummary();
+            BigDecimal completionRate = checkinQueryApi.getRecentCompletionRate(profile.getUserId(), 7);
+            List<HealthMetricDTO> metricHistory = healthMetricQueryApi.listMetricsByUserId(
+                    profile.getUserId(), null, null);
+
+            item.setPlanTitle(planTitle);
+            item.setInterventionSummary(SimilarCaseReferenceBuilder.buildInterventionSummary(
+                    planTitle, planSummary, completionRate));
+            item.setOutcomeSummary(SimilarCaseReferenceBuilder.buildOutcomeSummary(metricHistory));
+            if (completionRate != null) {
+                item.setCheckinCompletionRate(completionRate.setScale(0, RoundingMode.HALF_UP).intValue());
+            }
+            item.setSummary(SimilarCaseReferenceBuilder.buildReferenceSummary(
+                    item.getInterventionSummary(), item.getOutcomeSummary()));
             candidates.add(item);
         }
 
         candidates.sort(Comparator.comparing(SimilarCaseItem::getSimilarityScore).reversed());
         return candidates.stream().limit(topK).toList();
+    }
+
+    private int normalizeSimilarCaseLimit(Integer limit, int defaultLimit, int maxLimit) {
+        if (limit == null || limit < 1) {
+            return defaultLimit;
+        }
+        return Math.min(limit, maxLimit);
     }
 
     private RiskTrendResponse buildRiskTrend(Integer userId) {
@@ -546,7 +592,7 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
 
     private String buildIndicatorAnalysis(PatientProfileDTO profile, HealthMetricDTO metric, BigDecimal bmi) {
         return "本次评估结合年龄" + stringify(profile.getAge())
-                + "岁、性别" + stringify(profile.getGender())
+                + "岁、性别" + GenderUtils.toDisplayLabel(profile.getGender())
                 + "、BMI " + stringify(bmi)
                 + "、空腹血糖" + stringify(metric.getFastingGlucose()) + " mmol/L"
                 + "、餐后血糖" + stringify(metric.getPostprandialGlucose()) + " mmol/L"
@@ -631,11 +677,11 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
         response.setRiskScore(assessment.getRiskScore());
         response.setDiabetesTypeTendency(assessment.getDiabetesTypeTendency());
         response.setMainRiskFactors(splitStoredList(assessment.getMainRiskFactors()));
-        response.setIndicatorAnalysis(assessment.getIndicatorAnalysis());
+        response.setIndicatorAnalysis(GenderUtils.normalizeGenderLabelInText(assessment.getIndicatorAnalysis()));
         response.setHealthAdvice(assessment.getHealthAdvice());
         response.setMedicalWarning(assessment.getMedicalWarning());
         response.setSummary(assessment.getSummary());
-        response.setRequestSummary(assessment.getRequestSummary());
+        response.setRequestSummary(formatRequestSummaryForDisplay(assessment.getRequestSummary()));
         response.setCallStatus(assessment.getCallStatus());
         response.setErrorMessage(assessment.getErrorMessage());
         response.setCreateTime(assessment.getCreateTime());
@@ -643,17 +689,7 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
         if (StringUtils.hasText(assessment.getResponseResult())) {
             try {
                 ParsedRiskResult parsed = RiskResultParser.parse(assessment.getResponseResult());
-                response.setRiskLevel(parsed.getRiskLevel());
-                response.setRiskScore(parsed.getRiskScore());
-                response.setDiabetesTypeTendency(parsed.getDiabetesTypeTendency());
-                response.setMainRiskFactors(parsed.getMainRiskFactors());
-                response.setIndicatorAnalysis(parsed.getIndicatorAnalysis());
-                response.setHealthAdvice(parsed.getHealthAdvice());
-                response.setMedicalWarning(parsed.getMedicalWarning());
-                response.setSummary(parsed.getSummary());
-                response.setReferenceSources(parsed.getReferenceSources());
-                response.setCallStatus("success");
-                response.setErrorMessage(null);
+                mergeParsedIntoDetail(response, parsed);
             } catch (Exception ignored) {
                 if (!StringUtils.hasText(response.getSummary())) {
                     response.setSummary(assessment.getRequestSummary());
@@ -663,24 +699,70 @@ public class RiskServiceImpl implements RiskService, RiskAssessmentQueryApi {
         return response;
     }
 
+    /** Prefer parsed AI fields when present; keep DB columns as fallback for seed / legacy rows. */
+    private void mergeParsedIntoDetail(RiskDetailResponse response, ParsedRiskResult parsed) {
+        if (StringUtils.hasText(parsed.getRiskLevel())) {
+            response.setRiskLevel(parsed.getRiskLevel());
+        }
+        if (parsed.getRiskScore() != null) {
+            response.setRiskScore(parsed.getRiskScore());
+        }
+        if (StringUtils.hasText(parsed.getDiabetesTypeTendency())) {
+            response.setDiabetesTypeTendency(parsed.getDiabetesTypeTendency());
+        }
+        if (parsed.getMainRiskFactors() != null && !parsed.getMainRiskFactors().isEmpty()) {
+            response.setMainRiskFactors(parsed.getMainRiskFactors());
+        }
+        if (StringUtils.hasText(parsed.getIndicatorAnalysis())) {
+            response.setIndicatorAnalysis(GenderUtils.normalizeGenderLabelInText(parsed.getIndicatorAnalysis()));
+        }
+        if (StringUtils.hasText(parsed.getHealthAdvice())) {
+            response.setHealthAdvice(parsed.getHealthAdvice());
+        }
+        if (StringUtils.hasText(parsed.getMedicalWarning())) {
+            response.setMedicalWarning(parsed.getMedicalWarning());
+        }
+        if (StringUtils.hasText(parsed.getSummary())) {
+            response.setSummary(parsed.getSummary());
+        }
+        if (parsed.getReferenceSources() != null && !parsed.getReferenceSources().isEmpty()) {
+            response.setReferenceSources(parsed.getReferenceSources());
+        }
+        response.setCallStatus("success");
+        response.setErrorMessage(null);
+    }
+
+    private String formatRequestSummaryForDisplay(String summary) {
+        return GenderUtils.normalizeGenderLabelInText(summary);
+    }
+
     private RiskHistoryItem toHistoryItem(RiskAssessment assessment) {
         RiskHistoryItem item = new RiskHistoryItem();
         item.setAssessmentId(assessment.getAssessmentId());
         item.setRiskLevel(assessment.getRiskLevel());
         item.setRiskScore(assessment.getRiskScore());
+        item.setSummary(assessment.getSummary());
         item.setCallStatus(assessment.getCallStatus());
         item.setCreateTime(assessment.getCreateTime());
         if (StringUtils.hasText(assessment.getResponseResult())) {
             try {
                 ParsedRiskResult parsed = RiskResultParser.parse(assessment.getResponseResult());
-                item.setRiskLevel(parsed.getRiskLevel());
-                item.setRiskScore(parsed.getRiskScore());
-                item.setSummary(parsed.getSummary());
+                if (StringUtils.hasText(parsed.getRiskLevel())) {
+                    item.setRiskLevel(parsed.getRiskLevel());
+                }
+                if (parsed.getRiskScore() != null) {
+                    item.setRiskScore(parsed.getRiskScore());
+                }
+                if (StringUtils.hasText(parsed.getSummary())) {
+                    item.setSummary(parsed.getSummary());
+                }
                 item.setCallStatus("success");
             } catch (Exception ignored) {
-                item.setSummary(assessment.getRequestSummary());
+                if (!StringUtils.hasText(item.getSummary())) {
+                    item.setSummary(assessment.getRequestSummary());
+                }
             }
-        } else {
+        } else if (!StringUtils.hasText(item.getSummary())) {
             item.setSummary(assessment.getRequestSummary());
         }
         return item;

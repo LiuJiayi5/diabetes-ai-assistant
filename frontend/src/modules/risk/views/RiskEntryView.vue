@@ -127,13 +127,13 @@
         </div>
         <van-form class="metric-form" @submit="handleSaveMetric">
           <van-field v-model="metricForm.recorded_at" label="记录日期" placeholder="YYYY-MM-DD" required />
-          <van-field v-model="metricForm.weight_kg" type="number" label="体重(kg)" placeholder="如 68.5" />
-          <van-field v-model="metricForm.waist_cm" type="number" label="腰围(cm)" placeholder="如 85" />
-          <van-field v-model="metricForm.systolic_bp" type="digit" label="收缩压" placeholder="如 120" />
-          <van-field v-model="metricForm.diastolic_bp" type="digit" label="舒张压" placeholder="如 80" />
-          <van-field v-model="metricForm.fasting_glucose" type="number" label="空腹血糖" placeholder="mmol/L" />
-          <van-field v-model="metricForm.postprandial_glucose" type="number" label="餐后血糖" placeholder="mmol/L" />
-          <van-field v-model="metricForm.hba1c" type="number" label="糖化血红蛋白" placeholder="%" />
+          <van-field v-model="metricForm.weight_kg" type="number" label="体重(kg)" placeholder="20～300，如 81.6" />
+          <van-field v-model="metricForm.waist_cm" type="number" label="腰围(cm)" placeholder="30～200，如 95" />
+          <van-field v-model="metricForm.systolic_bp" type="digit" label="收缩压" placeholder="60～260，如 135" />
+          <van-field v-model="metricForm.diastolic_bp" type="digit" label="舒张压" placeholder="30～180，如 85" />
+          <van-field v-model="metricForm.fasting_glucose" type="number" label="空腹血糖" placeholder="1.0～30.0 mmol/L，如 6.2" />
+          <van-field v-model="metricForm.postprandial_glucose" type="number" label="餐后血糖" placeholder="1.0～35.0 mmol/L，如 8.6" />
+          <van-field v-model="metricForm.hba1c" type="number" label="糖化血红蛋白" placeholder="3.0～20.0，如 6.2" />
           <van-field v-model="metricForm.diet_status" label="饮食状态" placeholder="如：主食偏多" />
           <van-field v-model="metricForm.exercise_status" label="运动状态" placeholder="如：每周运动2次" />
           <button class="primary-action metric-submit" type="submit" :disabled="savingMetric">
@@ -168,6 +168,7 @@ import { getLatestMetric, getMetricTrends, saveMetric } from '@/api/healthMetric
 import { getRiskEntry, getRiskTrends, predictRisk } from '@/api/riskAssessment'
 import { assertSuccess } from '@/utils/response'
 import { buildMetricSummary, formatRiskLevel, todayString } from '@/utils/health'
+import { formatMetricValidationError, validateMetricForm } from '@/utils/metricValidation'
 
 const router = useRouter()
 const entry = ref(null)
@@ -273,6 +274,12 @@ function buildMetricPayload() {
 }
 
 async function handleSaveMetric() {
+  const validationErrors = validateMetricForm(metricForm)
+  if (validationErrors.length) {
+    showToast(formatMetricValidationError(validationErrors))
+    return
+  }
+
   savingMetric.value = true
   try {
     assertSuccess(await saveMetric(buildMetricPayload()))

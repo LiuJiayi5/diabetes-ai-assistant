@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.diabetes.assistant.common.exception.BusinessException;
 import com.diabetes.assistant.common.response.PageResult;
+import com.diabetes.assistant.common.utils.GenderUtils;
 import com.diabetes.assistant.common.utils.PageUtils;
 import com.diabetes.assistant.modules.aichat.contract.AiChatQueryApi;
 import com.diabetes.assistant.modules.aichat.contract.dto.AiChatSessionSummaryDTO;
@@ -509,7 +510,7 @@ public class HealthReportServiceImpl implements HealthReportService {
             return;
         }
         md.append("- 年龄：").append(value(profile.getAge())).append(" 岁\n");
-        md.append("- 性别：").append(value(profile.getGender())).append("\n");
+        md.append("- 性别：").append(GenderUtils.toDisplayLabel(profile.getGender())).append("\n");
         md.append("- 身高：").append(value(profile.getHeightCm())).append(" cm\n");
         md.append("- 基础体重：").append(value(profile.getBaseWeightKg())).append(" kg\n");
         md.append("- 基础腰围：").append(value(profile.getBaseWaistCm())).append(" cm\n");
