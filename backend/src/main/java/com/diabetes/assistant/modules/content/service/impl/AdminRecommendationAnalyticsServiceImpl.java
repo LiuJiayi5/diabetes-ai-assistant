@@ -24,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -64,9 +65,10 @@ public class AdminRecommendationAnalyticsServiceImpl implements AdminRecommendat
         List<ArticleRecommendationLog> allLogs = recommendationLogMapper.selectList(new LambdaQueryWrapper<ArticleRecommendationLog>()
                 .orderByDesc(ArticleRecommendationLog::getCreateTime)
                 .orderByDesc(ArticleRecommendationLog::getRecommendationId));
-        List<ArticleReadEvent> allReads = readEventMapper.selectList(new LambdaQueryWrapper<ArticleReadEvent>()
+        List<ArticleReadEvent> rawReads = readEventMapper.selectList(new LambdaQueryWrapper<ArticleReadEvent>()
                 .orderByDesc(ArticleReadEvent::getCreateTime)
                 .orderByDesc(ArticleReadEvent::getEventId));
+        List<ArticleReadEvent> allReads = compactReadSessions(rawReads);
 
         Map<Integer, User> users = loadUsers(allLogs, allReads);
         Map<Integer, Article> articles = loadArticles(allLogs, allReads);
@@ -81,6 +83,84 @@ public class AdminRecommendationAnalyticsServiceImpl implements AdminRecommendat
                 .recommendations(recommendationPage)
                 .readEvents(readPage)
                 .build();
+    }
+
+    private List<ArticleReadEvent> compactReadSessions(List<ArticleReadEvent> reads) {
+        List<ArticleReadEvent> sessions = new ArrayList<>();
+        for (ArticleReadEvent event : reads) {
+            ArticleReadEvent active = sessions.stream()
+                    .filter(candidate -> sameReadSession(candidate, event))
+                    .findFirst()
+                    .orElse(null);
+            if (active == null) {
+                sessions.add(copyReadEvent(event));
+                continue;
+            }
+            active.setReadSeconds(Math.max(safeInt(active.getReadSeconds()), safeInt(event.getReadSeconds())));
+            active.setProgressPercent(Math.max(safeInt(active.getProgressPercent()), safeInt(event.getProgressPercent())));
+            active.setRecommendationId(preferredRecommendationId(active.getRecommendationId(), event.getRecommendationId()));
+            active.setSourceScenario(preferredScenario(active.getSourceScenario(), event.getSourceScenario()));
+            if (event.getCreateTime() != null
+                    && (active.getCreateTime() == null || event.getCreateTime().isAfter(active.getCreateTime()))) {
+                active.setCreateTime(event.getCreateTime());
+                active.setEventId(event.getEventId());
+            }
+        }
+        sessions.sort(Comparator.comparing(ArticleReadEvent::getCreateTime, Comparator.nullsLast(Comparator.naturalOrder()))
+                .reversed()
+                .thenComparing(ArticleReadEvent::getEventId, Comparator.nullsLast(Comparator.reverseOrder())));
+        return sessions;
+    }
+
+    private ArticleReadEvent copyReadEvent(ArticleReadEvent source) {
+        ArticleReadEvent copy = new ArticleReadEvent();
+        copy.setEventId(source.getEventId());
+        copy.setUserId(source.getUserId());
+        copy.setArticleId(source.getArticleId());
+        copy.setRecommendationId(source.getRecommendationId());
+        copy.setSourceScenario(source.getSourceScenario());
+        copy.setReadSeconds(source.getReadSeconds());
+        copy.setProgressPercent(source.getProgressPercent());
+        copy.setCreateTime(source.getCreateTime());
+        return copy;
+    }
+
+    private boolean sameReadSession(ArticleReadEvent left, ArticleReadEvent right) {
+        if (!Objects.equals(left.getUserId(), right.getUserId())
+                || !Objects.equals(left.getArticleId(), right.getArticleId())) {
+            return false;
+        }
+        if (Objects.equals(left.getUserId(), right.getUserId())
+                && Objects.equals(left.getArticleId(), right.getArticleId())
+                && left.getRecommendationId() != null
+                && Objects.equals(left.getRecommendationId(), right.getRecommendationId())) {
+            return withinSameSession(left.getCreateTime(), right.getCreateTime(), 120);
+        }
+        if (Objects.equals(left.getRecommendationId(), right.getRecommendationId())
+                && Objects.equals(text(left.getSourceScenario(), ""), text(right.getSourceScenario(), ""))) {
+            return withinSameSession(left.getCreateTime(), right.getCreateTime(), 120);
+        }
+        if ((left.getRecommendationId() == null) != (right.getRecommendationId() == null)
+                && ("article_detail".equals(left.getSourceScenario()) || "article_detail".equals(right.getSourceScenario()))) {
+            return withinSameSession(left.getCreateTime(), right.getCreateTime(), 5);
+        }
+        return false;
+    }
+
+    private Integer preferredRecommendationId(Integer left, Integer right) {
+        return left == null ? right : left;
+    }
+
+    private String preferredScenario(String left, String right) {
+        if (!StringUtils.hasText(left)) return right;
+        if (!StringUtils.hasText(right)) return left;
+        if ("article_detail".equals(left) && !"article_detail".equals(right)) return right;
+        return left;
+    }
+
+    private boolean withinSameSession(LocalDateTime left, LocalDateTime right, long minutes) {
+        if (left == null || right == null) return true;
+        return Math.abs(Duration.between(left, right).toMinutes()) <= minutes;
     }
 
     private void requireAdmin(Integer adminUserId) {
