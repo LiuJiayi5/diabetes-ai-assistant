@@ -9,6 +9,7 @@ import router from './router'
 import './styles/variables.css'
 import './styles/global.css'
 import './styles/figma-page.css'
+import './styles/admin-page.css'
 
 createApp(App)
   .use(createPinia())
