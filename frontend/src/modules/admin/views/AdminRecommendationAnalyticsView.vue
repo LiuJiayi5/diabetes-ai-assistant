@@ -164,7 +164,7 @@
           v-model:current-page="pagination.page"
           v-model:page-size="pagination.page_size"
           :total="pagination.total"
-          :page-sizes="[10, 20, 50]"
+          :page-sizes="[5, 10, 20, 50]"
           layout="total, sizes, prev, pager, next"
           background
           @current-change="loadDashboard"
@@ -225,7 +225,7 @@ const error = ref('')
 const dashboard = ref(null)
 const recommendations = ref([])
 const readEvents = ref([])
-const pagination = reactive(createPagination(10))
+const pagination = reactive(createPagination(5))
 const readPagination = reactive(createPagination(10))
 const query = reactive({
   keyword: '',
