@@ -4,6 +4,7 @@ import com.diabetes.assistant.common.response.ApiResponse;
 import com.diabetes.assistant.common.response.PageResult;
 import com.diabetes.assistant.common.utils.CurrentUserUtil;
 import com.diabetes.assistant.modules.risk.dto.AdminRiskListItem;
+import com.diabetes.assistant.modules.risk.dto.PatientSimilarCaseItem;
 import com.diabetes.assistant.modules.risk.dto.RiskDetailResponse;
 import com.diabetes.assistant.modules.risk.dto.RiskEntryResponse;
 import com.diabetes.assistant.modules.risk.dto.RiskHistoryItem;
@@ -108,6 +109,15 @@ public class RiskController {
             HttpServletRequest request) {
         currentUserUtil.requireAdmin(request);
         return ApiResponse.success(riskService.adminGetAssessmentDetail(assessmentId));
+    }
+
+    @GetMapping("/{assessment_id}/similar-cases")
+    public ApiResponse<List<PatientSimilarCaseItem>> getSimilarCases(
+            @PathVariable("assessment_id") Integer assessmentId,
+            @RequestParam(required = false) Integer limit,
+            HttpServletRequest request) {
+        Integer userId = currentUserUtil.getCurrentUserId(request);
+        return ApiResponse.success(riskService.getSimilarCases(userId, assessmentId, limit));
     }
 
     @GetMapping("/{assessment_id}")

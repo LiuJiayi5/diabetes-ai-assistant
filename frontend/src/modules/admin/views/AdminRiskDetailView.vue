@@ -74,12 +74,25 @@
               <strong>{{ item.username }}</strong>
               <span>{{ item.similarity_score ?? item.similarityScore }}%</span>
             </div>
-            <p>{{ item.match_reason || item.matchReason }}</p>
+            <p class="similar-case__reason">{{ item.match_reason || item.matchReason }}</p>
             <small>
               {{ item.age }}岁 · 空腹血糖 {{ item.fasting_glucose ?? item.fastingGlucose ?? '—' }} ·
               风险 {{ item.risk_score ?? item.riskScore ?? '—' }} 分
             </small>
-            <p v-if="item.summary" class="similar-case__summary">{{ item.summary }}</p>
+            <div v-if="item.intervention_summary || item.interventionSummary" class="similar-case__block">
+              <span class="similar-case__label">参考干预</span>
+              <p>{{ item.intervention_summary || item.interventionSummary }}</p>
+            </div>
+            <div v-if="item.outcome_summary || item.outcomeSummary" class="similar-case__block">
+              <span class="similar-case__label">参考结果</span>
+              <p>{{ item.outcome_summary || item.outcomeSummary }}</p>
+            </div>
+            <p
+              v-else-if="item.summary && !(item.intervention_summary || item.interventionSummary)"
+              class="similar-case__summary"
+            >
+              {{ item.summary }}
+            </p>
           </article>
         </section>
 
@@ -241,6 +254,29 @@ async function loadDetail() {
   color: #0369A1;
   font-size: 12px;
   font-weight: 700;
+}
+
+.similar-case__reason {
+  margin-bottom: 4px;
+}
+
+.similar-case__block {
+  margin-top: 8px;
+}
+
+.similar-case__label {
+  display: block;
+  margin-bottom: 2px;
+  color: #0369A1;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.similar-case__block p {
+  margin: 0;
+  color: #334155;
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .similar-case p,

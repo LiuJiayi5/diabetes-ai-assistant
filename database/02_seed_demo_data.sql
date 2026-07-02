@@ -49,6 +49,8 @@ INSERT INTO health_metrics (metric_id, user_id, weight_kg, waist_cm, systolic_bp
 (11, 5, 88.6, 102.0, 152, 96, 7.6, 11.8, 7.0, '连续外食，主食和油盐控制不足。', '打卡中断，暂无固定运动。', '2026-06-18 08:20:00', '2026-06-18 08:25:00');
 
 INSERT INTO risk_assessments (assessment_id, user_id, metric_id, request_summary, response_result, risk_level, risk_score, diabetes_type_tendency, main_risk_factors, indicator_analysis, health_advice, medical_warning, summary, call_status, error_message, create_time) VALUES
+(7, 2, 1, '46岁男性，有家族史，BMI偏高，空腹血糖6.8mmol/L，餐后血糖9.9mmol/L。', '{"risk_level":"medium","risk_score":72}', 'medium', 72, '2型糖尿病风险倾向', '["家族史", "腰围偏高", "空腹血糖偏高"]', '初次录入时空腹与餐后血糖均偏高，需开始生活方式干预。', '减少含糖饮料，控制晚餐主食，逐步增加饭后步行。', '若指标持续升高，建议线下复查。', '整体风险中等偏高，建议尽快建立饮食与运动记录习惯。', 'success', NULL, '2026-06-12 09:00:00'),
+(8, 2, 2, '46岁男性，空腹血糖6.5mmol/L，餐后血糖9.2mmol/L，已开始减少含糖饮料。', '{"risk_level":"medium","risk_score":68}', 'medium', 68, '2型糖尿病风险倾向', '["家族史", "腰围偏高"]', '空腹与餐后血糖较首次评估有所下降，干预初见成效。', '继续饭后步行，优化午餐外卖选择。', '保持监测，避免反弹。', '风险分数下降，说明近期干预方向正确。', 'success', NULL, '2026-06-18 09:00:00'),
 (1, 2, 3, '46岁男性，有家族史，BMI偏高，近期空腹血糖6.2mmol/L，餐后血糖8.6mmol/L。', '{"risk_level":"medium","risk_score":64}', 'medium', 64, '2型糖尿病风险倾向', '["家族史", "腰围偏高", "餐后血糖偏高"]', '空腹和餐后血糖均较前期下降，但仍需持续观察；血压处于临界偏高区间。', '继续保持餐盘法和饭后步行，建议每周至少150分钟中等强度活动，并记录餐后血糖趋势。', '若空腹血糖连续升高或出现多饮、多尿、明显乏力，应及时线下复查。', '整体风险中等，近期改善明显，重点是保持体重和餐后血糖下降趋势。', 'success', NULL, '2026-06-26 09:00:00'),
 (2, 3, 6, '38岁女性，有妊娠期血糖偏高史，当前体重和血糖趋势稳定。', '{"risk_level":"low","risk_score":34}', 'low', 34, '糖尿病前期需随访', '["妊娠期血糖异常史", "家族史"]', '当前空腹和餐后血糖处于较稳定状态，血压正常，体重轻度下降。', '维持规律运动和粗细搭配饮食，继续关注睡眠和压力。', '年度体检中保留糖化血红蛋白复查，妊娠或体重变化时需更密切随访。', '当前风险较低，但因既往史仍需保持长期随访。', 'success', NULL, '2026-06-26 09:20:00'),
 (3, 4, 9, '59岁女性，高血压病史，空腹血糖6.5mmol/L，餐后9.0mmol/L，近期体重略降。', '{"risk_level":"high","risk_score":78}', 'high', 78, '2型糖尿病高风险', '["年龄", "高血压", "腰围偏高", "血糖偏高", "家族史"]', '血糖较前下降但仍偏高，血压控制较前改善，腰围仍需重点管理。', '在医生建议下复查空腹血糖、餐后血糖和糖化血红蛋白；饮食上减少精白主食和高盐食物，运动以温和步行为主。', '如血糖继续偏高或血压波动，应尽快线下就诊评估，不建议自行调整降压药。', '风险偏高但已有改善迹象，应把复查和持续生活方式干预作为下一阶段重点。', 'success', NULL, '2026-06-27 09:00:00'),
@@ -139,6 +141,8 @@ INSERT INTO health_reports (report_id, user_id, report_type, report_title, repor
 (3, 4, 'doctor', '何燕复查沟通摘要', '# 复查沟通摘要\n\n59岁女性，有高血压病史，近期风险评估偏高。空腹血糖和餐后血糖较前改善但仍需关注，打卡中出现膝盖不适。\n\n## 医生关注点\n\n- 血压和血糖目标范围\n- 膝盖不适下的安全运动方式\n- 是否需要进一步检查糖化血红蛋白和并发症风险\n\n## 安全提醒\n\n不建议突然增加运动强度，应先以慢走或坐姿活动为主，并结合线下医生建议。', '高风险且有膝盖不适，建议以复查、安全运动和指标监测为主。', '{"risk_level":"high","latest_metric_id":9,"latest_assessment_id":3,"latest_plan_id":3,"latest_review_id":3,"data_sources":["profile","metrics","risk","life_plan","checkin","intervention_review"]}', 86, 'generated', '2026-06-27 10:20:00', '2026-06-27 10:20:00');
 
 INSERT INTO api_call_logs (log_id, user_id, service_type, request_summary, response_summary, call_status, error_message, create_time) VALUES
+(16, 2, 'risk_prediction', '李明早期健康数据风险预测', '中等风险偏高，建议开始干预。', 'success', NULL, '2026-06-12 09:00:05'),
+(17, 2, 'risk_prediction', '李明中期健康数据风险预测', '风险分数下降，干预有效。', 'success', NULL, '2026-06-18 09:00:05'),
 (1, 2, 'risk_prediction', '李明最新健康数据风险预测', '中等风险，建议持续餐后步行和饮食优化。', 'success', NULL, '2026-06-26 09:00:05'),
 (2, 3, 'risk_prediction', '赵晴最新健康数据风险预测', '低风险，建议规律随访。', 'success', NULL, '2026-06-26 09:20:05'),
 (3, 4, 'risk_prediction', '何燕最新健康数据风险预测', '高风险，需要复查与综合管理。', 'success', NULL, '2026-06-27 09:00:05'),

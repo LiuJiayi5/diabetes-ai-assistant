@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.diabetes.assistant.common.exception.BusinessException;
 import com.diabetes.assistant.common.response.PageResult;
+import com.diabetes.assistant.common.utils.GenderUtils;
 import com.diabetes.assistant.common.utils.PageUtils;
 import com.diabetes.assistant.modules.profile.contract.PatientProfileQueryApi;
 import com.diabetes.assistant.modules.profile.contract.dto.PatientProfileDTO;
@@ -167,7 +168,7 @@ public class ProfileServiceImpl implements ProfileService, PatientProfileQueryAp
             if (!summary.isEmpty()) {
                 summary.append("，");
             }
-            summary.append("性别").append(profile.getGender());
+            summary.append("性别").append(GenderUtils.toDisplayLabel(profile.getGender()));
         }
         if (profile.getHeightCm() != null) {
             if (!summary.isEmpty()) {

@@ -5,10 +5,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
+import org.springframework.validation.BindException;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.util.StringUtils;
+
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -21,7 +27,20 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
     public ResponseEntity<ApiResponse<Void>> handleValidationException(Exception exception) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.fail(400, "参数校验失败"));
+        String message = resolveValidationMessage(exception);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ApiResponse.fail(400, message));
+    }
+
+    private String resolveValidationMessage(Exception exception) {
+        BindingResult bindingResult = exception instanceof MethodArgumentNotValidException methodException
+                ? methodException.getBindingResult()
+                : ((BindException) exception).getBindingResult();
+        String message = bindingResult.getFieldErrors().stream()
+                .map(FieldError::getDefaultMessage)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .collect(Collectors.joining("；"));
+        return StringUtils.hasText(message) ? message : "参数校验失败";
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
