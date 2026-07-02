@@ -9,5 +9,6 @@ public interface AdminRecommendationAnalyticsService {
                                                       Integer pageSize,
                                                       String scenario,
                                                       String keyword,
-                                                      Boolean knowledgeEnhanced);
+                                                      Boolean knowledgeEnhanced,
+                                                      String readStatus);
 }

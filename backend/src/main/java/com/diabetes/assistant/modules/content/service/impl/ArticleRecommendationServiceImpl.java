@@ -361,15 +361,33 @@ public class ArticleRecommendationServiceImpl implements ArticleRecommendationSe
     private List<String> buildReadTags(Integer userId) {
         List<ArticleReadEvent> events = readEventMapper.selectList(new LambdaQueryWrapper<ArticleReadEvent>()
                 .eq(ArticleReadEvent::getUserId, userId)
+                .ge(ArticleReadEvent::getProgressPercent, 60)
                 .orderByDesc(ArticleReadEvent::getCreateTime)
-                .last("LIMIT 20"));
+                .last("LIMIT 30"));
         if (events.isEmpty()) return List.of();
-        Map<Integer, Long> counts = events.stream()
-                .collect(Collectors.groupingBy(ArticleReadEvent::getArticleId, LinkedHashMap::new, Collectors.counting()));
-        return counts.entrySet().stream()
-                .sorted(Map.Entry.<Integer, Long>comparingByValue().reversed())
-                .limit(3)
-                .map(entry -> "read_article_" + entry.getKey())
+        List<Integer> articleIds = events.stream()
+                .map(ArticleReadEvent::getArticleId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (articleIds.isEmpty()) return List.of();
+        Map<Integer, List<ArticleTag>> tagMap = articleTagMapper.selectList(new LambdaQueryWrapper<ArticleTag>()
+                        .in(ArticleTag::getArticleId, articleIds))
+                .stream()
+                .collect(Collectors.groupingBy(ArticleTag::getArticleId, LinkedHashMap::new, Collectors.toList()));
+        Map<String, Integer> weights = new LinkedHashMap<>();
+        for (ArticleReadEvent event : events) {
+            int quality = safeInt(event.getProgressPercent()) >= 90 || safeInt(event.getReadSeconds()) >= 120 ? 3 : 1;
+            for (ArticleTag tag : tagMap.getOrDefault(event.getArticleId(), List.of())) {
+                String code = text(tag.getTagCode(), tag.getTagName());
+                if (!StringUtils.hasText(code)) continue;
+                weights.merge(code, quality + Math.max(0, safeInt(tag.getWeight()) / 20), Integer::sum);
+            }
+        }
+        return weights.entrySet().stream()
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                .limit(5)
+                .map(Map.Entry::getKey)
                 .toList();
     }
 
@@ -390,6 +408,7 @@ public class ArticleRecommendationServiceImpl implements ArticleRecommendationSe
         score += matchSignals(articleSignals, context.metricTags(), 16, signals, "近期指标");
         score += matchSignals(articleSignals, context.planTags(), "life_plan".equals(scenario) ? 22 : 18, signals, "生活方案任务");
         score += matchSignals(articleSignals, context.reviewTags(), "intervention_review".equals(scenario) ? 26 : 18, signals, "自动复盘纠偏");
+        score += matchSignals(articleSignals, context.readTags(), 7, signals, "阅读偏好");
         if ("high".equalsIgnoreCase(context.riskLevel()) || "medium".equalsIgnoreCase(context.riskLevel())) {
             int riskScore = matchSignals(articleSignals, List.of("complication", "glucose_monitoring", "diet_control"), 8, signals, "风险分层");
             score += riskScore;

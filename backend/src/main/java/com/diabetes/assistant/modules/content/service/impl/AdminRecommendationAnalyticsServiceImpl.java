@@ -57,7 +57,8 @@ public class AdminRecommendationAnalyticsServiceImpl implements AdminRecommendat
                                                              Integer pageSize,
                                                              String scenario,
                                                              String keyword,
-                                                             Boolean knowledgeEnhanced) {
+                                                             Boolean knowledgeEnhanced,
+                                                             String readStatus) {
         requireAdmin(adminUserId);
         int currentPage = page == null || page < 1 ? 1 : page;
         int currentPageSize = pageSize == null || pageSize < 1 ? 10 : Math.min(pageSize, 50);
@@ -72,10 +73,11 @@ public class AdminRecommendationAnalyticsServiceImpl implements AdminRecommendat
 
         Map<Integer, User> users = loadUsers(allLogs, allReads);
         Map<Integer, Article> articles = loadArticles(allLogs, allReads);
-        List<ArticleRecommendationLog> filteredLogs = filterLogs(allLogs, users, articles, scenario, keyword, knowledgeEnhanced);
+        Map<Integer, List<ArticleReadEvent>> readsByRecommendation = readsByRecommendation(allReads);
+        List<ArticleRecommendationLog> filteredLogs = filterLogs(allLogs, users, articles, scenario, keyword, knowledgeEnhanced, readStatus, readsByRecommendation);
         List<ArticleReadEvent> filteredReads = filterReads(allReads, users, articles, scenario, keyword);
 
-        PageResult<AdminRecommendationLogResponse> recommendationPage = pageLogs(filteredLogs, allReads, users, articles, currentPage, currentPageSize);
+        PageResult<AdminRecommendationLogResponse> recommendationPage = pageLogs(filteredLogs, allReads, readsByRecommendation, users, articles, currentPage, currentPageSize);
         PageResult<AdminReadEventResponse> readPage = pageReads(filteredReads, users, articles, currentPage, Math.min(currentPageSize, 20));
 
         return AdminRecommendationDashboardResponse.builder()
@@ -178,12 +180,16 @@ public class AdminRecommendationAnalyticsServiceImpl implements AdminRecommendat
                                                       Map<Integer, Article> articles,
                                                       String scenario,
                                                       String keyword,
-                                                      Boolean knowledgeEnhanced) {
+                                                      Boolean knowledgeEnhanced,
+                                                      String readStatus,
+                                                      Map<Integer, List<ArticleReadEvent>> readsByRecommendation) {
         String normalizedScenario = normalize(scenario);
         String normalizedKeyword = normalize(keyword).toLowerCase(Locale.ROOT);
+        String normalizedReadStatus = normalize(readStatus).toLowerCase(Locale.ROOT);
         return logs.stream()
                 .filter(log -> !StringUtils.hasText(normalizedScenario) || normalizedScenario.equals(log.getScenario()))
                 .filter(log -> knowledgeEnhanced == null || knowledgeEnhanced == isKnowledgeEnhanced(log))
+                .filter(log -> matchesReadStatus(log, readsByRecommendation, normalizedReadStatus))
                 .filter(log -> !StringUtils.hasText(normalizedKeyword) || matchesKeyword(log, users.get(log.getUserId()), articles.get(log.getArticleId()), normalizedKeyword))
                 .toList();
     }
@@ -199,6 +205,22 @@ public class AdminRecommendationAnalyticsServiceImpl implements AdminRecommendat
                 .filter(event -> !StringUtils.hasText(normalizedScenario) || normalizedScenario.equals(event.getSourceScenario()))
                 .filter(event -> !StringUtils.hasText(normalizedKeyword) || matchesReadKeyword(event, users.get(event.getUserId()), articles.get(event.getArticleId()), normalizedKeyword))
                 .toList();
+    }
+
+    private Map<Integer, List<ArticleReadEvent>> readsByRecommendation(List<ArticleReadEvent> reads) {
+        return reads.stream()
+                .filter(event -> event.getRecommendationId() != null)
+                .collect(Collectors.groupingBy(ArticleReadEvent::getRecommendationId));
+    }
+
+    private boolean matchesReadStatus(ArticleRecommendationLog log,
+                                      Map<Integer, List<ArticleReadEvent>> readsByRecommendation,
+                                      String readStatus) {
+        if (!StringUtils.hasText(readStatus) || "all".equals(readStatus)) {
+            return true;
+        }
+        boolean hasRead = !readsByRecommendation.getOrDefault(log.getRecommendationId(), List.of()).isEmpty();
+        return "read".equals(readStatus) ? hasRead : "unread".equals(readStatus) ? !hasRead : true;
     }
 
     private AdminRecommendationOverviewResponse buildOverview(List<ArticleRecommendationLog> logs,
@@ -257,6 +279,7 @@ public class AdminRecommendationAnalyticsServiceImpl implements AdminRecommendat
 
     private PageResult<AdminRecommendationLogResponse> pageLogs(List<ArticleRecommendationLog> logs,
                                                                 List<ArticleReadEvent> reads,
+                                                                Map<Integer, List<ArticleReadEvent>> readsByRecommendation,
                                                                 Map<Integer, User> users,
                                                                 Map<Integer, Article> articles,
                                                                 int page,
@@ -264,10 +287,6 @@ public class AdminRecommendationAnalyticsServiceImpl implements AdminRecommendat
         int from = Math.min((page - 1) * pageSize, logs.size());
         int to = Math.min(from + pageSize, logs.size());
         List<ArticleRecommendationLog> pageRows = logs.subList(from, to);
-
-        Map<Integer, List<ArticleReadEvent>> readsByRecommendation = reads.stream()
-                .filter(event -> event.getRecommendationId() != null)
-                .collect(Collectors.groupingBy(ArticleReadEvent::getRecommendationId));
 
         List<AdminRecommendationLogResponse> rows = pageRows.stream()
                 .map(log -> toLogResponse(log, readsForLog(log, reads, readsByRecommendation),
@@ -360,6 +379,7 @@ public class AdminRecommendationAnalyticsServiceImpl implements AdminRecommendat
                 .userId(user == null ? fallbackId : user.getUserId())
                 .username(user == null ? "用户 #" + fallbackId : user.getUsername())
                 .phone(user == null ? "" : user.getPhone())
+                .avatar(user == null ? "" : user.getAvatar())
                 .build();
     }
 

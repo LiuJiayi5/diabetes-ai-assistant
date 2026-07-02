@@ -26,8 +26,9 @@ public class AdminRecommendationAnalyticsController {
             @RequestParam(name = "page_size", defaultValue = "10") Integer pageSize,
             @RequestParam(required = false) String scenario,
             @RequestParam(required = false) String keyword,
-            @RequestParam(name = "knowledge_enhanced", required = false) Boolean knowledgeEnhanced) {
+            @RequestParam(name = "knowledge_enhanced", required = false) Boolean knowledgeEnhanced,
+            @RequestParam(name = "read_status", required = false) String readStatus) {
         Integer adminUserId = currentUserUtil.getCurrentUserId(request);
-        return ApiResponse.success(analyticsService.getDashboard(adminUserId, page, pageSize, scenario, keyword, knowledgeEnhanced));
+        return ApiResponse.success(analyticsService.getDashboard(adminUserId, page, pageSize, scenario, keyword, knowledgeEnhanced, readStatus));
     }
 }

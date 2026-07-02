@@ -92,11 +92,17 @@
         <span class="admin-count-pill">共 {{ pagination.total }} 条</span>
       </div>
 
+      <div class="recommendation-read-tabs">
+        <el-segmented v-model="query.read_status" :options="readStatusOptions" @change="submitQuery" />
+      </div>
+
       <el-table v-loading="loading" :data="recommendations" row-key="recommendation_id" empty-text="暂无推荐记录">
         <el-table-column label="患者 / 文章" min-width="280">
           <template #default="{ row }">
             <div class="admin-table-main">
-              <span class="recommendation-avatar">{{ row.user?.username?.slice(0, 1) || '患' }}</span>
+              <span class="recommendation-avatar">
+                <img :src="userAvatar(row.user)" alt="" @error="useDefaultAvatar" />
+              </span>
               <span class="admin-table-main__body">
                 <strong class="admin-table-title">{{ row.article?.title }}</strong>
                 <span class="admin-table-subtitle">{{ row.user?.username }} · {{ row.user?.phone || '无手机号' }}</span>
@@ -211,6 +217,7 @@ import { BarChart3, BookOpenCheck, BrainCircuit, Clock3, Eye, Info, RefreshCw, S
 import { ElMessage } from 'element-plus'
 import { adminGetRecommendationDashboard, adminGetContentManagement, adminSaveArticle } from '@/api/admin'
 import { assignPage, createPagination, pageParams, resolveAdminError, unwrapPage } from '@/modules/admin/utils'
+import { resolveAvatarUrl, useDefaultAvatar } from '@/utils/assets'
 
 const router = useRouter()
 const loading = ref(false)
@@ -223,8 +230,14 @@ const readPagination = reactive(createPagination(10))
 const query = reactive({
   keyword: '',
   scenario: '',
-  knowledge_enhanced: ''
+  knowledge_enhanced: '',
+  read_status: 'read'
 })
+const readStatusOptions = [
+  { label: '已读', value: 'read' },
+  { label: '未读', value: 'unread' },
+  { label: '全部', value: 'all' }
+]
 
 const overview = computed(() => dashboard.value?.overview || {})
 const scenarioStats = computed(() => overview.value.scenario_stats || [])
@@ -250,7 +263,8 @@ async function loadDashboard() {
     const params = {
       ...pageParams(pagination),
       keyword: query.keyword,
-      scenario: query.scenario
+      scenario: query.scenario,
+      read_status: query.read_status
     }
     if (query.knowledge_enhanced !== '') {
       params.knowledge_enhanced = query.knowledge_enhanced
@@ -281,6 +295,7 @@ function resetQuery() {
   query.keyword = ''
   query.scenario = ''
   query.knowledge_enhanced = ''
+  query.read_status = 'read'
   submitQuery()
 }
 
@@ -296,6 +311,10 @@ function scenarioPercent(item) {
 
 function shortSignals(signals = []) {
   return Array.isArray(signals) ? signals.slice(0, 3) : []
+}
+
+function userAvatar(user) {
+  return resolveAvatarUrl(user?.avatar)
 }
 
 function formatSeconds(value) {
@@ -433,6 +452,18 @@ onMounted(loadDashboard)
   grid-template-columns: minmax(260px, 1fr) 170px 170px auto;
 }
 
+.recommendation-read-tabs {
+  margin: -4px 0 14px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.recommendation-read-tabs :deep(.el-segmented) {
+  padding: 4px;
+  border-radius: 999px;
+  background: #F3F7FF;
+}
+
 .recommendation-avatar {
   width: 34px;
   height: 34px;
@@ -445,6 +476,14 @@ onMounted(loadDashboard)
   color: #3B76E6;
   font-size: 13px;
   font-weight: 800;
+  overflow: hidden;
+}
+
+.recommendation-avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
 .read-metric-cell strong,
