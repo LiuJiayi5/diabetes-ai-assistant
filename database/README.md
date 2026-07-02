@@ -1,17 +1,11 @@
 # 数据库脚本说明
 
-本目录只保留两份可执行 SQL，用于从零重建项目数据库并加载干净演示数据。
-
-## 文件
+## 全新环境（推荐）
 
 ```text
-01_init_schema.sql      创建 `diabetes_assistant` 数据库、14 张业务表、索引和外键
-02_seed_demo_data.sql   写入演示账号、健康档案、指标、风险评估、方案、打卡、AI 会话、健康资讯、轮播图和专家身份
+01_init_schema.sql      建库建表（含推荐、复盘等最新表结构）
+02_seed_demo_data.sql   演示数据
 ```
-
-`01_init_schema.sql` 会先删除再创建表，适合本地开发和演示环境重置。生产或重要数据环境不要直接执行。
-
-## 执行顺序
 
 在项目根目录执行：
 
@@ -20,12 +14,21 @@ mysql --default-character-set=utf8mb4 -uroot -p < database/01_init_schema.sql
 mysql --default-character-set=utf8mb4 -uroot -p diabetes_assistant < database/02_seed_demo_data.sql
 ```
 
-本地默认密码如果是 `123456`，也可以使用：
+`01_init_schema.sql` 会先删除再创建表，仅适合本地开发/演示重置。
 
-```bash
-mysql --default-character-set=utf8mb4 -uroot -p123456 < database/01_init_schema.sql
-mysql --default-character-set=utf8mb4 -uroot -p123456 diabetes_assistant < database/02_seed_demo_data.sql
+## 已有旧库时的增量脚本（按需执行）
+
+若数据库是较早版本建的，可**只执行你库里还没有对应表/字段的脚本**（均为增量、可重复思路见各文件注释）：
+
+```text
+03_intervention_review_migration.sql      生活方案来源字段 + intervention_reviews 表
+03_add_article_recommendation_tables.sql  个性化推荐三表 + article_tags（队友新增）
+04_patch_liming_risk_trend.sql            李明风险评估趋势演示数据（UPDATE）
+05_patch_health_metric_12_utf8.sql        修复指标乱码
+06_patch_risk_assessment_8.sql            修复评估 #8 详情字段
 ```
+
+> 全新执行过 `01_init_schema.sql` 的库，一般**不需要**再跑 `03_add_article_recommendation_tables.sql`；`04`～`06` 仅在演示数据需要修补时执行。
 
 ## 演示账号
 
